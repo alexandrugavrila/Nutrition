@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@material-ui/core": "^4.12.4",
+    "@mui/material": "^5.15.10",
+    "@mui/styled-engine-sc": "^6.0.0-alpha.16",
+    "antd": "^5.14.0",
+    "rc-tabs": "^14.0.0",
+    "styled-components": "^6.1.8"
+  }
+}
