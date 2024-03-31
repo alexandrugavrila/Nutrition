@@ -39,7 +39,6 @@ def get_meal(meal_id):
     meal = fetch_meal(meal_id)
     if not meal:
         return jsonify({'error': 'Meal not found'}), 404
-    
     return jsonify(meal.serialize())
 
 
