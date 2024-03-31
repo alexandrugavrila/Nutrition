@@ -1,4 +1,6 @@
-I am building a nutrition tracking webapp. It has a PostgreSQL server and a Python Flask backend, then a React frontend. The table structure is as follows: 
+I am building a nutrition tracking webapp. It has a PostgreSQL server and a Python Flask backend, then a React frontend.
+
+Table structure:
 
 -- Table: ingredients
 CREATE TABLE public.ingredients (
@@ -54,3 +56,51 @@ CREATE TABLE public.meal_ingredients (
     PRIMARY KEY (ingredient_id, meal_id),
     CONSTRAINT fk_unit_id FOREIGN KEY (unit_id) REFERENCES ingredient_units(id)
 );
+
+JS Data Structures:
+  ingredient: {
+    name: 
+    id: 
+    units: [
+        { 
+            id: 
+            ingredient_id: 
+            name: 
+            grams: 
+        }
+    ],
+    nutrition: {
+      calories: 
+      protein: 
+      carbohydrates: 
+      fat: 
+      fiber: 
+    },
+    tags: [
+        {
+            id: 
+            name: 
+        }
+    ],
+    selectedUnitId: 
+
+
+
+  meal: {
+    name: ,
+    id: ,
+    ingredients: [
+        {
+            amount:
+            ingredient_id:
+            meal_id:
+            unit_id:
+        }
+    ],
+    tags: [
+        {
+            id:
+            name:
+        }
+    ],
+  },
