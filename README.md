@@ -152,6 +152,27 @@ DBeaver is a free and powerful GUI for inspecting your PostgreSQL database. You 
 
 ## 👩‍💻 For Developers
 
+### Branch naming convention
+type/issue-in-kabob-case
+
+Types:
+  Feature
+  Refactor
+  Bugfix
+  Housekeeping
+
+
+### Rebuilding Containers
+
+To manually rebuild containers after a code change
+
+```bash
+docker-compose down -v
+docker-compose up --build
+```
+
+Data will persist as long as you do not also delete the Docker volume
+
 ### Local Development (non-Docker)
 
 **Backend:**
@@ -169,18 +190,6 @@ cd Frontend/nutrition-frontend
 npm install
 npm start
 ```
-
-### Updating Seed Data
-
-To manually reload the seed data:
-
-```bash
-# Recreate database container
-docker-compose down -v
-docker-compose up --build
-```
-
-> This will reload the database using all SQL scripts in `/Database`.
 
 ---
 
