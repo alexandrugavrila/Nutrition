@@ -18,7 +18,7 @@ cd Nutrition
 
 # Start all services
 docker-compose up --build
-````
+```
 
 * Frontend: [http://localhost:3000](http://localhost:3000)
 * Backend API: [http://localhost:5000](http://localhost:5000)
@@ -225,3 +225,188 @@ The following endpoints are defined but **commented out** in your `routes/meals.
 | POST   | `/meals`      | Add a new meal          |
 | PUT    | `/meals/<id>` | Update an existing meal |
 | DELETE | `/meals/<id>` | Delete a meal           |
+
+
+
+
+
+
+
+
+
+
+
+
+
+Awesome — you’re in a great position to create a visual overview of your system. Here’s what I’ll give you:
+
+---
+
+## ✅ Output:
+
+* A **ready-to-paste Mermaid diagram** for your `README.md`
+* It shows **ingredients**, **meals**, **tags**, **units**, and **nutrition**
+* Includes foreign key relationships and structure
+
+---
+
+## 🧭 Data Model Summary (from your code)
+
+### 🥕 Ingredient
+
+* has many `IngredientUnit`
+* has one `Nutrition`
+* has many `IngredientTag` → joined with `PossibleIngredientTag`
+
+### 🍽️ Meal
+
+* has many `MealIngredient` (ingredient + quantity + unit)
+* has many `MealTag` → joined with `PossibleMealTag`
+
+---
+
+## 🎨 Backend Mermaid Diagram
+
+<details>
+<summary>📊 Click to expand Backend Mermaid diagram</summary>
+
+```mermaid
+erDiagram
+
+  INGREDIENT ||--o{ INGREDIENT_UNIT : has
+  INGREDIENT ||--|| NUTRITION : contains
+  INGREDIENT ||--o{ INGREDIENT_TAG : tagged_with
+  INGREDIENT_TAG }o--|| POSSIBLE_INGREDIENT_TAG : references
+
+  MEAL ||--o{ MEAL_INGREDIENT : includes
+  MEAL_INGREDIENT }o--|| INGREDIENT : uses
+  MEAL_INGREDIENT }o--|| INGREDIENT_UNIT : in_unit
+
+  MEAL ||--o{ MEAL_TAG : tagged_with
+  MEAL_TAG }o--|| POSSIBLE_MEAL_TAG : references
+
+  INGREDIENT {
+    int id PK
+    string name
+  }
+
+  NUTRITION {
+    int ingredient_id PK, FK
+    float calories
+    float protein
+    float fat
+    float carbohydrates
+    float fiber
+  }
+
+  INGREDIENT_UNIT {
+    int id PK
+    int ingredient_id FK
+    string name
+    float grams
+  }
+
+  POSSIBLE_INGREDIENT_TAG {
+    int id PK
+    string tag
+  }
+
+  INGREDIENT_TAG {
+    int id PK
+    int ingredient_id FK
+    int tag_id FK
+  }
+
+  MEAL {
+    int id PK
+    string name
+  }
+
+  MEAL_INGREDIENT {
+    int meal_id PK, FK
+    int ingredient_id FK
+    int unit_id FK
+    float unit_quantity
+  }
+
+  POSSIBLE_MEAL_TAG {
+    int id PK
+    string tag
+  }
+
+  MEAL_TAG {
+    int id PK
+    int meal_id FK
+    int tag_id FK
+  }
+```
+
+</details>
+
+
+
+---
+
+### 🧩 Frontend Data Structures (JavaScript)
+
+<details>
+<summary>📊 Click to expand Frontend Mermaid diagram</summary>
+
+```mermaid
+classDiagram
+  class Ingredient {
+    int id
+    string name
+    Nutrition nutrition
+    IngredientUnit[] units
+    IngredientTag[] tags
+    int selectedUnitId
+  }
+
+  class IngredientUnit {
+    int id
+    int ingredient_id
+    string name
+    float grams
+  }
+
+  class Nutrition {
+    float calories
+    float protein
+    float carbohydrates
+    float fat
+    float fiber
+  }
+
+  class IngredientTag {
+    int id
+    string name
+  }
+
+  class Meal {
+    int id
+    string name
+    MealIngredient[] ingredients
+    MealTag[] tags
+  }
+
+  class MealIngredient {
+    int ingredient_id
+    int meal_id
+    int unit_id
+    float amount
+  }
+
+  class MealTag {
+    int id
+    string name
+  }
+
+  Ingredient o-- Nutrition
+  Ingredient o-- IngredientUnit
+  Ingredient o-- IngredientTag
+  Meal o-- MealIngredient
+  Meal o-- MealTag
+```
+
+</details>
