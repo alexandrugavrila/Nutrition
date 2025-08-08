@@ -13,7 +13,7 @@ app.register_blueprint(ingredient_blueprint)
 app.register_blueprint(meal_blueprint)
 
 CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:Yn*5r-UA5qB0wRQHcsw8@localhost:5432/postgres'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://nutrition_user:nutrition_pass@nutrition-db:5432/nutrition'
 db.init_app(app)
 
 with app.app_context():
