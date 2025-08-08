@@ -118,13 +118,6 @@ DBeaver is a free and powerful GUI for inspecting your PostgreSQL database. You 
 
 ---
 
-
-
-
-
-
----
-
 ## 🧠 Core Concepts
 
 ### Backend (Flask)
