@@ -48,7 +48,7 @@ export const DataProvider = ({ children }) => {
   };
 
   const fetchIngredients = () => {
-    const url = "http://localhost:5000/ingredients";
+    const url = "/api/ingredients";
 
     const add100gUnit = (data) => {
       return data.map((ingredient) => {
@@ -69,17 +69,17 @@ export const DataProvider = ({ children }) => {
   };
 
   const fetchPossibleIngredientTags = () => {
-    const url = "http://localhost:5000/ingredients/possible_tags";
+    const url = "/api/ingredients/possible_tags";
     fetchData(url, setPossibleIngredientTags, setFetching, () => console.error("Error fetching tags"));
   };
 
   const fetchMeals = () => {
-    const url = "http://localhost:5000/meals";
+    const url = "/api/meals";
     fetchData(url, setMeals, setFetching, () => setMealsNeedsRefetch(true));
   };
 
   const fetchPossibleMealTags = () => {
-    const url = "http://localhost:5000/meals/possible_tags";
+    const url = "/api/meals/possible_tags";
     fetchData(url, setPossibleMealTags, setFetching, () => console.error("Error fetching tags"));
   };
 
