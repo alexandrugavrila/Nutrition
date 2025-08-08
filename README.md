@@ -226,43 +226,6 @@ The following endpoints are defined but **commented out** in your `routes/meals.
 | PUT    | `/meals/<id>` | Update an existing meal |
 | DELETE | `/meals/<id>` | Delete a meal           |
 
-
-
-
-
-
-
-
-
-
-
-
-
-Awesome — you’re in a great position to create a visual overview of your system. Here’s what I’ll give you:
-
----
-
-## ✅ Output:
-
-* A **ready-to-paste Mermaid diagram** for your `README.md`
-* It shows **ingredients**, **meals**, **tags**, **units**, and **nutrition**
-* Includes foreign key relationships and structure
-
----
-
-## 🧭 Data Model Summary (from your code)
-
-### 🥕 Ingredient
-
-* has many `IngredientUnit`
-* has one `Nutrition`
-* has many `IngredientTag` → joined with `PossibleIngredientTag`
-
-### 🍽️ Meal
-
-* has many `MealIngredient` (ingredient + quantity + unit)
-* has many `MealTag` → joined with `PossibleMealTag`
-
 ---
 
 ## 🎨 Backend Mermaid Diagram
