@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:13
+    container_name: nutrition-db
+    environment:
+      POSTGRES_USER: nutrition_user
+      POSTGRES_PASSWORD: nutrition_pass
+      POSTGRES_DB: nutrition
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - ./Database:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"  # 👈 This makes the DB accessible from your host
+    networks:
+      - nutrition-net
+
+  backend:
+    build:
+      context: .
+      dockerfile: Backend/Dockerfile
+    container_name: nutrition-backend
+    environment:
+      FLASK_ENV: development
+      DATABASE_URL: postgresql://nutrition_user:nutrition_pass@db:5432/nutrition
+    depends_on:
+      - db
+    networks:
+      - nutrition-net
+    expose:
+      - "5000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Frontend/nutrition-frontend/Dockerfile
+    container_name: nutrition-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - nutrition-net
+
+volumes:
+  dbdata:
+
+networks:
+  nutrition-net:

@@ -1,0 +1,75 @@
+# === Git ===
+.git
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.env
+.env.*
+*.sqlite3
+instance/
+*.log
+*.pot
+*.pyc
+*.pkl
+
+# Flask specific
+*.db
+.mypy_cache/
+.pytest_cache/
+coverage/
+htmlcov/
+venv/
+.venv/
+
+# === Node / React ===
+Frontend/node_modules/
+Frontend/.env
+Frontend/.next/
+Frontend/.cache/
+Frontend/build/
+Frontend/dist/
+Frontend/coverage/
+Frontend/public/static/
+
+# === Docker volumes and build artifacts ===
+pgdata/
+*.pid
+*.sock
+*.log
+*.tmp
+*.bak
+
+# === System / Editor junk ===
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.code-workspace
+
+# === OS-specific ===
+# macOS
+.AppleDouble
+.LSOverride
+
+# Windows
+ehthumbs.db
+Desktop.ini
+
+# === General ===
+*.tar.gz
+*.zip
+*.gz
+*.egg-info/
+*.egg
+.cache/
+*.log
+*.bak
+*.tmp
+
+# === Database ===
+Database/*.sql~    # backup files
