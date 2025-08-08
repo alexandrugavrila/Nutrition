@@ -8,6 +8,11 @@ services:
       POSTGRES_USER: nutrition_user
       POSTGRES_PASSWORD: nutrition_pass
       POSTGRES_DB: nutrition
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nutrition_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - dbdata:/var/lib/postgresql/data
       - ./Database:/docker-entrypoint-initdb.d
@@ -25,7 +30,8 @@ services:
       FLASK_ENV: development
       DATABASE_URL: postgresql://nutrition_user:nutrition_pass@db:5432/nutrition
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - nutrition-net
     expose:
