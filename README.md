@@ -193,14 +193,21 @@ python .\Database\import_from_csv.py --test
 
 **Backend:**
 
+Virtual Environment Setup
 ```bash
-cd Backend
-pip install -r requirements.txt
+python -m venv .venv
+.\.venv\Scripts\Activate
+pip install -r Backend/requirements.txt
+```
+
+Launch Backend
+```bash
 python backend.py
 ```
 
 **Frontend:**
 
+Launch Frontend
 ```bash
 cd Frontend/nutrition-frontend
 npm install
