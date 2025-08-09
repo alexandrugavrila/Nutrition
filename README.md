@@ -173,6 +173,22 @@ docker-compose up --build
 
 Data will persist as long as you do not also delete the Docker volume
 
+### Database management
+
+The Python script import_from_csv.py will remove all existing data from the database and import the specified data. 
+
+To import production data
+
+```python
+python .\Database\import_from_csv.py 
+```
+
+To import test data
+
+```python
+python .\Database\import_from_csv.py --test
+```
+
 ### Local Development (non-Docker)
 
 **Backend:**
