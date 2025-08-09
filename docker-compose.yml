@@ -17,7 +17,7 @@ services:
       - dbdata:/var/lib/postgresql/data
       - ./Database:/docker-entrypoint-initdb.d
     ports:
-      - "5432:5432" # 👈 This makes the DB accessible from your host
+      - "5432:5432"
     networks:
       - nutrition-net
 
