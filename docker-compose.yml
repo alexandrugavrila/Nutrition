@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: nutrition_pass
       POSTGRES_DB: nutrition
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nutrition_user"]
+      test: [ "CMD-SHELL", "pg_isready -U nutrition_user" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -17,7 +17,7 @@ services:
       - dbdata:/var/lib/postgresql/data
       - ./Database:/docker-entrypoint-initdb.d
     ports:
-      - "5432:5432"  # 👈 This makes the DB accessible from your host
+      - "5432:5432" # 👈 This makes the DB accessible from your host
     networks:
       - nutrition-net
 
@@ -51,6 +51,7 @@ services:
 
 volumes:
   dbdata:
+
 
 networks:
   nutrition-net:
