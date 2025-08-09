@@ -8,4 +8,6 @@ Drop the link between ingredient and ingredient unit at the ingredient level, st
 ## Bugfixes
 Input floats to macro's in add ingredients
 
+The frontend displays a blank screen when test data is loaded into each table in the database. It displays properly if data is only loaded into the nutrition and ingredients tables. 
+
 ## Housekeeping

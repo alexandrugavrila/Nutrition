@@ -39,7 +39,7 @@ CREATE TABLE public.ingredient_units (
 -- Table: meals
 CREATE TABLE public.meals (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL
 );
 
 -- Table: meal_ingredients
