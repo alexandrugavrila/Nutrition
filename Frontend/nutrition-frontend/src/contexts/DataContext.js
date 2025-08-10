@@ -107,6 +107,7 @@ export const DataProvider = ({ children }) => {
 
   const value = {
     ingredients,
+    setIngredients,
     ingredientProcessingTags,
     ingredientGroupTags,
     ingredientOtherTags,
