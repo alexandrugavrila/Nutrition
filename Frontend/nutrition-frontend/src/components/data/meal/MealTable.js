@@ -71,17 +71,50 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
     .slice(indexOfFirstItem, indexOfLastItem);
 
   const calculateIngredientMacros = (ingredient) => {
-    const dataIngredient = ingredients.find((item) => item.id === ingredient.ingredient_id);
-    if (dataIngredient) {
-      const dataUnit = dataIngredient.units.find((unit) => unit.id === dataIngredient.selectedUnitId);
+    const dataIngredient = ingredients.find(
+      (item) => item.id === ingredient.ingredient_id
+    );
+    if (!dataIngredient) {
       return {
-        calories: dataIngredient.nutrition.calories ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount : 0,
-        protein: dataIngredient.nutrition.protein ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount : 0,
-        fat: dataIngredient.nutrition.fat ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount : 0,
-        carbs: dataIngredient.nutrition.carbohydrates ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount : 0,
-        fiber: dataIngredient.nutrition.fiber ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount : 0,
+        calories: 0,
+        protein: 0,
+        fat: 0,
+        carbs: 0,
+        fiber: 0,
       };
     }
+
+    const dataUnit =
+      dataIngredient.units.find((u) => u.id === ingredient.unit_id) ||
+      dataIngredient.units[0];
+
+    if (!dataUnit) {
+      return {
+        calories: 0,
+        protein: 0,
+        fat: 0,
+        carbs: 0,
+        fiber: 0,
+      };
+    }
+
+    return {
+      calories: dataIngredient.nutrition.calories
+        ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount
+        : 0,
+      protein: dataIngredient.nutrition.protein
+        ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount
+        : 0,
+      fat: dataIngredient.nutrition.fat
+        ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount
+        : 0,
+      carbs: dataIngredient.nutrition.carbohydrates
+        ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount
+        : 0,
+      fiber: dataIngredient.nutrition.fiber
+        ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount
+        : 0,
+    };
   };
 
   const calculateMealMacros = (meal) => {
@@ -189,19 +222,61 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
                           </TableHead>
                           <TableBody>
                             {meal.ingredients.map((ingredient) => {
-                              const dataIngredient = ingredients.find((item) => item.id === ingredient.ingredient_id);
+                              const dataIngredient = ingredients.find(
+                                (item) => item.id === ingredient.ingredient_id
+                              );
+                              const unit =
+                                dataIngredient?.units.find(
+                                  (u) => u.id === ingredient.unit_id
+                                ) || dataIngredient?.units[0];
 
                               // Render the TableRow with TableCell containing the ingredient name
                               return (
                                 <TableRow key={ingredient.ingredient_id}>
-                                  <TableCell>{dataIngredient ? dataIngredient.name : "Unknown Ingredient"}</TableCell>
-                                  <TableCell>{dataIngredient ? (ingredient.unit_id ? dataIngredient.units[ingredient.unit_id].name : dataIngredient.units[0].name) : ""}</TableCell>
-                                  <TableCell>{formatCellNumber(ingredient.amount)}</TableCell>
-                                  <TableCell>{formatCellNumber(dataIngredient ? calculateIngredientMacros(ingredient).calories : 0)}</TableCell>
-                                  <TableCell>{formatCellNumber(dataIngredient ? calculateIngredientMacros(ingredient).protein : 0)}</TableCell>
-                                  <TableCell>{formatCellNumber(dataIngredient ? calculateIngredientMacros(ingredient).fat : 0)}</TableCell>
-                                  <TableCell>{formatCellNumber(dataIngredient ? calculateIngredientMacros(ingredient).carbs : 0)}</TableCell>
-                                  <TableCell>{formatCellNumber(dataIngredient ? calculateIngredientMacros(ingredient).fiber : 0)}</TableCell>
+                                  <TableCell>
+                                    {dataIngredient
+                                      ? dataIngredient.name
+                                      : "Unknown Ingredient"}
+                                  </TableCell>
+                                  <TableCell>{unit ? unit.name : ""}</TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(ingredient.amount)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(
+                                      dataIngredient
+                                        ? calculateIngredientMacros(ingredient).calories
+                                        : 0
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(
+                                      dataIngredient
+                                        ? calculateIngredientMacros(ingredient).protein
+                                        : 0
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(
+                                      dataIngredient
+                                        ? calculateIngredientMacros(ingredient).fat
+                                        : 0
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(
+                                      dataIngredient
+                                        ? calculateIngredientMacros(ingredient).carbs
+                                        : 0
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(
+                                      dataIngredient
+                                        ? calculateIngredientMacros(ingredient).fiber
+                                        : 0
+                                    )}
+                                  </TableCell>
                                 </TableRow>
                               );
                             })}
