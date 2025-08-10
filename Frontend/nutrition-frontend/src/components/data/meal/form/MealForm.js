@@ -74,7 +74,6 @@ function MealForm({ mealToEditData }) {
 
   const handleMealDelete = () => {
     if (mealToEdit) {
-      console.log("Deleting Meal: ", mealToEdit);
     }
     setMealsNeedsRefetch(true);
     handleClearForm();

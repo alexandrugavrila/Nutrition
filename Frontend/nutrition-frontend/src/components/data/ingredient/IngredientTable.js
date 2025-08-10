@@ -35,7 +35,6 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
       return true; // Show all ingredients if no tags are selected
     }
     return selectedTags.some((selectedTag) => {
-      console.log(ingredient.tags.some((tag) => tag.name === selectedTag.name));
       return ingredient.tags.some((tag) => tag.name === selectedTag.name);
     });
   };

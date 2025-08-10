@@ -18,8 +18,6 @@ export const MealsProvider = ({ children }) => {
         const formattedData = data.map((meal) => ({
           ...meal,
         }));
-        console.log(ingredients);
-        console.log("Fetched meals", formattedData);
         setMeals(formattedData);
       });
   };
@@ -30,7 +28,6 @@ export const MealsProvider = ({ children }) => {
 
   useEffect(() => {
     if (needsRefetch) {
-      console.log("Refetching meals");
       fetchData();
       setNeedsRefetch(false);
     }
