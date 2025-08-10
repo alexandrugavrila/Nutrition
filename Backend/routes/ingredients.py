@@ -137,7 +137,7 @@ def get_all_possible_tags():
     possible_ingredient_tags = db_PossibleIngredientTag.query.all()
     result = []
     for tag in possible_ingredient_tags:
-        result.append(fetch_posible_ingredient_tag(tag.id).serialize())
+        result.append(fetch_possible_ingredient_tag(tag.id).serialize())
     return jsonify(result)
 
 
@@ -191,7 +191,7 @@ def fetch_ingredient(ingredient_id):
 
     return new_ingredient
 
-def fetch_posible_ingredient_tag(tag_id):
+def fetch_possible_ingredient_tag(tag_id):
     tag = db_PossibleIngredientTag.query.get(tag_id)
     if not tag: return None
     return data_IngredientTag(id=tag.id, name=tag.tag)
