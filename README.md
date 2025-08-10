@@ -147,6 +147,8 @@ DBeaver is a free and powerful GUI for inspecting your PostgreSQL database. You 
     * All ingredients and meals
     * All possible tags
   * Categorizes tags into `group`, `processing`, `type`, and `diet`
+  * Tag filtering components accept `{ group: "Category", ...tag }` objects to
+    show grouped options via MUI's Autocomplete
 
 ---
 
