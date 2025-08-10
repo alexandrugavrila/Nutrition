@@ -93,12 +93,10 @@ export const DataProvider = ({ children }) => {
 
   useEffect(() => {
     if (ingredientsNeedsRefetch) {
-      console.log("Refetching ingredients");
       fetchIngredients();
       setIngredientsNeedsRefetch(false);
     }
     if (mealsNeedsRefetch) {
-      console.log("Refetching meals");
       fetchMeals();
       setMealsNeedsRefetch(false);
     }

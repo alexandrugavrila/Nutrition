@@ -75,7 +75,6 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
 
   useEffect(() => {
     if (needsFillForm) {
-      console.log("Filling form", ingredient);
       setDisplayedNutrition({
         calories: ingredient.nutrition.calories * multiplier,
         protein: ingredient.nutrition.protein * multiplier,

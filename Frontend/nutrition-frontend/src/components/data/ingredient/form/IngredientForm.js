@@ -90,8 +90,6 @@ function IngredientForm({ ingredientToEditData }) {
     };
 
     if (isEditMode) {
-      console.log("Updating ingredient", toDatabaseIngredient);
-
       const url = `http://localhost:5000/ingredients/${toDatabaseIngredient.id}`;
       const method = "PUT";
       const data = toDatabaseIngredient;
@@ -101,8 +99,6 @@ function IngredientForm({ ingredientToEditData }) {
         setFetching(false);
       });
     } else {
-      console.log("Adding ingredient", toDatabaseIngredient);
-
       const url = "http://localhost:5000/ingredients";
       const method = "POST";
       const data = toDatabaseIngredient;
@@ -123,7 +119,6 @@ function IngredientForm({ ingredientToEditData }) {
       })
         .then((response) => {
           if (response.ok) {
-            console.log("Ingredient removed successfully");
             setIngredientsNeedsRefetch(true);
           } else {
             console.error("Failed to remove ingredient");
