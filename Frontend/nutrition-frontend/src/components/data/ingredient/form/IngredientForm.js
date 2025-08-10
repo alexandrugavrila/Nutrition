@@ -18,7 +18,7 @@ const initialState = {
   ingredientToEdit: {
     name: "",
     id: uuidv4(),
-    units: [{ id: "0", ingredient_id: uuidv4(), name: "100g", grams: "100" }],
+    units: [{ id: "0", ingredient_id: uuidv4(), name: "1g", grams: "1" }],
     nutrition: {
       calories: 0,
       protein: 0,
@@ -62,7 +62,7 @@ function IngredientForm({ ingredientToEditData }) {
   const initializeEmptyIngredient = () => ({
     name: "",
     id: uuidv4(),
-    units: [{ id: "0", ingredient_id: uuidv4(), name: "100g", grams: "100" }],
+    units: [{ id: "0", ingredient_id: uuidv4(), name: "1g", grams: "1" }],
     nutrition: {
       calories: 0,
       protein: 0,
@@ -86,7 +86,7 @@ function IngredientForm({ ingredientToEditData }) {
   const handleIngredientAction = () => {
     const toDatabaseIngredient = {
       ...ingredientToEdit,
-      units: ingredientToEdit.units.filter((unit) => unit.name !== "100g"), // Remove the 100g unit from ingredientToEdit
+      units: ingredientToEdit.units.filter((unit) => unit.name !== "1g"), // Remove the 1g unit from ingredientToEdit
     };
 
     if (isEditMode) {
