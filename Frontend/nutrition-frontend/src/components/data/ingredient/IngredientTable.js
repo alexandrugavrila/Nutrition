@@ -87,7 +87,7 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
 
   return (
     <div>
-      <h1>Ingredients</h1>
+      <h1 style={{ textAlign: "center" }}>Ingredients</h1>
 
       <TextField
         type="text"
