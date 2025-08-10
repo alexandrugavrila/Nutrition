@@ -1,4 +1,5 @@
-from marshmallow_sqlalchemy import SQLAlchemyAutoSchema, auto_field, fields
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema, auto_field
+from marshmallow import fields
 
 from db import db
 from db_models.ingredient import Ingredient
