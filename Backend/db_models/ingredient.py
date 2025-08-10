@@ -6,4 +6,13 @@ class Ingredient(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    tags = db.relationship('IngredientTag', backref='ingredient', lazy=True)
+    nutrition = db.relationship(
+        'Nutrition', backref='ingredient', uselist=False, cascade='all, delete-orphan'
+    )
+    units = db.relationship(
+        'IngredientUnit', backref='ingredient', cascade='all, delete-orphan'
+    )
+    tags = db.relationship(
+        'PossibleIngredientTag', secondary='ingredient_tags', backref='ingredients'
+    )
+
