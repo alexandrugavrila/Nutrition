@@ -50,22 +50,22 @@ export const DataProvider = ({ children }) => {
   const fetchIngredients = () => {
     const url = "/api/ingredients";
 
-    const add100gUnit = (data) => {
+    const add1gUnit = (data) => {
       return data.map((ingredient) => {
         const ingredientsWithFloatGrams = ingredient.units.map((unit) => ({
           ...unit,
           grams: parseFloat(unit.grams),
         }));
-        // Add a default 100g unit to the ingredient
+        // Add a default 1g unit to the ingredient
         return {
           ...ingredient,
-          units: [...ingredientsWithFloatGrams, { id: 0, ingredient_id: ingredient.id, name: "100g", grams: 100 }],
+          units: [...ingredientsWithFloatGrams, { id: 0, ingredient_id: ingredient.id, name: "1g", grams: 1 }],
           selectedUnitId: 0,
         };
       });
     };
 
-    fetchData(url, setIngredients, setFetching, () => setIngredientsNeedsRefetch(true), add100gUnit);
+    fetchData(url, setIngredients, setFetching, () => setIngredientsNeedsRefetch(true), add1gUnit);
   };
 
   const fetchPossibleIngredientTags = () => {
