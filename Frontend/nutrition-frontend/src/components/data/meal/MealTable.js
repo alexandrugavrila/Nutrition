@@ -36,9 +36,12 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
     if (selectedTags.length === 0) {
       return true; // Show all meals if no tags are selected
     }
-    return selectedTags.some((selectedTag) => {
-      return ingredient.tags.some((tag) => tag.name === selectedTag.name);
-    });
+    if (!Array.isArray(meal.tags) || meal.tags.length === 0) {
+      return false;
+    }
+    return selectedTags.some((selectedTag) =>
+      meal.tags.some((tag) => tag.name === selectedTag.name)
+    );
   };
 
   const handleMealDoubleClick = (meal) => {
