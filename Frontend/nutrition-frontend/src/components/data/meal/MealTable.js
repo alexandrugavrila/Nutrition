@@ -1,7 +1,7 @@
 // MealTable.js
 
 import React, { useState } from "react";
-import { TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, Collapse, Typography, TablePagination } from "@mui/material";
+import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, Collapse, Typography, TablePagination } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowRight } from "@mui/icons-material";
 
 import { useData } from "../../../contexts/DataContext";
@@ -152,13 +152,14 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
     <div>
       <h1>Meals</h1>
 
-      <TextField
-        type="text"
-        label="Search by name"
-        value={search}
-        onChange={handleSearch}
-        style={{ marginBottom: "10px" }}
-      />
+      <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+        <TextField
+          type="text"
+          label="Search by name"
+          value={search}
+          onChange={handleSearch}
+        />
+      </Box>
 
       <TagFilter
         tags={allMealTags}

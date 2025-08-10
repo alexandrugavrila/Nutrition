@@ -1,7 +1,7 @@
 // IngredientTable.js
 
 import React, { useState } from "react";
-import { TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, MenuItem, Select, TablePagination } from "@mui/material";
+import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, MenuItem, Select, TablePagination } from "@mui/material";
 
 import { useData } from "../../../contexts/DataContext";
 import { formatCellNumber } from "../../../utils/utils";
@@ -89,13 +89,14 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
     <div>
       <h1>Ingredients</h1>
 
-      <TextField
-        type="text"
-        label="Search by name"
-        value={search}
-        onChange={handleSearch}
-        style={{ marginBottom: "10px" }}
-      />
+      <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+        <TextField
+          type="text"
+          label="Search by name"
+          value={search}
+          onChange={handleSearch}
+        />
+      </Box>
 
       <TagFilter
         tags={allIngredientTags}
