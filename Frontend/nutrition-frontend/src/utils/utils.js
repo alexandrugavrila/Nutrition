@@ -14,7 +14,6 @@ export const handleFetchRequest = (url, method, data) => {
     })
       .then((response) => {
         if (response.ok) {
-          console.log("Request successful");
           resolve();
         } else {
           console.error("Failed to make request");

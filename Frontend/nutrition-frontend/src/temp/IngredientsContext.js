@@ -25,7 +25,6 @@ export const IngredientsProvider = ({ children }) => {
             selectedUnitId: 0,
           };
         });
-        console.log("Fetched ingredients", ingredientsWith1gUnit);
         setIngredients(ingredientsWith1gUnit);
       });
   };
@@ -36,7 +35,6 @@ export const IngredientsProvider = ({ children }) => {
 
   useEffect(() => {
     if (needsRefetch) {
-      console.log("Refetching ingredients");
       fetchData();
       setNeedsRefetch(false);
     }
