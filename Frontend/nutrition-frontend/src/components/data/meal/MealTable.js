@@ -32,12 +32,12 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
     }
   };
 
-  const handleTagFilter = (ingredient) => {
+  const handleTagFilter = (meal) => {
     if (selectedTags.length === 0) {
       return true; // Show all meals if no tags are selected
     }
     return selectedTags.some((selectedTag) => {
-      return ingredient.tags.some((tag) => tag.name === selectedTag);
+      return meal.tags.some((tag) => tag.name === selectedTag);
     });
   };
 
@@ -65,8 +65,8 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentIngredients = ingredients
-    .filter((ingredient) => ingredient.name.toLowerCase().includes(search.toLowerCase()))
+  const currentMeals = meals
+    .filter((meal) => meal.name.toLowerCase().includes(search.toLowerCase()))
     .filter(handleTagFilter)
     .slice(indexOfFirstItem, indexOfLastItem);
 
@@ -176,9 +176,7 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
             </TableRow>
           </TableHead>
           <TableBody>
-            {meals
-              .filter((meal) => meal.name.toLowerCase().includes(search.toLowerCase()))
-              .map((meal) => (
+            {currentMeals.map((meal) => (
                 <React.Fragment key={meal.id}>
                   <TableRow
                     onDoubleClick={() => handleMealDoubleClick(meal)}
@@ -307,7 +305,7 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
         </Button>
         <Button
           onClick={() => handlePageChange(currentPage + 1)}
-          disabled={indexOfLastItem >= ingredients.length}>
+          disabled={indexOfLastItem >= meals.length}>
           Next
         </Button>
       </div>
