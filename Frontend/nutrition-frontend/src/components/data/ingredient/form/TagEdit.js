@@ -1,16 +1,22 @@
 import React, { useEffect } from "react";
 
-import IngredientTagForm from "../common/IngredientTagForm";
+import TagFilter from "../../../common/TagFilter";
+import { useData } from "../../../../contexts/DataContext";
 
 function TagEdit({ ingredient, dispatch, needsClearForm }) {
-  const handleTagToggle = (tag) => {
-    const newTags = ingredient.tags ? [...ingredient.tags] : [];
-    const tagIndex = newTags.findIndex((t) => t.id === tag.id);
-    if (tagIndex !== -1) {
-      newTags.splice(tagIndex, 1);
-    } else {
-      newTags.push(tag);
-    }
+  const {
+    ingredientProcessingTags,
+    ingredientGroupTags,
+    ingredientOtherTags,
+  } = useData();
+
+  const allIngredientTags = [
+    ...ingredientProcessingTags,
+    ...ingredientGroupTags,
+    ...ingredientOtherTags,
+  ];
+
+  const handleTagsChange = (newTags) => {
     dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, tags: newTags } });
   };
 
@@ -26,9 +32,11 @@ function TagEdit({ ingredient, dispatch, needsClearForm }) {
     <div>
       {
         <div>
-          <IngredientTagForm
-            selectedTags={ingredient.tags}
-            onTagToggle={handleTagToggle}
+          <TagFilter
+            tags={allIngredientTags}
+            selectedTags={ingredient.tags || []}
+            onChange={handleTagsChange}
+            label="Tags"
           />
         </div>
       }

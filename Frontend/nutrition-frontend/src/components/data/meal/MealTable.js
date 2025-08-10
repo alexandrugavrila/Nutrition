@@ -6,11 +6,17 @@ import { KeyboardArrowDown, KeyboardArrowRight } from "@mui/icons-material";
 
 import { useData } from "../../../contexts/DataContext";
 import { formatCellNumber } from "../../../utils/utils";
-import MealTagForm from "./common/MealTagForm";
+import TagFilter from "../../common/TagFilter";
 
 function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} }) {
   //#region States
-  const { meals, ingredients } = useData();
+  const {
+    meals,
+    ingredients,
+    mealDietTags,
+    mealTypeTags,
+    mealOtherTags,
+  } = useData();
 
   const [search, setSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
@@ -22,14 +28,6 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
   //#region Handles
   const handleSearch = (event) => {
     setSearch(event.target.value);
-  };
-
-  const toggleTag = (tag) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter((selectedTag) => selectedTag !== tag));
-    } else {
-      setSelectedTags([...selectedTags, tag]);
-    }
   };
 
   const handleTagFilter = (meal) => {
@@ -72,6 +70,8 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
     .filter((meal) => meal.name.toLowerCase().includes(search.toLowerCase()))
     .filter(handleTagFilter);
   const currentMeals = filteredMeals.slice(indexOfFirstItem, indexOfLastItem);
+
+  const allMealTags = [...mealDietTags, ...mealTypeTags, ...mealOtherTags];
 
   const calculateIngredientMacros = (ingredient) => {
     const dataIngredient = ingredients.find(
@@ -160,9 +160,11 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
         style={{ marginBottom: "10px" }}
       />
 
-      <MealTagForm
+      <TagFilter
+        tags={allMealTags}
         selectedTags={selectedTags}
-        onTagToggle={toggleTag}
+        onChange={setSelectedTags}
+        label="Filter tags"
       />
 
       <TableContainer component={Paper}>
