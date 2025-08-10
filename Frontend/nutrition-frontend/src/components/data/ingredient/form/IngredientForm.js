@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useReducer } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Box } from "@mui/material";
 
 import { useData } from "../../../../contexts/DataContext";
 
@@ -174,7 +174,9 @@ function IngredientForm({ ingredientToEditData }) {
   return (
     <div>
       <Paper>
-        <Button onClick={() => dispatch({ type: "OPEN_FORM", payload: !isOpen })}>{isOpen ? "Close" : "Add Ingredient"}</Button>
+        <Box sx={{ display: "flex", justifyContent: "center" }}>
+          <Button onClick={() => dispatch({ type: "OPEN_FORM", payload: !isOpen })}>{isOpen ? "Close" : "Add Ingredient"}</Button>
+        </Box>
         <Collapse in={isOpen}>
           <>
             <NameEdit
