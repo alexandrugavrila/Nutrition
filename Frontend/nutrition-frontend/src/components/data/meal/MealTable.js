@@ -37,7 +37,7 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
       return true; // Show all meals if no tags are selected
     }
     return selectedTags.some((selectedTag) => {
-      return ingredient.tags.some((tag) => tag.name === selectedTag);
+      return ingredient.tags.some((tag) => tag.name === selectedTag.name);
     });
   };
 
