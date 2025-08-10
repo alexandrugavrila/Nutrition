@@ -85,14 +85,24 @@ function App() {
                   role="tabpanel"
                   id="activity-panel-0"
                   aria-labelledby="activity-tab-0"
-                  sx={{ p: 3 }}
+                  sx={{ p: 3, display: "flex", flexDirection: "column", alignItems: "center" }}
                 >
-                  <Tabs value={dataTab} onChange={handleDataTabChange} aria-label="data tabs">
+                  <Tabs
+                    value={dataTab}
+                    onChange={handleDataTabChange}
+                    aria-label="data tabs"
+                    centered
+                  >
                     <Tab label="Meals" id="data-tab-0" aria-controls="data-panel-0" />
                     <Tab label="Ingredients" id="data-tab-1" aria-controls="data-panel-1" />
                   </Tabs>
                   {dataTab === 0 && (
-                    <Box role="tabpanel" id="data-panel-0" aria-labelledby="data-tab-0">
+                    <Box
+                      role="tabpanel"
+                      id="data-panel-0"
+                      aria-labelledby="data-tab-0"
+                      sx={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}
+                    >
                       <MealData />
                     </Box>
                   )}
@@ -101,6 +111,7 @@ function App() {
                       role="tabpanel"
                       id="data-panel-1"
                       aria-labelledby="data-tab-1"
+                      sx={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}
                     >
                       <IngredientData handleAddIngredientToPlan={handleAddIngredientToPlan} />
                     </Box>
