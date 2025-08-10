@@ -1,17 +1,17 @@
+"""Recreate the PostgreSQL nutrition database schema and import CSV data.
+
+This utility drops all existing tables, rebuilds them using the schema SQL file,
+and then populates the tables from CSV files in the ``production_data`` or
+``test_data`` directory.
+"""
+
 import os
 import argparse
 import psycopg2
 from import_from_csv import get_table_order, import_csv
+from db_config import DB_CONFIG, BASE_DIR
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SQL_FILE = os.path.join(BASE_DIR, "01-createtables.sql")
-DB_CONFIG = {
-    "dbname": "nutrition",
-    "user": "nutrition_user",
-    "password": "nutrition_pass",
-    "host": "localhost",
-    "port": 5432,
-}
 
 def drop_all_tables(cur):
     ordered = get_table_order(cur)

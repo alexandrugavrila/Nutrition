@@ -1,20 +1,17 @@
+"""Import CSV files into the PostgreSQL nutrition database.
+
+The script determines table dependency order using foreign key relationships,
+clears existing data, and loads table contents from CSV files located in either
+the ``production_data`` or ``test_data`` directory.
+"""
+
 import os
 import psycopg2
 import argparse
 import csv
 from collections import defaultdict, deque
 
-# Get the directory where this script lives
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Database connection settings
-DB_CONFIG = {
-    "dbname": "nutrition",
-    "user": "nutrition_user",
-    "password": "nutrition_pass",
-    "host": "localhost",
-    "port": 5432
-}
+from db_config import DB_CONFIG, BASE_DIR
 
 def get_table_order(cur):
     # Get all public tables
