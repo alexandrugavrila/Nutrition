@@ -5,7 +5,7 @@ import { Paper, Table, TableBody, TableCell, TableHead, TableRow } from "@mui/ma
 
 import { formatCellNumber } from "./utils";
 
-const MacrosTable = ({ ingredients }) => {
+const MacrosTable = ({ ingredients, goals = {} }) => {
   const [totalMacros, setTotalMacros] = useState({
     calories: 0,
     protein: 0,
@@ -15,7 +15,6 @@ const MacrosTable = ({ ingredients }) => {
   });
 
   useEffect(() => {
-    // Calculate total macros when ingredients change
     const calculateTotalMacros = () => {
       let calories = 0,
         protein = 0,
@@ -36,12 +35,21 @@ const MacrosTable = ({ ingredients }) => {
     calculateTotalMacros();
   }, [ingredients]);
 
+  const remaining = {
+    calories: (goals.calories || 0) - totalMacros.calories,
+    protein: (goals.protein || 0) - totalMacros.protein,
+    carbohydrates: (goals.carbohydrates || 0) - totalMacros.carbohydrates,
+    fat: (goals.fat || 0) - totalMacros.fat,
+    fiber: (goals.fiber || 0) - totalMacros.fiber,
+  };
+
   return (
     <div>
-      <h1>Total Macros</h1>
+      <h1>Macros</h1>
       <Table component={Paper}>
         <TableHead>
           <TableRow>
+            <TableCell></TableCell>
             <TableCell>Calories</TableCell>
             <TableCell>Protein</TableCell>
             <TableCell>Carbs</TableCell>
@@ -50,11 +58,30 @@ const MacrosTable = ({ ingredients }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          <TableCell>{formatCellNumber(totalMacros.calories)}</TableCell>
-          <TableCell>{formatCellNumber(totalMacros.protein)}</TableCell>
-          <TableCell>{formatCellNumber(totalMacros.carbohydrates)}</TableCell>
-          <TableCell>{formatCellNumber(totalMacros.fat)}</TableCell>
-          <TableCell>{formatCellNumber(totalMacros.fiber)}</TableCell>
+          <TableRow>
+            <TableCell>Goal</TableCell>
+            <TableCell>{formatCellNumber(goals.calories || 0)}</TableCell>
+            <TableCell>{formatCellNumber(goals.protein || 0)}</TableCell>
+            <TableCell>{formatCellNumber(goals.carbohydrates || 0)}</TableCell>
+            <TableCell>{formatCellNumber(goals.fat || 0)}</TableCell>
+            <TableCell>{formatCellNumber(goals.fiber || 0)}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Total</TableCell>
+            <TableCell>{formatCellNumber(totalMacros.calories)}</TableCell>
+            <TableCell>{formatCellNumber(totalMacros.protein)}</TableCell>
+            <TableCell>{formatCellNumber(totalMacros.carbohydrates)}</TableCell>
+            <TableCell>{formatCellNumber(totalMacros.fat)}</TableCell>
+            <TableCell>{formatCellNumber(totalMacros.fiber)}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Remaining</TableCell>
+            <TableCell>{formatCellNumber(remaining.calories)}</TableCell>
+            <TableCell>{formatCellNumber(remaining.protein)}</TableCell>
+            <TableCell>{formatCellNumber(remaining.carbohydrates)}</TableCell>
+            <TableCell>{formatCellNumber(remaining.fat)}</TableCell>
+            <TableCell>{formatCellNumber(remaining.fiber)}</TableCell>
+          </TableRow>
         </TableBody>
       </Table>
     </div>
