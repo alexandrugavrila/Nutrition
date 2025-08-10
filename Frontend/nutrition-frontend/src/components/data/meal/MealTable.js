@@ -150,7 +150,7 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
 
   return (
     <div>
-      <h1>Meals</h1>
+      <h1 style={{ textAlign: "center" }}>Meals</h1>
 
       <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
         <TextField
