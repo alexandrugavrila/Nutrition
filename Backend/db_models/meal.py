@@ -1,5 +1,6 @@
 # models/meal.py
 from db import db
+from .meal_tag import meal_tags
 
 class Meal(db.Model):
     __tablename__ = 'meals'
@@ -10,5 +11,5 @@ class Meal(db.Model):
         'MealIngredient', backref='meal', cascade='all, delete-orphan'
     )
     tags = db.relationship(
-        'PossibleMealTag', secondary='meal_tags', backref='meals'
+        'PossibleMealTag', secondary=meal_tags, backref='meals'
     )

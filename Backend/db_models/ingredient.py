@@ -1,5 +1,6 @@
 # models/ingredient.py
 from db import db
+from .ingredient_tag import ingredient_tags
 
 class Ingredient(db.Model):
     __tablename__ = 'ingredients'
@@ -13,6 +14,6 @@ class Ingredient(db.Model):
         'IngredientUnit', backref='ingredient', cascade='all, delete-orphan'
     )
     tags = db.relationship(
-        'PossibleIngredientTag', secondary='ingredient_tags', backref='ingredients'
+        'PossibleIngredientTag', secondary=ingredient_tags, backref='ingredients'
     )
 
