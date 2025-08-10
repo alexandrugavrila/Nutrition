@@ -124,6 +124,7 @@ def delete_ingredient(ingredient_id):
         return jsonify({'error': 'Ingredient not found'}), 404
 
     db_Nutrition.query.filter_by(ingredient_id=ingredient_id).delete()
+    db_IngredientUnit.query.filter_by(ingredient_id=ingredient_id).delete()
     db_IngredientTag.query.filter_by(ingredient_id=ingredient_id).delete()
     db.session.delete(ingredient)
     db.session.commit()
