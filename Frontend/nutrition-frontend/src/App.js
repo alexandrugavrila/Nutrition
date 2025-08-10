@@ -1,5 +1,8 @@
 import React, { useState } from "react";
 // import Grid from "@mui/material/Grid";
+import Box from "@mui/material/Box";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
 
 import { DataProvider } from "./contexts/DataContext";
 
@@ -15,9 +18,14 @@ import "./styles/App.css";
 
 function App() {
   const [selectedIngredients, setSelectedIngredients] = useState([]);
+  const [tabIndex, setTabIndex] = useState(0);
 
   const handleAddIngredientToPlan = (ingredient) => {
     setSelectedIngredients([...selectedIngredients, { ...ingredient, quantity: 1 }]);
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setTabIndex(newValue);
   };
 
   // const handleRemoveIngredientFromPlan = (ingredientToRemove) => {
@@ -32,8 +40,20 @@ function App() {
   return (
     <div className="App">
       <DataProvider>
-        <MealData />
-        <IngredientData handleAddIngredientToPlan={handleAddIngredientToPlan} />
+        <Tabs value={tabIndex} onChange={handleTabChange} aria-label="data tabs">
+          <Tab label="Meals" id="tab-0" aria-controls="tabpanel-0" />
+          <Tab label="Ingredients" id="tab-1" aria-controls="tabpanel-1" />
+        </Tabs>
+        {tabIndex === 0 && (
+          <Box role="tabpanel" id="tabpanel-0" aria-labelledby="tab-0">
+            <MealData />
+          </Box>
+        )}
+        {tabIndex === 1 && (
+          <Box role="tabpanel" id="tabpanel-1" aria-labelledby="tab-1">
+            <IngredientData handleAddIngredientToPlan={handleAddIngredientToPlan} />
+          </Box>
+        )}
       </DataProvider>
 
       {/* <MacrosTable ingredients={selectedIngredients} />
