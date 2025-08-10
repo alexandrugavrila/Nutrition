@@ -5,11 +5,17 @@ import { Button, TextField, TableContainer, Table, TableHead, TableBody, TableRo
 
 import { useData } from "../../../contexts/DataContext";
 import { formatCellNumber } from "../../../utils/utils";
-import IngredientTagForm from "./common/IngredientTagForm";
+import TagFilter from "../../common/TagFilter";
 
 function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlClick = () => {} }) {
   //#region States
-  const { ingredients, setIngredients } = useData();
+  const {
+    ingredients,
+    setIngredients,
+    ingredientProcessingTags,
+    ingredientGroupTags,
+    ingredientOtherTags,
+  } = useData();
 
   const [search, setSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
@@ -22,22 +28,13 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
     setSearch(event.target.value);
   };
 
-  const toggleTag = (tag) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter((selectedTag) => selectedTag !== tag));
-    } else {
-      setSelectedTags([...selectedTags, tag]);
-    }
-  };
-
   const handleTagFilter = (ingredient) => {
     if (selectedTags.length === 0) {
       return true; // Show all ingredients if no tags are selected
     }
-    return selectedTags.some((selectedTag) => {
-      console.log(ingredient.tags.some((tag) => tag.name === selectedTag.name));
-      return ingredient.tags.some((tag) => tag.name === selectedTag.name);
-    });
+    return selectedTags.some((selectedTag) =>
+      ingredient.tags.some((tag) => tag.name === selectedTag.name)
+    );
   };
 
   const handleIngredientDoubleClick = (ingredient) => {
@@ -82,6 +79,12 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
     .filter(handleTagFilter)
     .slice(indexOfFirstItem, indexOfLastItem);
 
+  const allIngredientTags = [
+    ...ingredientProcessingTags,
+    ...ingredientGroupTags,
+    ...ingredientOtherTags,
+  ];
+
   return (
     <div>
       <h1>Ingredients</h1>
@@ -94,9 +97,11 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
         style={{ marginBottom: "10px" }}
       />
 
-      <IngredientTagForm
+      <TagFilter
+        tags={allIngredientTags}
         selectedTags={selectedTags}
-        onTagToggle={toggleTag}
+        onChange={setSelectedTags}
+        label="Filter tags"
       />
 
       <TableContainer component={Paper}>
