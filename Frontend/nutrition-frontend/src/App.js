@@ -44,91 +44,105 @@ function App() {
     <div className="App">
       <DataProvider>
         <Box sx={{ display: "flex" }}>
-          <Tabs
-            orientation="vertical"
-            value={activityTab}
-            onChange={handleActivityTabChange}
-            aria-label="activity tabs"
-            sx={{ borderRight: 1, borderColor: "divider" }}
+          <Box
+            sx={{
+              width: 200,
+              flexShrink: 0,
+              borderRight: 1,
+              borderColor: "divider",
+              position: "fixed",
+              top: 0,
+              bottom: 0,
+              left: 0,
+            }}
           >
-            <Tab label="Data" id="activity-tab-0" aria-controls="activity-panel-0" />
-            <Tab label="Planning" id="activity-tab-1" aria-controls="activity-panel-1" />
-            <Tab label="Shopping" id="activity-tab-2" aria-controls="activity-panel-2" />
-            <Tab label="Cooking" id="activity-tab-3" aria-controls="activity-panel-3" />
-            <Tab label="Logging" id="activity-tab-4" aria-controls="activity-panel-4" />
-          </Tabs>
-
-          {activityTab === 0 && (
-            <Box
-              role="tabpanel"
-              id="activity-panel-0"
-              aria-labelledby="activity-tab-0"
-              sx={{ p: 3, width: "100%" }}
+            <Tabs
+              orientation="vertical"
+              value={activityTab}
+              onChange={handleActivityTabChange}
+              aria-label="activity tabs"
             >
-              <Tabs value={dataTab} onChange={handleDataTabChange} aria-label="data tabs">
-                <Tab label="Meals" id="data-tab-0" aria-controls="data-panel-0" />
-                <Tab label="Ingredients" id="data-tab-1" aria-controls="data-panel-1" />
-              </Tabs>
-              {dataTab === 0 && (
-                <Box role="tabpanel" id="data-panel-0" aria-labelledby="data-tab-0">
-                  <MealData />
-                </Box>
-              )}
-              {dataTab === 1 && (
-                <Box
-                  role="tabpanel"
-                  id="data-panel-1"
-                  aria-labelledby="data-tab-1"
-                >
-                  <IngredientData handleAddIngredientToPlan={handleAddIngredientToPlan} />
-                </Box>
-              )}
-            </Box>
-          )}
+              <Tab label="Data" id="activity-tab-0" aria-controls="activity-panel-0" />
+              <Tab label="Planning" id="activity-tab-1" aria-controls="activity-panel-1" />
+              <Tab label="Shopping" id="activity-tab-2" aria-controls="activity-panel-2" />
+              <Tab label="Cooking" id="activity-tab-3" aria-controls="activity-panel-3" />
+              <Tab label="Logging" id="activity-tab-4" aria-controls="activity-panel-4" />
+            </Tabs>
+          </Box>
 
-          {activityTab === 1 && (
-            <Box
-              role="tabpanel"
-              id="activity-panel-1"
-              aria-labelledby="activity-tab-1"
-              sx={{ p: 3 }}
-            >
-              <Planning />
-            </Box>
-          )}
+          <Box sx={{ marginLeft: 200, flexGrow: 1 }}>
+            {activityTab === 0 && (
+              <Box
+                role="tabpanel"
+                id="activity-panel-0"
+                aria-labelledby="activity-tab-0"
+                sx={{ p: 3 }}
+              >
+                <Tabs value={dataTab} onChange={handleDataTabChange} aria-label="data tabs">
+                  <Tab label="Meals" id="data-tab-0" aria-controls="data-panel-0" />
+                  <Tab label="Ingredients" id="data-tab-1" aria-controls="data-panel-1" />
+                </Tabs>
+                {dataTab === 0 && (
+                  <Box role="tabpanel" id="data-panel-0" aria-labelledby="data-tab-0">
+                    <MealData />
+                  </Box>
+                )}
+                {dataTab === 1 && (
+                  <Box
+                    role="tabpanel"
+                    id="data-panel-1"
+                    aria-labelledby="data-tab-1"
+                  >
+                    <IngredientData handleAddIngredientToPlan={handleAddIngredientToPlan} />
+                  </Box>
+                )}
+              </Box>
+            )}
 
-          {activityTab === 2 && (
-            <Box
-              role="tabpanel"
-              id="activity-panel-2"
-              aria-labelledby="activity-tab-2"
-              sx={{ p: 3 }}
-            >
-              <Shopping />
-            </Box>
-          )}
+            {activityTab === 1 && (
+              <Box
+                role="tabpanel"
+                id="activity-panel-1"
+                aria-labelledby="activity-tab-1"
+                sx={{ p: 3 }}
+              >
+                <Planning />
+              </Box>
+            )}
 
-          {activityTab === 3 && (
-            <Box
-              role="tabpanel"
-              id="activity-panel-3"
-              aria-labelledby="activity-tab-3"
-              sx={{ p: 3 }}
-            >
-              <Cooking />
-            </Box>
-          )}
+            {activityTab === 2 && (
+              <Box
+                role="tabpanel"
+                id="activity-panel-2"
+                aria-labelledby="activity-tab-2"
+                sx={{ p: 3 }}
+              >
+                <Shopping />
+              </Box>
+            )}
 
-          {activityTab === 4 && (
-            <Box
-              role="tabpanel"
-              id="activity-panel-4"
-              aria-labelledby="activity-tab-4"
-              sx={{ p: 3 }}
-            >
-              <Logging />
-            </Box>
-          )}
+            {activityTab === 3 && (
+              <Box
+                role="tabpanel"
+                id="activity-panel-3"
+                aria-labelledby="activity-tab-3"
+                sx={{ p: 3 }}
+              >
+                <Cooking />
+              </Box>
+            )}
+
+            {activityTab === 4 && (
+              <Box
+                role="tabpanel"
+                id="activity-panel-4"
+                aria-labelledby="activity-tab-4"
+                sx={{ p: 3 }}
+              >
+                <Logging />
+              </Box>
+            )}
+          </Box>
         </Box>
       </DataProvider>
     </div>
