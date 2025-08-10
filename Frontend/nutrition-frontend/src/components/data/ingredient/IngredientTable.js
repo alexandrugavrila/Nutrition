@@ -80,9 +80,9 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
   const currentIngredients = filteredIngredients.slice(indexOfFirstItem, indexOfLastItem);
 
   const allIngredientTags = [
-    ...ingredientProcessingTags,
-    ...ingredientGroupTags,
-    ...ingredientOtherTags,
+    ...ingredientProcessingTags.map((tag) => ({ ...tag, group: "Processing" })),
+    ...ingredientGroupTags.map((tag) => ({ ...tag, group: "Group" })),
+    ...ingredientOtherTags.map((tag) => ({ ...tag, group: "Other" })),
   ];
 
   return (

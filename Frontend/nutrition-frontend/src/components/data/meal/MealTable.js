@@ -71,7 +71,11 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
     .filter(handleTagFilter);
   const currentMeals = filteredMeals.slice(indexOfFirstItem, indexOfLastItem);
 
-  const allMealTags = [...mealDietTags, ...mealTypeTags, ...mealOtherTags];
+  const allMealTags = [
+    ...mealDietTags.map((tag) => ({ ...tag, group: "Diet" })),
+    ...mealTypeTags.map((tag) => ({ ...tag, group: "Type" })),
+    ...mealOtherTags.map((tag) => ({ ...tag, group: "Other" })),
+  ];
 
   const calculateIngredientMacros = (ingredient) => {
     const dataIngredient = ingredients.find(
