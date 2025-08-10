@@ -32,8 +32,8 @@ docker-compose up --build
 ```
 Nutrition/
 ├── Backend/                     # Flask app
-│   ├── data_models/            # Serializable API-facing models
 │   ├── db_models/              # SQLAlchemy ORM models
+│   ├── schemas/                # Marshmallow schemas
 │   ├── routes/                 # Ingredient and meal routes
 │   ├── backend.py              # Main Flask entrypoint
 │   ├── db.py                   # SQLAlchemy setup
@@ -123,7 +123,7 @@ DBeaver is a free and powerful GUI for inspecting your PostgreSQL database. You 
 ### Backend (Flask)
 
 * All API routes are defined under `Backend/routes/`
-* Data is fetched from `db_models/` and converted to serialized `data_models/` for clean API responses
+* SQLAlchemy models under `db_models/` are serialized and validated using Marshmallow schemas in `schemas/`
 * Main routes:
 
   * `GET /ingredients`
