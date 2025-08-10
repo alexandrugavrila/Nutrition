@@ -25,7 +25,7 @@ venv/
 .venv/
 
 # === Node / React ===
-Frontend/node_modules/
+**/node_modules/
 Frontend/.env
 Frontend/.next/
 Frontend/.cache/
