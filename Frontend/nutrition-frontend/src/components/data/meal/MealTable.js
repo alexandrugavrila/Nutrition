@@ -103,16 +103,16 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
         ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount
         : 0,
       protein: dataIngredient.nutrition.protein
-        ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount
+        ? dataIngredient.nutrition.protein * dataUnit.grams * ingredient.amount
         : 0,
       fat: dataIngredient.nutrition.fat
-        ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount
+        ? dataIngredient.nutrition.fat * dataUnit.grams * ingredient.amount
         : 0,
       carbs: dataIngredient.nutrition.carbohydrates
-        ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount
+        ? dataIngredient.nutrition.carbohydrates * dataUnit.grams * ingredient.amount
         : 0,
       fiber: dataIngredient.nutrition.fiber
-        ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount
+        ? dataIngredient.nutrition.fiber * dataUnit.grams * ingredient.amount
         : 0,
     };
   };
