@@ -1,5 +1,4 @@
-from flask import Flask, Blueprint, request, jsonify
-from pprint import pprint
+from flask import Blueprint, request, jsonify, current_app
 
 from db import db
 from db_models.ingredient import Ingredient as db_Ingredient
@@ -34,9 +33,7 @@ def get_ingredient(ingredient_id):
 
 @ingredient_blueprint.route('/ingredients', methods=['POST'])
 def add_ingredient():
-    print("\n\n")
-    pprint(request.json)
-    print("\n\n")
+    current_app.logger.debug("Add ingredient request: %s", request.json)
     data = request.json
     name = data.get('name')
     units_data = data.get('units', [])
@@ -73,9 +70,7 @@ def add_ingredient():
 
 @ingredient_blueprint.route('/ingredients/<int:ingredient_id>', methods=['PUT'])
 def update_ingredient(ingredient_id):
-    print("\n\n")
-    pprint(request.json)
-    print("\n\n")
+    current_app.logger.debug("Update ingredient request: %s", request.json)
     data = request.json
     name = data.get('name')
     units_data = data.get('units', [])
