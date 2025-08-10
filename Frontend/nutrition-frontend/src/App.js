@@ -70,7 +70,7 @@ function App() {
             </Tabs>
           </Box>
 
-          <Box sx={{ marginLeft: 200, flexGrow: 1 }}>
+          <Box sx={{ marginLeft: "200px", flexGrow: 1 }}>
             {activityTab === 0 && (
               <Box
                 role="tabpanel"
