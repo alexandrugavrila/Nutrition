@@ -1,7 +1,8 @@
 .App {
-  text-align: center;
   display: flex;
-  height: 100vh;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
 }
 
 .App-logo {

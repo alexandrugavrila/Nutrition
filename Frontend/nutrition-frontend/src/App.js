@@ -76,9 +76,10 @@ function App() {
               flexGrow: 1,
               display: "flex",
               justifyContent: "center",
+              alignItems: "flex-start",
             }}
           >
-            <Box sx={{ width: "100%", maxWidth: 800 }}>
+            <Box sx={{ width: "100%", maxWidth: 800, mx: "auto" }}>
               {activityTab === 0 && (
                 <Box
                   role="tabpanel"
