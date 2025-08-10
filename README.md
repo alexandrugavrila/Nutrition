@@ -189,6 +189,18 @@ To import test data
 python .\Database\import_from_csv.py --test
 ```
 
+To drop and recreate the tables before importing:
+
+```python
+python .\Database\reset_database.py
+```
+
+To reset with test data:
+
+```python
+python .\Database\reset_database.py --test
+```
+
 ### Local Development (non-Docker)
 
 **Backend:**
