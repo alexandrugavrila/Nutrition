@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-// import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
@@ -8,24 +7,28 @@ import { DataProvider } from "./contexts/DataContext";
 
 import IngredientData from "./components/data/ingredient/IngredientData";
 import MealData from "./components/data/meal/MealData";
-// import MealTable from "./MealTable";
-// import PlanningTable from "./PlanningTable";
-// import MacrosTable from "./MacrosTable";
-
-// import MealForm from "./MealForm";
+import Planning from "./components/planning/Planning";
+import Shopping from "./components/shopping/Shopping";
+import Cooking from "./components/cooking/Cooking";
+import Logging from "./components/logging/Logging";
 
 import "./styles/App.css";
 
 function App() {
   const [selectedIngredients, setSelectedIngredients] = useState([]);
-  const [tabIndex, setTabIndex] = useState(0);
+  const [activityTab, setActivityTab] = useState(0);
+  const [dataTab, setDataTab] = useState(0);
 
   const handleAddIngredientToPlan = (ingredient) => {
     setSelectedIngredients([...selectedIngredients, { ...ingredient, quantity: 1 }]);
   };
 
-  const handleTabChange = (event, newValue) => {
-    setTabIndex(newValue);
+  const handleActivityTabChange = (event, newValue) => {
+    setActivityTab(newValue);
+  };
+
+  const handleDataTabChange = (event, newValue) => {
+    setDataTab(newValue);
   };
 
   // const handleRemoveIngredientFromPlan = (ingredientToRemove) => {
@@ -40,42 +43,94 @@ function App() {
   return (
     <div className="App">
       <DataProvider>
-        <Tabs value={tabIndex} onChange={handleTabChange} aria-label="data tabs">
-          <Tab label="Meals" id="tab-0" aria-controls="tabpanel-0" />
-          <Tab label="Ingredients" id="tab-1" aria-controls="tabpanel-1" />
-        </Tabs>
-        {tabIndex === 0 && (
-          <Box role="tabpanel" id="tabpanel-0" aria-labelledby="tab-0">
-            <MealData />
-          </Box>
-        )}
-        {tabIndex === 1 && (
-          <Box role="tabpanel" id="tabpanel-1" aria-labelledby="tab-1">
-            <IngredientData handleAddIngredientToPlan={handleAddIngredientToPlan} />
-          </Box>
-        )}
+        <Box sx={{ display: "flex" }}>
+          <Tabs
+            orientation="vertical"
+            value={activityTab}
+            onChange={handleActivityTabChange}
+            aria-label="activity tabs"
+            sx={{ borderRight: 1, borderColor: "divider" }}
+          >
+            <Tab label="Data" id="activity-tab-0" aria-controls="activity-panel-0" />
+            <Tab label="Planning" id="activity-tab-1" aria-controls="activity-panel-1" />
+            <Tab label="Shopping" id="activity-tab-2" aria-controls="activity-panel-2" />
+            <Tab label="Cooking" id="activity-tab-3" aria-controls="activity-panel-3" />
+            <Tab label="Logging" id="activity-tab-4" aria-controls="activity-panel-4" />
+          </Tabs>
+
+          {activityTab === 0 && (
+            <Box
+              role="tabpanel"
+              id="activity-panel-0"
+              aria-labelledby="activity-tab-0"
+              sx={{ p: 3, width: "100%" }}
+            >
+              <Tabs value={dataTab} onChange={handleDataTabChange} aria-label="data tabs">
+                <Tab label="Meals" id="data-tab-0" aria-controls="data-panel-0" />
+                <Tab label="Ingredients" id="data-tab-1" aria-controls="data-panel-1" />
+              </Tabs>
+              {dataTab === 0 && (
+                <Box role="tabpanel" id="data-panel-0" aria-labelledby="data-tab-0">
+                  <MealData />
+                </Box>
+              )}
+              {dataTab === 1 && (
+                <Box
+                  role="tabpanel"
+                  id="data-panel-1"
+                  aria-labelledby="data-tab-1"
+                >
+                  <IngredientData handleAddIngredientToPlan={handleAddIngredientToPlan} />
+                </Box>
+              )}
+            </Box>
+          )}
+
+          {activityTab === 1 && (
+            <Box
+              role="tabpanel"
+              id="activity-panel-1"
+              aria-labelledby="activity-tab-1"
+              sx={{ p: 3 }}
+            >
+              <Planning />
+            </Box>
+          )}
+
+          {activityTab === 2 && (
+            <Box
+              role="tabpanel"
+              id="activity-panel-2"
+              aria-labelledby="activity-tab-2"
+              sx={{ p: 3 }}
+            >
+              <Shopping />
+            </Box>
+          )}
+
+          {activityTab === 3 && (
+            <Box
+              role="tabpanel"
+              id="activity-panel-3"
+              aria-labelledby="activity-tab-3"
+              sx={{ p: 3 }}
+            >
+              <Cooking />
+            </Box>
+          )}
+
+          {activityTab === 4 && (
+            <Box
+              role="tabpanel"
+              id="activity-panel-4"
+              aria-labelledby="activity-tab-4"
+              sx={{ p: 3 }}
+            >
+              <Logging />
+            </Box>
+          )}
+        </Box>
       </DataProvider>
-
-      {/* <MacrosTable ingredients={selectedIngredients} />
-      <PlanningTable ingredients={selectedIngredients} onIngredientRemove={handleRemoveIngredientFromPlan} /> */}
-
-      {/* Add to Table Grid */}
-      {/* <Grid container spacing={2} style={{ alignItems: "flex-start" }}>
-        <Grid item xs={6}> */}
-      {/* </Grid>
-        <Grid item xs={6}>
-          <MealForm onAddMeal={handleAddMeal} />
-        </Grid> */}
-      {/* </Grid> */}
-
-      {/* Table Grid */}
-      {/* <Grid container spacing={2} style={{ alignItems: "flex-start" }}>
-        <Grid item xs={6}> */}
-      {/* </Grid>
-        <Grid item xs={6}>
-          <MealTable />
-        </Grid>
-      </Grid> */}
     </div>
   );
 }
