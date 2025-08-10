@@ -1,7 +1,7 @@
 // MealTable.js
 
 import React, { useState } from "react";
-import { Button, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, Collapse, Typography, MenuItem, Select } from "@mui/material";
+import { TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, Collapse, Typography, TablePagination } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowRight } from "@mui/icons-material";
 
 import { useData } from "../../../contexts/DataContext";
@@ -56,8 +56,8 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
     }
   };
 
-  const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
+  const handlePageChange = (event, newPage) => {
+    setCurrentPage(newPage + 1);
   };
 
   const handleItemsPerPageChange = (event) => {
@@ -68,10 +68,10 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentMeals = meals
+  const filteredMeals = meals
     .filter((meal) => meal.name.toLowerCase().includes(search.toLowerCase()))
-    .filter(handleTagFilter)
-    .slice(indexOfFirstItem, indexOfLastItem);
+    .filter(handleTagFilter);
+  const currentMeals = filteredMeals.slice(indexOfFirstItem, indexOfLastItem);
 
   const calculateIngredientMacros = (ingredient) => {
     const dataIngredient = ingredients.find(
@@ -291,27 +291,15 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
           </TableBody>
         </Table>
       </TableContainer>
-      <div style={{ marginTop: "10px" }}>
-        <span>Items per page:</span>
-        <Select
-          value={itemsPerPage}
-          onChange={handleItemsPerPageChange}>
-          <MenuItem value={5}>5</MenuItem>
-          <MenuItem value={10}>10</MenuItem>
-          <MenuItem value={20}>20</MenuItem>
-        </Select>
-        <span style={{ marginLeft: "10px" }}>Page: {currentPage}</span>
-        <Button
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}>
-          Previous
-        </Button>
-        <Button
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={indexOfLastItem >= meals.length}>
-          Next
-        </Button>
-      </div>
+      <TablePagination
+        component="div"
+        count={filteredMeals.length}
+        page={currentPage - 1}
+        onPageChange={handlePageChange}
+        rowsPerPage={itemsPerPage}
+        onRowsPerPageChange={handleItemsPerPageChange}
+        rowsPerPageOptions={[5, 10, 20]}
+      />
     </div>
   );
 }

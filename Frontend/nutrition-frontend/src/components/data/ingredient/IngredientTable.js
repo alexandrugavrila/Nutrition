@@ -1,7 +1,7 @@
 // IngredientTable.js
 
 import React, { useState } from "react";
-import { Button, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, MenuItem, Select } from "@mui/material";
+import { TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, MenuItem, Select, TablePagination } from "@mui/material";
 
 import { useData } from "../../../contexts/DataContext";
 import { formatCellNumber } from "../../../utils/utils";
@@ -64,8 +64,8 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
     );
   };
 
-  const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
+  const handlePageChange = (event, newPage) => {
+    setCurrentPage(newPage + 1);
   };
 
   const handleItemsPerPageChange = (event) => {
@@ -77,10 +77,10 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentIngredients = ingredients
+  const filteredIngredients = ingredients
     .filter((ingredient) => ingredient.name.toLowerCase().includes(search.toLowerCase()))
-    .filter(handleTagFilter)
-    .slice(indexOfFirstItem, indexOfLastItem);
+    .filter(handleTagFilter);
+  const currentIngredients = filteredIngredients.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div>
@@ -144,27 +144,15 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
           </TableBody>
         </Table>
       </TableContainer>
-      <div style={{ marginTop: "10px" }}>
-        <span>Items per page:</span>
-        <Select
-          value={itemsPerPage}
-          onChange={handleItemsPerPageChange}>
-          <MenuItem value={5}>5</MenuItem>
-          <MenuItem value={10}>10</MenuItem>
-          <MenuItem value={20}>20</MenuItem>
-        </Select>
-        <span style={{ marginLeft: "10px" }}>Page: {currentPage}</span>
-        <Button
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}>
-          Previous
-        </Button>
-        <Button
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={indexOfLastItem >= ingredients.length}>
-          Next
-        </Button>
-      </div>
+      <TablePagination
+        component="div"
+        count={filteredIngredients.length}
+        page={currentPage - 1}
+        onPageChange={handlePageChange}
+        rowsPerPage={itemsPerPage}
+        onRowsPerPageChange={handleItemsPerPageChange}
+        rowsPerPageOptions={[5, 10, 20]}
+      />
     </div>
   );
 }
