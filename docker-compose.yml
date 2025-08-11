@@ -3,7 +3,6 @@ version: "3.9"
 services:
   db:
     image: postgres:13
-    container_name: nutrition-db
     environment:
       POSTGRES_USER: nutrition_user
       POSTGRES_PASSWORD: nutrition_pass
@@ -25,7 +24,6 @@ services:
     build:
       context: .
       dockerfile: Backend/Dockerfile
-    container_name: nutrition-backend
     environment:
       FLASK_ENV: development
       DATABASE_URL: postgresql://nutrition_user:nutrition_pass@db:5432/nutrition
@@ -41,7 +39,6 @@ services:
     build:
       context: .
       dockerfile: Frontend/nutrition-frontend/Dockerfile
-    container_name: nutrition-frontend
     depends_on:
       - backend
     ports:
