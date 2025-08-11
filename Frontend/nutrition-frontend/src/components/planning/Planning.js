@@ -128,23 +128,28 @@ function Planning() {
               <MenuItem key={meal.id} value={meal.id}>
                 {meal.name}
               </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <TextField
-          type="number"
-          label="Servings"
-          value={mealSelection.servings}
-          onChange={(e) => handleMealSelectionChange("servings", e.target.value)}
-          InputProps={{ inputProps: { min: 1 } }}
-          style={{ marginLeft: "10px" }}
-        />
-        <Button style={{ marginLeft: "10px" }} variant="contained" onClick={handleAddMeal}>
-          Add Meal
-        </Button>
-      </div>
-      <PlanningTable ingredients={plan} onIngredientRemove={handlePlanChange} />
-      <MacrosTable ingredients={plan} targets={targets} />
+              {meals.map((meal) => (
+                <MenuItem key={meal.id} value={meal.id}>
+                  {meal.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            type="number"
+            label="Servings"
+            value={mealSelections[dayIndex].servings}
+            onChange={(e) => handleMealSelectionChange(dayIndex, "servings", e.target.value)}
+            InputProps={{ inputProps: { min: 1 } }}
+            style={{ marginLeft: "10px" }}
+          />
+          <Button style={{ marginLeft: "10px" }} variant="contained" onClick={() => handleAddMeal(dayIndex)}>
+            Add Meal
+          </Button>
+          <PlanningTable ingredients={dayMeals} onIngredientRemove={(data) => handleDayPlanChange(dayIndex, data)} />
+          <MacrosTable ingredients={dayMeals} targets={targets} duration={duration} />
+        </div>
+      ))}
       <div style={{ marginTop: "20px" }}>
         <TextField label="Plan ID" value={planId} onChange={(e) => setPlanId(e.target.value)} />
         <Button variant="contained" style={{ marginLeft: "10px" }} onClick={handleSavePlan}>
