@@ -35,20 +35,12 @@ const MacrosTable = ({ meals, targets = {} }) => {
     calculateTotalMacros();
   }, [meals]);
 
-  const perDayMacros = {
-    calories: totalMacros.calories / duration,
-    protein: totalMacros.protein / duration,
-    carbohydrates: totalMacros.carbohydrates / duration,
-    fat: totalMacros.fat / duration,
-    fiber: totalMacros.fiber / duration,
-  };
-
   const remaining = {
-    calories: (targets.calories || 0) - perDayMacros.calories,
-    protein: (targets.protein || 0) - perDayMacros.protein,
-    carbohydrates: (targets.carbohydrates || 0) - perDayMacros.carbohydrates,
-    fat: (targets.fat || 0) - perDayMacros.fat,
-    fiber: (targets.fiber || 0) - perDayMacros.fiber,
+    calories: (targets.calories || 0) - totalMacros.calories,
+    protein: (targets.protein || 0) - totalMacros.protein,
+    carbohydrates: (targets.carbohydrates || 0) - totalMacros.carbohydrates,
+    fat: (targets.fat || 0) - totalMacros.fat,
+    fiber: (targets.fiber || 0) - totalMacros.fiber,
   };
 
   return (
@@ -81,14 +73,6 @@ const MacrosTable = ({ meals, targets = {} }) => {
             <TableCell>{formatCellNumber(totalMacros.carbohydrates)}</TableCell>
             <TableCell>{formatCellNumber(totalMacros.fat)}</TableCell>
             <TableCell>{formatCellNumber(totalMacros.fiber)}</TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>Per Day</TableCell>
-            <TableCell>{formatCellNumber(perDayMacros.calories)}</TableCell>
-            <TableCell>{formatCellNumber(perDayMacros.protein)}</TableCell>
-            <TableCell>{formatCellNumber(perDayMacros.carbohydrates)}</TableCell>
-            <TableCell>{formatCellNumber(perDayMacros.fat)}</TableCell>
-            <TableCell>{formatCellNumber(perDayMacros.fiber)}</TableCell>
           </TableRow>
           <TableRow>
             <TableCell>Remaining</TableCell>
