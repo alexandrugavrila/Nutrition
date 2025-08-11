@@ -16,12 +16,17 @@ A full-stack nutrition planning and tracking app built with:
 git clone <your-repo-url>
 cd Nutrition
 
-# Start all services
-docker-compose up --build
+# Start all services for the current Git branch
+pwsh ./scripts/compose-up-branch.ps1 --build
+
+# When you're done, remove containers and volumes for this branch
+BRANCH=$(git rev-parse --abbrev-ref HEAD | tr '[:upper:]' '[:lower:]' | sed 's#[^a-z0-9]#-#g')
+docker compose -p nutrition-$BRANCH down -v
 ```
 
-* Frontend: [http://localhost:3000](http://localhost:3000)
-* Backend API: [http://localhost:5000](http://localhost:5000)
+* Frontend: `http://localhost:<FRONTEND_PORT>` (prints on startup, default 3000)
+* Backend API: `http://localhost:<BACKEND_PORT>` (default 5000)
+* PostgreSQL: `localhost:<DB_PORT>` (default 5432)
 
 > 📝 The database is seeded automatically on first run using `Database/createtables.sql`, `addingredients.sql`, and `addnutrition.sql`.
 
@@ -52,6 +57,7 @@ Nutrition/
 │
 ├── docker-compose.yml          # Orchestration config
 └── scripts/
+    ├── compose-up-branch.ps1   # Start stack with branch-specific ports
     └── print-tree.ps1          # Dev tooling
 ```
 
@@ -59,11 +65,11 @@ Nutrition/
 
 ## ⚙️ Environment and Configuration
 
-| Service    | Port | Description                    |
-| ---------- | ---- | ------------------------------ |
-| Frontend   | 3000 | React app served via Nginx     |
-| Backend    | 5000 | Flask API                      |
-| PostgreSQL | 5432 | Nutrition DB with initial data |
+| Service    | Base Port | Description                                   |
+| ---------- | ---------- | ---------------------------------------------- |
+| Frontend   | 3000       | React app served via Nginx (offset per branch) |
+| Backend    | 5000       | Flask API (offset per branch)                  |
+| PostgreSQL | 5432       | Nutrition DB with initial data (offset per branch) |
 
 Environment variables are defined in `docker-compose.yml`:
 
@@ -81,40 +87,9 @@ postgresql://nutrition_user:nutrition_pass@db:5432/nutrition
 
 ---
 
-### 🛠️ Database Access with DBeaver
+### 🛠️ Database access
 
-DBeaver is a free and powerful GUI for inspecting your PostgreSQL database. You can use it to explore tables, run queries, and debug data directly.
-
-#### 🔽 Step 1: Install DBeaver
-
-* Download and install the Community Edition from:
-  👉 [https://dbeaver.io/download/](https://dbeaver.io/download/)
-
----
-
-#### ⚙️ Step 2: Connect to the Dockerized Database
-
-1. **Open DBeaver** and click `Database → New Database Connection`
-2. Choose **PostgreSQL** and click **Next**
-3. Enter the following connection info:
-
-| Field        | Value            |
-| ------------ | ---------------- |
-| **Host**     | `localhost`      |
-| **Port**     | `5432`           |
-| **Database** | `nutrition`      |
-| **Username** | `nutrition_user` |
-| **Password** | `nutrition_pass` |
-
-4. Click **Test Connection**.
-   If prompted to download the PostgreSQL driver, allow it.
-5. Click **Finish** to connect.
-
-> 📝 If the connection fails, make sure the Docker containers are running with:
->
-> ```bash
-> docker-compose up
-> ```
+For detailed instructions on connecting to the development database with DBeaver, see the [Database access section](CONTRIBUTING.md#database-access) in the contributing guide.
 
 ---
 
@@ -152,81 +127,9 @@ DBeaver is a free and powerful GUI for inspecting your PostgreSQL database. You 
 
 ---
 
-## 👩‍💻 For Developers
+## 🤝 Contributing
 
-### Branch naming convention
-type/issue-in-kabob-case
-
-Types:
-  Feature
-  Refactor
-  Bugfix
-  Housekeeping
-
-
-### Rebuilding Containers
-
-To manually rebuild containers after a code change
-
-```bash
-docker-compose down -v
-docker-compose up --build
-```
-
-Data will persist as long as you do not also delete the Docker volume
-
-### Database management
-
-The Python script import_from_csv.py will remove all existing data from the database and import the specified data. 
-
-To import production data
-
-```python
-python .\Database\import_from_csv.py 
-```
-
-To import test data
-
-```python
-python .\Database\import_from_csv.py --test
-```
-
-To drop and recreate the tables before importing:
-
-```python
-python .\Database\reset_database.py
-```
-
-To reset with test data:
-
-```python
-python .\Database\reset_database.py --test
-```
-
-### Local Development (non-Docker)
-
-**Backend:**
-
-Virtual Environment Setup
-```bash
-python -m venv .venv
-.\.venv\Scripts\Activate
-pip install -r Backend/requirements.txt
-```
-
-Launch Backend
-```bash
-python backend.py
-```
-
-**Frontend:**
-
-Launch Frontend
-```bash
-cd Frontend/nutrition-frontend
-npm install
-npm start
-```
+Developer setup and contribution guidelines are documented in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
