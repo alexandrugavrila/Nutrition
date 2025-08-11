@@ -16,8 +16,12 @@ A full-stack nutrition planning and tracking app built with:
 git clone <your-repo-url>
 cd Nutrition
 
-# Start all services
-docker-compose up --build
+# Start all services for the current Git branch
+./scripts/compose-up-branch.sh --build
+
+# When you're done, remove containers and volumes for this branch
+BRANCH=$(git rev-parse --abbrev-ref HEAD | tr '[:upper:]' '[:lower:]' | sed 's#[^a-z0-9]#-#g')
+docker compose -p nutrition-$BRANCH down -v
 ```
 
 * Frontend: [http://localhost:3000](http://localhost:3000)
