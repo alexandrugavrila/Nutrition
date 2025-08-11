@@ -182,9 +182,9 @@ function Planning() {
             Add Meal
           </Button>
           <PlanningTable meals={dayMeals} onPlanChange={(data) => handleDayPlanChange(dayIndex, data)} />
-          <MacrosTable meals={dayMeals} targets={targets} />
         </div>
       ))}
+      <MacrosTable meals={plan.flat()} targets={targets} duration={duration} />
       <div style={{ marginTop: "20px" }}>
         <TextField label="Plan ID" value={planId} onChange={(e) => setPlanId(e.target.value)} />
         <Button variant="contained" style={{ marginLeft: "10px" }} onClick={handleSavePlan}>
