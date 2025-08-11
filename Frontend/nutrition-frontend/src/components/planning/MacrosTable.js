@@ -5,7 +5,7 @@ import { Paper, Table, TableBody, TableCell, TableHead, TableRow } from "@mui/ma
 
 import { formatCellNumber } from "./utils";
 
-const MacrosTable = ({ ingredients, goals = {} }) => {
+const MacrosTable = ({ ingredients, targets = {} }) => {
   const [totalMacros, setTotalMacros] = useState({
     calories: 0,
     protein: 0,
@@ -36,11 +36,11 @@ const MacrosTable = ({ ingredients, goals = {} }) => {
   }, [ingredients]);
 
   const remaining = {
-    calories: (goals.calories || 0) - totalMacros.calories,
-    protein: (goals.protein || 0) - totalMacros.protein,
-    carbohydrates: (goals.carbohydrates || 0) - totalMacros.carbohydrates,
-    fat: (goals.fat || 0) - totalMacros.fat,
-    fiber: (goals.fiber || 0) - totalMacros.fiber,
+    calories: (targets.calories || 0) - totalMacros.calories,
+    protein: (targets.protein || 0) - totalMacros.protein,
+    carbohydrates: (targets.carbohydrates || 0) - totalMacros.carbohydrates,
+    fat: (targets.fat || 0) - totalMacros.fat,
+    fiber: (targets.fiber || 0) - totalMacros.fiber,
   };
 
   return (
@@ -59,12 +59,12 @@ const MacrosTable = ({ ingredients, goals = {} }) => {
         </TableHead>
         <TableBody>
           <TableRow>
-            <TableCell>Goal</TableCell>
-            <TableCell>{formatCellNumber(goals.calories || 0)}</TableCell>
-            <TableCell>{formatCellNumber(goals.protein || 0)}</TableCell>
-            <TableCell>{formatCellNumber(goals.carbohydrates || 0)}</TableCell>
-            <TableCell>{formatCellNumber(goals.fat || 0)}</TableCell>
-            <TableCell>{formatCellNumber(goals.fiber || 0)}</TableCell>
+            <TableCell>Target</TableCell>
+            <TableCell>{formatCellNumber(targets.calories || 0)}</TableCell>
+            <TableCell>{formatCellNumber(targets.protein || 0)}</TableCell>
+            <TableCell>{formatCellNumber(targets.carbohydrates || 0)}</TableCell>
+            <TableCell>{formatCellNumber(targets.fat || 0)}</TableCell>
+            <TableCell>{formatCellNumber(targets.fiber || 0)}</TableCell>
           </TableRow>
           <TableRow>
             <TableCell>Total</TableCell>

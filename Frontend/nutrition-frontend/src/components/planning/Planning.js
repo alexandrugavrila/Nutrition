@@ -10,7 +10,7 @@ function Planning() {
   const { meals, ingredients } = useData();
 
   const [duration, setDuration] = useState(1);
-  const [goals, setGoals] = useState({
+  const [targets, setTargets] = useState({
     calories: 0,
     protein: 0,
     carbohydrates: 0,
@@ -48,9 +48,9 @@ function Planning() {
     });
   };
 
-  const handleGoalChange = (event) => {
+  const handleTargetChange = (event) => {
     const { name, value } = event.target;
-    setGoals({ ...goals, [name]: parseFloat(value) });
+    setTargets({ ...targets, [name]: parseFloat(value) });
   };
 
   const handleMealSelectionChange = (index, field, value) => {
@@ -116,7 +116,7 @@ function Planning() {
   const buildPlanForApi = () => {
     return {
       duration,
-      goals,
+      targets,
       days: plan.map((dayMeals, idx) => ({
         day: idx + 1,
         meals: dayMeals.map((m) => ({ meal_id: m.mealId, servings: m.quantity })),
@@ -148,11 +148,11 @@ function Planning() {
         />
       </div>
       <div>
-        <TextField name="calories" label="Calories Goal" type="number" value={goals.calories} onChange={handleGoalChange} />
-        <TextField name="protein" label="Protein Goal" type="number" value={goals.protein} onChange={handleGoalChange} />
-        <TextField name="carbohydrates" label="Carbs Goal" type="number" value={goals.carbohydrates} onChange={handleGoalChange} />
-        <TextField name="fat" label="Fat Goal" type="number" value={goals.fat} onChange={handleGoalChange} />
-        <TextField name="fiber" label="Fiber Goal" type="number" value={goals.fiber} onChange={handleGoalChange} />
+        <TextField name="calories" label="Calories Target" type="number" value={targets.calories} onChange={handleTargetChange} />
+        <TextField name="protein" label="Protein Target" type="number" value={targets.protein} onChange={handleTargetChange} />
+        <TextField name="carbohydrates" label="Carbs Target" type="number" value={targets.carbohydrates} onChange={handleTargetChange} />
+        <TextField name="fat" label="Fat Target" type="number" value={targets.fat} onChange={handleTargetChange} />
+        <TextField name="fiber" label="Fiber Target" type="number" value={targets.fiber} onChange={handleTargetChange} />
       </div>
       {plan.map((dayMeals, dayIndex) => (
         <div key={dayIndex} style={{ marginTop: "20px" }}>
@@ -186,7 +186,7 @@ function Planning() {
             Add Meal
           </Button>
           <PlanningTable ingredients={dayMeals} onIngredientRemove={(data) => handleDayPlanChange(dayIndex, data)} />
-          <MacrosTable ingredients={dayMeals} goals={goals} />
+          <MacrosTable ingredients={dayMeals} targets={targets} />
         </div>
       ))}
       <div style={{ marginTop: "20px" }}>
