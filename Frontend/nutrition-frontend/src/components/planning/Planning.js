@@ -83,7 +83,7 @@ function Planning() {
     if (!selection.mealId) return;
     const meal = meals.find((m) => m.id === selection.mealId);
     const macros = calculateMealMacros(meal);
-    const ingredient = {
+    const planMeal = {
       mealId: meal.id,
       name: meal.name,
       quantity: parseFloat(selection.servings) || 1,
@@ -91,7 +91,7 @@ function Planning() {
     };
     setPlan((prev) => {
       const updated = [...prev];
-      updated[dayIndex] = [...updated[dayIndex], ingredient];
+      updated[dayIndex] = [...updated[dayIndex], planMeal];
       return updated;
     });
     setMealSelections((prev) => {
@@ -101,14 +101,10 @@ function Planning() {
     });
   };
 
-  const handleDayPlanChange = (dayIndex, data) => {
+  const handleDayPlanChange = (dayIndex, updatedMeals) => {
     setPlan((prev) => {
       const updated = [...prev];
-      if (Array.isArray(data)) {
-        updated[dayIndex] = data;
-      } else {
-        updated[dayIndex] = updated[dayIndex].filter((item) => item !== data);
-      }
+      updated[dayIndex] = updatedMeals;
       return updated;
     });
   };
@@ -185,8 +181,8 @@ function Planning() {
           <Button style={{ marginLeft: "10px" }} variant="contained" onClick={() => handleAddMeal(dayIndex)}>
             Add Meal
           </Button>
-          <PlanningTable ingredients={dayMeals} onIngredientRemove={(data) => handleDayPlanChange(dayIndex, data)} />
-          <MacrosTable ingredients={dayMeals} targets={targets} />
+          <PlanningTable meals={dayMeals} onPlanChange={(data) => handleDayPlanChange(dayIndex, data)} />
+          <MacrosTable meals={dayMeals} targets={targets} />
         </div>
       ))}
       <div style={{ marginTop: "20px" }}>

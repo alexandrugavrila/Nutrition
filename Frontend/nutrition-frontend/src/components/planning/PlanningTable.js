@@ -7,25 +7,26 @@ import { formatCellNumber } from "./utils";
 
 // Function to format the cell content
 
-const PlanningTable = ({ ingredients, onIngredientRemove }) => {
-  const handleIngredientRemove = (ingredient) => {
-    onIngredientRemove(ingredient);
+const PlanningTable = ({ meals, onPlanChange }) => {
+  const handleRemove = (meal) => {
+    const updatedMeals = meals.filter((m) => m !== meal);
+    onPlanChange(updatedMeals);
   };
 
   const handleQuantityChange = (index, quantity) => {
-    const updatedIngredients = [...ingredients];
-    updatedIngredients[index].quantity = quantity;
-    onIngredientRemove(updatedIngredients);
+    const updatedMeals = [...meals];
+    updatedMeals[index] = { ...updatedMeals[index], quantity };
+    onPlanChange(updatedMeals);
   };
 
   return (
     <div>
-      <h1>Planning Table</h1>
+      <h1>Meal Plan</h1>
       <Table component={Paper}>
         <TableHead>
           <TableRow>
             <TableCell></TableCell>
-            <TableCell>Name</TableCell>
+            <TableCell>Meal</TableCell>
             <TableCell>Quantity</TableCell>
             <TableCell>Calories</TableCell>
             <TableCell>Protein</TableCell>
@@ -35,22 +36,26 @@ const PlanningTable = ({ ingredients, onIngredientRemove }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {ingredients.map((ingredient, index) => (
+          {meals.map((meal, index) => (
             <TableRow key={index}>
               <TableCell>
-                <Button variant="contained" color="error" onClick={() => handleIngredientRemove(ingredient)}>
+                <Button variant="contained" color="error" onClick={() => handleRemove(meal)}>
                   Remove
                 </Button>
               </TableCell>
-              <TableCell>{ingredient.name}</TableCell>
+              <TableCell>{meal.name}</TableCell>
               <TableCell>
-                <input type="number" value={ingredient.quantity || 1} onChange={(e) => handleQuantityChange(index, e.target.value)} />
+                <input
+                  type="number"
+                  value={meal.quantity || 1}
+                  onChange={(e) => handleQuantityChange(index, e.target.value)}
+                />
               </TableCell>
-              <TableCell>{formatCellNumber(ingredient.quantity * ingredient.nutrition.calories)}</TableCell>
-              <TableCell>{formatCellNumber(ingredient.quantity * ingredient.nutrition.protein)}</TableCell>
-              <TableCell>{formatCellNumber(ingredient.quantity * ingredient.nutrition.carbohydrates)}</TableCell>
-              <TableCell>{formatCellNumber(ingredient.quantity * ingredient.nutrition.fat)}</TableCell>
-              <TableCell>{formatCellNumber(ingredient.quantity * ingredient.nutrition.fiber)}</TableCell>
+              <TableCell>{formatCellNumber(meal.quantity * meal.nutrition.calories)}</TableCell>
+              <TableCell>{formatCellNumber(meal.quantity * meal.nutrition.protein)}</TableCell>
+              <TableCell>{formatCellNumber(meal.quantity * meal.nutrition.carbohydrates)}</TableCell>
+              <TableCell>{formatCellNumber(meal.quantity * meal.nutrition.fat)}</TableCell>
+              <TableCell>{formatCellNumber(meal.quantity * meal.nutrition.fiber)}</TableCell>
             </TableRow>
           ))}
         </TableBody>

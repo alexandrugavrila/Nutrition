@@ -5,7 +5,7 @@ import { Paper, Table, TableBody, TableCell, TableHead, TableRow } from "@mui/ma
 
 import { formatCellNumber } from "./utils";
 
-const MacrosTable = ({ ingredients, targets = {} }) => {
+const MacrosTable = ({ meals, targets = {} }) => {
   const [totalMacros, setTotalMacros] = useState({
     calories: 0,
     protein: 0,
@@ -21,19 +21,19 @@ const MacrosTable = ({ ingredients, targets = {} }) => {
         carbohydrates = 0,
         fat = 0,
         fiber = 0;
-      ingredients.forEach((ingredient) => {
-        const quantity = ingredient.quantity || 1;
-        calories += quantity * ingredient.nutrition.calories;
-        protein += quantity * ingredient.nutrition.protein;
-        carbohydrates += quantity * ingredient.nutrition.carbohydrates;
-        fat += quantity * ingredient.nutrition.fat;
-        fiber += quantity * ingredient.nutrition.fiber;
+      meals.forEach((meal) => {
+        const quantity = meal.quantity || 1;
+        calories += quantity * meal.nutrition.calories;
+        protein += quantity * meal.nutrition.protein;
+        carbohydrates += quantity * meal.nutrition.carbohydrates;
+        fat += quantity * meal.nutrition.fat;
+        fiber += quantity * meal.nutrition.fiber;
       });
       setTotalMacros({ calories, protein, carbohydrates, fat, fiber });
     };
 
     calculateTotalMacros();
-  }, [ingredients]);
+  }, [meals]);
 
   const remaining = {
     calories: (targets.calories || 0) - totalMacros.calories,
