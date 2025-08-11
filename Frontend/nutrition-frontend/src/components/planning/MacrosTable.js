@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Paper, Table, TableBody, TableCell, TableHead, TableRow } from "@mui/material";
 
-import { formatCellNumber } from "./utils";
+import { formatCellNumber } from "../../utils/utils";
 
 const MacrosTable = ({ ingredients }) => {
   const [totalMacros, setTotalMacros] = useState({
