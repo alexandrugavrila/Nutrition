@@ -94,8 +94,6 @@ DBeaver is a free and powerful GUI for inspecting your PostgreSQL database. You 
 * Download and install the Community Edition from:
   👉 [https://dbeaver.io/download/](https://dbeaver.io/download/)
 
----
-
 #### ⚙️ Step 2: Connect to the Dockerized Database
 
 1. **Open DBeaver** and click `Database → New Database Connection`
