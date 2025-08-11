@@ -1,3 +1,11 @@
+# Development stage
+FROM node:23-slim AS dev
+WORKDIR /app
+COPY Frontend/nutrition-frontend/package*.json ./
+RUN npm install
+COPY Frontend/nutrition-frontend/ .
+CMD ["npm", "start"]
+
 # Build stage
 FROM node:23-slim AS build
 
