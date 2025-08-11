@@ -17,13 +17,35 @@ function Planning() {
     fat: 0,
     fiber: 0,
   });
-  const [plan, setPlan] = useState([]);
-  const [mealSelection, setMealSelection] = useState({ mealId: "", servings: 1 });
+  const [plan, setPlan] = useState([[]]);
+  const [mealSelections, setMealSelections] = useState([{ mealId: "", servings: 1 }]);
   const [planId, setPlanId] = useState("");
 
   const handleDurationChange = (event) => {
     const newDuration = parseInt(event.target.value, 10) || 1;
     setDuration(newDuration);
+    setPlan((prev) => {
+      const updated = [...prev];
+      if (newDuration > prev.length) {
+        for (let i = prev.length; i < newDuration; i++) {
+          updated.push([]);
+        }
+      } else {
+        updated.length = newDuration;
+      }
+      return updated;
+    });
+    setMealSelections((prev) => {
+      const updated = [...prev];
+      if (newDuration > prev.length) {
+        for (let i = prev.length; i < newDuration; i++) {
+          updated.push({ mealId: "", servings: 1 });
+        }
+      } else {
+        updated.length = newDuration;
+      }
+      return updated;
+    });
   };
 
   const handleTargetChange = (event) => {
@@ -31,8 +53,12 @@ function Planning() {
     setTargets({ ...targets, [name]: parseFloat(value) });
   };
 
-  const handleMealSelectionChange = (field, value) => {
-    setMealSelection((prev) => ({ ...prev, [field]: value }));
+  const handleMealSelectionChange = (index, field, value) => {
+    setMealSelections((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
   };
 
   const calculateMealMacros = (meal) => {
@@ -52,14 +78,15 @@ function Planning() {
     return totals;
   };
 
-  const handleAddMeal = () => {
-    if (!mealSelection.mealId) return;
-    const meal = meals.find((m) => m.id === mealSelection.mealId);
+  const handleAddMeal = (dayIndex) => {
+    const selection = mealSelections[dayIndex];
+    if (!selection.mealId) return;
+    const meal = meals.find((m) => m.id === selection.mealId);
     const macros = calculateMealMacros(meal);
     const planMeal = {
       mealId: meal.id,
       name: meal.name,
-      quantity: parseFloat(mealSelection.servings) || 1,
+      quantity: parseFloat(selection.servings) || 1,
       nutrition: macros,
     };
     setPlan((prev) => {
@@ -79,7 +106,6 @@ function Planning() {
       const updated = [...prev];
       updated[dayIndex] = updatedMeals;
       return updated;
-
     });
   };
 
@@ -87,7 +113,10 @@ function Planning() {
     return {
       duration,
       targets,
-      meals: plan.map((m) => ({ meal_id: m.mealId, servings: m.quantity })),
+      days: plan.map((dayMeals, idx) => ({
+        day: idx + 1,
+        meals: dayMeals.map((m) => ({ meal_id: m.mealId, servings: m.quantity })),
+      })),
     };
   };
 
@@ -121,20 +150,18 @@ function Planning() {
         <TextField name="fat" label="Fat Target" type="number" value={targets.fat} onChange={handleTargetChange} />
         <TextField name="fiber" label="Fiber Target" type="number" value={targets.fiber} onChange={handleTargetChange} />
       </div>
-      <div style={{ marginTop: "20px" }}>
-        <FormControl style={{ minWidth: 200 }}>
-          <InputLabel id="meal-select-label">Meal</InputLabel>
-          <Select
-            labelId="meal-select-label"
-            value={mealSelection.mealId}
-            label="Meal"
-            onChange={(e) => handleMealSelectionChange("mealId", e.target.value)}>
-            <MenuItem value="">
-              <em>None</em>
-            </MenuItem>
-            {meals.map((meal) => (
-              <MenuItem key={meal.id} value={meal.id}>
-                {meal.name}
+      {plan.map((dayMeals, dayIndex) => (
+        <div key={dayIndex} style={{ marginTop: "20px" }}>
+          <h2>Day {dayIndex + 1}</h2>
+          <FormControl style={{ minWidth: 200 }}>
+            <InputLabel id={`meal-select-label-${dayIndex}`}>Meal</InputLabel>
+            <Select
+              labelId={`meal-select-label-${dayIndex}`}
+              value={mealSelections[dayIndex].mealId}
+              label="Meal"
+              onChange={(e) => handleMealSelectionChange(dayIndex, "mealId", e.target.value)}>
+              <MenuItem value="">
+                <em>None</em>
               </MenuItem>
               {meals.map((meal) => (
                 <MenuItem key={meal.id} value={meal.id}>
