@@ -17,15 +17,16 @@ git clone <your-repo-url>
 cd Nutrition
 
 # Start all services for the current Git branch
-./scripts/compose-up-branch.sh --build
+pwsh ./scripts/compose-up-branch.ps1 --build
 
 # When you're done, remove containers and volumes for this branch
 BRANCH=$(git rev-parse --abbrev-ref HEAD | tr '[:upper:]' '[:lower:]' | sed 's#[^a-z0-9]#-#g')
 docker compose -p nutrition-$BRANCH down -v
 ```
 
-* Frontend: [http://localhost:3000](http://localhost:3000)
-* Backend API: [http://localhost:5000](http://localhost:5000)
+* Frontend: `http://localhost:<FRONTEND_PORT>` (prints on startup, default 3000)
+* Backend API: `http://localhost:<BACKEND_PORT>` (default 5000)
+* PostgreSQL: `localhost:<DB_PORT>` (default 5432)
 
 > 📝 The database is seeded automatically on first run using `Database/createtables.sql`, `addingredients.sql`, and `addnutrition.sql`.
 
@@ -56,6 +57,7 @@ Nutrition/
 │
 ├── docker-compose.yml          # Orchestration config
 └── scripts/
+    ├── compose-up-branch.ps1   # Start stack with branch-specific ports
     └── print-tree.ps1          # Dev tooling
 ```
 
@@ -63,11 +65,11 @@ Nutrition/
 
 ## ⚙️ Environment and Configuration
 
-| Service    | Port | Description                    |
-| ---------- | ---- | ------------------------------ |
-| Frontend   | 3000 | React app served via Nginx     |
-| Backend    | 5000 | Flask API                      |
-| PostgreSQL | 5432 | Nutrition DB with initial data |
+| Service    | Base Port | Description                                   |
+| ---------- | ---------- | ---------------------------------------------- |
+| Frontend   | 3000       | React app served via Nginx (offset per branch) |
+| Backend    | 5000       | Flask API (offset per branch)                  |
+| PostgreSQL | 5432       | Nutrition DB with initial data (offset per branch) |
 
 Environment variables are defined in `docker-compose.yml`:
 
