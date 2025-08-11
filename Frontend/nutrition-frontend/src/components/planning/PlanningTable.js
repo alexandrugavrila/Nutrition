@@ -3,7 +3,7 @@
 import React from "react";
 import { Paper, Table, TableBody, TableCell, TableHead, TableRow, Button } from "@mui/material";
 
-import { formatCellNumber } from "./utils";
+import { formatCellNumber } from "../../utils/utils";
 
 // Function to format the cell content
 
