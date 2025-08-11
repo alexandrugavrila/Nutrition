@@ -16,7 +16,7 @@ services:
       - dbdata:/var/lib/postgresql/data
       - ./Database:/docker-entrypoint-initdb.d
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     networks:
       - nutrition-net
 
@@ -35,8 +35,8 @@ services:
     command: flask --app backend.py --debug run --host=0.0.0.0
     networks:
       - nutrition-net
-    expose:
-      - "5000"
+    ports:
+      - "${BACKEND_PORT:-5000}:5000"
 
   frontend:
     build:
@@ -51,7 +51,7 @@ services:
     environment:
       CHOKIDAR_USEPOLLING: "true"
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     networks:
       - nutrition-net
 
