@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useReducer } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Box } from "@mui/material";
 
 import { useData } from "../../../../contexts/DataContext";
 
@@ -90,8 +90,6 @@ function IngredientForm({ ingredientToEditData }) {
     };
 
     if (isEditMode) {
-      console.log("Updating ingredient", toDatabaseIngredient);
-
       const url = `http://localhost:5000/ingredients/${toDatabaseIngredient.id}`;
       const method = "PUT";
       const data = toDatabaseIngredient;
@@ -101,8 +99,6 @@ function IngredientForm({ ingredientToEditData }) {
         setFetching(false);
       });
     } else {
-      console.log("Adding ingredient", toDatabaseIngredient);
-
       const url = "http://localhost:5000/ingredients";
       const method = "POST";
       const data = toDatabaseIngredient;
@@ -123,7 +119,6 @@ function IngredientForm({ ingredientToEditData }) {
       })
         .then((response) => {
           if (response.ok) {
-            console.log("Ingredient removed successfully");
             setIngredientsNeedsRefetch(true);
           } else {
             console.error("Failed to remove ingredient");
@@ -179,7 +174,9 @@ function IngredientForm({ ingredientToEditData }) {
   return (
     <div>
       <Paper>
-        <Button onClick={() => dispatch({ type: "OPEN_FORM", payload: !isOpen })}>{isOpen ? "Close" : "Add Ingredient"}</Button>
+        <Box sx={{ display: "flex", justifyContent: "center" }}>
+          <Button onClick={() => dispatch({ type: "OPEN_FORM", payload: !isOpen })}>{isOpen ? "Close" : "Add Ingredient"}</Button>
+        </Box>
         <Collapse in={isOpen}>
           <>
             <NameEdit

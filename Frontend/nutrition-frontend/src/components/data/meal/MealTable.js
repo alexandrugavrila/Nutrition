@@ -1,16 +1,22 @@
 // MealTable.js
 
 import React, { useState } from "react";
-import { Button, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, Collapse, Typography, MenuItem, Select } from "@mui/material";
+import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, Collapse, Typography, TablePagination } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowRight } from "@mui/icons-material";
 
 import { useData } from "../../../contexts/DataContext";
 import { formatCellNumber } from "../../../utils/utils";
-import MealTagForm from "./common/MealTagForm";
+import TagFilter from "../../common/TagFilter";
 
 function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} }) {
   //#region States
-  const { meals, ingredients } = useData();
+  const {
+    meals,
+    ingredients,
+    mealDietTags,
+    mealTypeTags,
+    mealOtherTags,
+  } = useData();
 
   const [search, setSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
@@ -22,14 +28,6 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
   //#region Handles
   const handleSearch = (event) => {
     setSearch(event.target.value);
-  };
-
-  const toggleTag = (tag) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter((selectedTag) => selectedTag !== tag));
-    } else {
-      setSelectedTags([...selectedTags, tag]);
-    }
   };
 
   const handleTagFilter = (meal) => {
@@ -56,8 +54,8 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
     }
   };
 
-  const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
+  const handlePageChange = (event, newPage) => {
+    setCurrentPage(newPage + 1);
   };
 
   const handleItemsPerPageChange = (event) => {
@@ -68,10 +66,16 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentMeals = meals
+  const filteredMeals = meals
     .filter((meal) => meal.name.toLowerCase().includes(search.toLowerCase()))
-    .filter(handleTagFilter)
-    .slice(indexOfFirstItem, indexOfLastItem);
+    .filter(handleTagFilter);
+  const currentMeals = filteredMeals.slice(indexOfFirstItem, indexOfLastItem);
+
+  const allMealTags = [
+    ...mealDietTags.map((tag) => ({ ...tag, group: "Diet" })),
+    ...mealTypeTags.map((tag) => ({ ...tag, group: "Type" })),
+    ...mealOtherTags.map((tag) => ({ ...tag, group: "Other" })),
+  ];
 
   const calculateIngredientMacros = (ingredient) => {
     const dataIngredient = ingredients.find(
@@ -150,19 +154,22 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
 
   return (
     <div>
-      <h1>Meals</h1>
+      <h1 style={{ textAlign: "center" }}>Meals</h1>
 
-      <TextField
-        type="text"
-        label="Search by name"
-        value={search}
-        onChange={handleSearch}
-        style={{ marginBottom: "10px" }}
-      />
+      <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+        <TextField
+          type="text"
+          label="Search by name"
+          value={search}
+          onChange={handleSearch}
+        />
+      </Box>
 
-      <MealTagForm
+      <TagFilter
+        tags={allMealTags}
         selectedTags={selectedTags}
-        onTagToggle={toggleTag}
+        onChange={setSelectedTags}
+        label="Filter tags"
       />
 
       <TableContainer component={Paper}>
@@ -291,27 +298,15 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
           </TableBody>
         </Table>
       </TableContainer>
-      <div style={{ marginTop: "10px" }}>
-        <span>Items per page:</span>
-        <Select
-          value={itemsPerPage}
-          onChange={handleItemsPerPageChange}>
-          <MenuItem value={5}>5</MenuItem>
-          <MenuItem value={10}>10</MenuItem>
-          <MenuItem value={20}>20</MenuItem>
-        </Select>
-        <span style={{ marginLeft: "10px" }}>Page: {currentPage}</span>
-        <Button
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}>
-          Previous
-        </Button>
-        <Button
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={indexOfLastItem >= meals.length}>
-          Next
-        </Button>
-      </div>
+      <TablePagination
+        component="div"
+        count={filteredMeals.length}
+        page={currentPage - 1}
+        onPageChange={handlePageChange}
+        rowsPerPage={itemsPerPage}
+        onRowsPerPageChange={handleItemsPerPageChange}
+        rowsPerPageOptions={[5, 10, 20]}
+      />
     </div>
   );
 }

@@ -74,7 +74,6 @@ function MealForm({ mealToEditData }) {
 
   const handleMealDelete = () => {
     if (mealToEdit) {
-      console.log("Deleting Meal: ", mealToEdit);
     }
     setMealsNeedsRefetch(true);
     handleClearForm();
@@ -121,7 +120,12 @@ function MealForm({ mealToEditData }) {
   return (
     <div>
       <Paper>
-        <Button onClick={() => dispatch({ type: "OPEN_FORM", payload: !isOpen })}>{isOpen ? "Close" : "Add Meal"}</Button>
+        <Button
+          sx={{ display: "block", mx: "auto" }}
+          onClick={() => dispatch({ type: "OPEN_FORM", payload: !isOpen })}
+        >
+          {isOpen ? "Close" : "Add Meal"}
+        </Button>
         <Collapse in={isOpen}>
           <>
             <MealNameForm

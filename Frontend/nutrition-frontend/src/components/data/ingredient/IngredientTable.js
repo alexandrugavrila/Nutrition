@@ -1,15 +1,21 @@
 // IngredientTable.js
 
 import React, { useState } from "react";
-import { Button, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, MenuItem, Select } from "@mui/material";
+import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, MenuItem, Select, TablePagination } from "@mui/material";
 
 import { useData } from "../../../contexts/DataContext";
 import { formatCellNumber } from "../../../utils/utils";
-import IngredientTagForm from "./common/IngredientTagForm";
+import TagFilter from "../../common/TagFilter";
 
 function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlClick = () => {} }) {
   //#region States
-  const { ingredients, setIngredients } = useData();
+  const {
+    ingredients,
+    setIngredients,
+    ingredientProcessingTags,
+    ingredientGroupTags,
+    ingredientOtherTags,
+  } = useData();
 
   const [search, setSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
@@ -22,22 +28,13 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
     setSearch(event.target.value);
   };
 
-  const toggleTag = (tag) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter((selectedTag) => selectedTag !== tag));
-    } else {
-      setSelectedTags([...selectedTags, tag]);
-    }
-  };
-
   const handleTagFilter = (ingredient) => {
     if (selectedTags.length === 0) {
       return true; // Show all ingredients if no tags are selected
     }
-    return selectedTags.some((selectedTag) => {
-      console.log(ingredient.tags.some((tag) => tag.name === selectedTag.name));
-      return ingredient.tags.some((tag) => tag.name === selectedTag.name);
-    });
+    return selectedTags.some((selectedTag) =>
+      ingredient.tags.some((tag) => tag.name === selectedTag.name)
+    );
   };
 
   const handleIngredientDoubleClick = (ingredient) => {
@@ -64,8 +61,8 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
     );
   };
 
-  const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
+  const handlePageChange = (event, newPage) => {
+    setCurrentPage(newPage + 1);
   };
 
   const handleItemsPerPageChange = (event) => {
@@ -77,26 +74,35 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentIngredients = ingredients
+  const filteredIngredients = ingredients
     .filter((ingredient) => ingredient.name.toLowerCase().includes(search.toLowerCase()))
-    .filter(handleTagFilter)
-    .slice(indexOfFirstItem, indexOfLastItem);
+    .filter(handleTagFilter);
+  const currentIngredients = filteredIngredients.slice(indexOfFirstItem, indexOfLastItem);
+
+  const allIngredientTags = [
+    ...ingredientProcessingTags.map((tag) => ({ ...tag, group: "Processing" })),
+    ...ingredientGroupTags.map((tag) => ({ ...tag, group: "Group" })),
+    ...ingredientOtherTags.map((tag) => ({ ...tag, group: "Other" })),
+  ];
 
   return (
     <div>
-      <h1>Ingredients</h1>
+      <h1 style={{ textAlign: "center" }}>Ingredients</h1>
 
-      <TextField
-        type="text"
-        label="Search by name"
-        value={search}
-        onChange={handleSearch}
-        style={{ marginBottom: "10px" }}
-      />
+      <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+        <TextField
+          type="text"
+          label="Search by name"
+          value={search}
+          onChange={handleSearch}
+        />
+      </Box>
 
-      <IngredientTagForm
+      <TagFilter
+        tags={allIngredientTags}
         selectedTags={selectedTags}
-        onTagToggle={toggleTag}
+        onChange={setSelectedTags}
+        label="Filter tags"
       />
 
       <TableContainer component={Paper}>
@@ -144,27 +150,15 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
           </TableBody>
         </Table>
       </TableContainer>
-      <div style={{ marginTop: "10px" }}>
-        <span>Items per page:</span>
-        <Select
-          value={itemsPerPage}
-          onChange={handleItemsPerPageChange}>
-          <MenuItem value={5}>5</MenuItem>
-          <MenuItem value={10}>10</MenuItem>
-          <MenuItem value={20}>20</MenuItem>
-        </Select>
-        <span style={{ marginLeft: "10px" }}>Page: {currentPage}</span>
-        <Button
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}>
-          Previous
-        </Button>
-        <Button
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={indexOfLastItem >= ingredients.length}>
-          Next
-        </Button>
-      </div>
+      <TablePagination
+        component="div"
+        count={filteredIngredients.length}
+        page={currentPage - 1}
+        onPageChange={handlePageChange}
+        rowsPerPage={itemsPerPage}
+        onRowsPerPageChange={handleItemsPerPageChange}
+        rowsPerPageOptions={[5, 10, 20]}
+      />
     </div>
   );
 }
