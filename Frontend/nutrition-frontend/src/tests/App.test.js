@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import App from "../App";
 
 var mockIngredientData;
 var mockMealData;
@@ -17,8 +18,6 @@ jest.mock("../components/data/meal/MealData", () => ({
 
 mockIngredientData = jest.fn(() => <div>IngredientDataComponent</div>);
 mockMealData = jest.fn(() => <div>MealDataComponent</div>);
-
-import App from "../App";
 
 beforeEach(() => {
   jest.clearAllMocks();
