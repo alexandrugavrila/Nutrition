@@ -107,11 +107,41 @@ function Planning() {
         />
       </div>
       <div>
-        <TextField name="calories" label="Calories Target" type="number" value={targets.calories} onChange={handleTargetChange} />
-        <TextField name="protein" label="Protein Target" type="number" value={targets.protein} onChange={handleTargetChange} />
-        <TextField name="carbohydrates" label="Carbs Target" type="number" value={targets.carbohydrates} onChange={handleTargetChange} />
-        <TextField name="fat" label="Fat Target" type="number" value={targets.fat} onChange={handleTargetChange} />
-        <TextField name="fiber" label="Fiber Target" type="number" value={targets.fiber} onChange={handleTargetChange} />
+        <TextField
+          name="calories"
+          label="Calories Target"
+          type="number"
+          value={targets.calories}
+          onChange={handleTargetChange}
+        />
+        <TextField
+          name="protein"
+          label="Protein Target"
+          type="number"
+          value={targets.protein}
+          onChange={handleTargetChange}
+        />
+        <TextField
+          name="carbohydrates"
+          label="Carbs Target"
+          type="number"
+          value={targets.carbohydrates}
+          onChange={handleTargetChange}
+        />
+        <TextField
+          name="fat"
+          label="Fat Target"
+          type="number"
+          value={targets.fat}
+          onChange={handleTargetChange}
+        />
+        <TextField
+          name="fiber"
+          label="Fiber Target"
+          type="number"
+          value={targets.fiber}
+          onChange={handleTargetChange}
+        />
       </div>
       <div style={{ marginTop: "20px" }}>
         <FormControl style={{ minWidth: 200 }}>
@@ -120,7 +150,8 @@ function Planning() {
             labelId="meal-select-label"
             value={mealSelection.mealId}
             label="Meal"
-            onChange={(e) => handleMealSelectionChange("mealId", e.target.value)}>
+            onChange={(e) => handleMealSelectionChange("mealId", e.target.value)}
+          >
             <MenuItem value="">
               <em>None</em>
             </MenuItem>
@@ -128,28 +159,23 @@ function Planning() {
               <MenuItem key={meal.id} value={meal.id}>
                 {meal.name}
               </MenuItem>
-              {meals.map((meal) => (
-                <MenuItem key={meal.id} value={meal.id}>
-                  {meal.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            type="number"
-            label="Servings"
-            value={mealSelections[dayIndex].servings}
-            onChange={(e) => handleMealSelectionChange(dayIndex, "servings", e.target.value)}
-            InputProps={{ inputProps: { min: 1 } }}
-            style={{ marginLeft: "10px" }}
-          />
-          <Button style={{ marginLeft: "10px" }} variant="contained" onClick={() => handleAddMeal(dayIndex)}>
-            Add Meal
-          </Button>
-          <PlanningTable ingredients={dayMeals} onIngredientRemove={(data) => handleDayPlanChange(dayIndex, data)} />
-          <MacrosTable ingredients={dayMeals} targets={targets} duration={duration} />
-        </div>
-      ))}
+            ))}
+          </Select>
+        </FormControl>
+        <TextField
+          type="number"
+          label="Servings"
+          value={mealSelection.servings}
+          onChange={(e) => handleMealSelectionChange("servings", e.target.value)}
+          InputProps={{ inputProps: { min: 1 } }}
+          style={{ marginLeft: "10px" }}
+        />
+        <Button style={{ marginLeft: "10px" }} variant="contained" onClick={handleAddMeal}>
+          Add Meal
+        </Button>
+        <PlanningTable ingredients={plan} onIngredientRemove={handlePlanChange} />
+        <MacrosTable ingredients={plan} targets={targets} duration={duration} />
+      </div>
       <div style={{ marginTop: "20px" }}>
         <TextField label="Plan ID" value={planId} onChange={(e) => setPlanId(e.target.value)} />
         <Button variant="contained" style={{ marginLeft: "10px" }} onClick={handleSavePlan}>
