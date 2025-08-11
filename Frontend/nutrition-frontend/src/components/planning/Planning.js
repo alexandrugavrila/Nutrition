@@ -186,7 +186,7 @@ function Planning() {
             Add Meal
           </Button>
           <PlanningTable ingredients={dayMeals} onIngredientRemove={(data) => handleDayPlanChange(dayIndex, data)} />
-          <MacrosTable ingredients={dayMeals} targets={targets} />
+          <MacrosTable ingredients={dayMeals} targets={targets} duration={duration} />
         </div>
       ))}
       <div style={{ marginTop: "20px" }}>
