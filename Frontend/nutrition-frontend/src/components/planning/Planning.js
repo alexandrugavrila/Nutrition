@@ -19,6 +19,7 @@ function Planning() {
   const { meals, ingredients } = useData();
 
   const [days, setDays] = useState(1);
+  const [daysError, setDaysError] = useState(false);
   const [targetMacros, setTargetMacros] = useState({
     calories: 0,
     protein: 0,
@@ -32,13 +33,21 @@ function Planning() {
   const [selectedPortions, setSelectedPortions] = useState(1);
 
   const handleAddMeal = () => {
-    if (!selectedMealId) return;
-    setPlan([...plan, { mealId: selectedMealId, portions: selectedPortions }]);
+    if (!selectedMealId || selectedPortions <= 0) return;
+    const existingIndex = plan.findIndex((p) => p.mealId === selectedMealId);
+    if (existingIndex >= 0) {
+      const updated = [...plan];
+      updated[existingIndex].portions += selectedPortions;
+      setPlan(updated);
+    } else {
+      setPlan([...plan, { mealId: selectedMealId, portions: selectedPortions }]);
+    }
     setSelectedMealId("");
     setSelectedPortions(1);
   };
 
   const handlePortionChange = (index, portions) => {
+    if (portions <= 0) return;
     const updated = [...plan];
     updated[index].portions = portions;
     setPlan(updated);
@@ -111,6 +120,17 @@ function Planning() {
     };
   }, [totalMacros, days]);
 
+  const handleDaysChange = (e) => {
+    const value = parseInt(e.target.value, 10);
+    if (!value || value < 1) {
+      setDays(1);
+      setDaysError(true);
+    } else {
+      setDays(value);
+      setDaysError(false);
+    }
+  };
+
   return (
     <Box sx={{ p: 2 }}>
       <h1>Planning</h1>
@@ -120,8 +140,10 @@ function Planning() {
           type="number"
           label="Days"
           value={days}
-          onChange={(e) => setDays(parseInt(e.target.value, 10) || 0)}
+          onChange={handleDaysChange}
           sx={{ width: 100 }}
+          error={daysError}
+          helperText={daysError ? "Days must be at least 1" : ""}
         />
         {Object.keys(targetMacros).map((macro) => (
           <TextField
@@ -157,10 +179,20 @@ function Planning() {
           type="number"
           label="Portions"
           value={selectedPortions}
-          onChange={(e) => setSelectedPortions(parseFloat(e.target.value) || 1)}
+          onChange={(e) =>
+            setSelectedPortions(parseFloat(e.target.value) || 0)
+          }
           sx={{ width: 100 }}
+          error={selectedPortions <= 0}
+          helperText={
+            selectedPortions <= 0 ? "Portions must be greater than 0" : ""
+          }
         />
-        <Button variant="contained" onClick={handleAddMeal} disabled={!selectedMealId}>
+        <Button
+          variant="contained"
+          onClick={handleAddMeal}
+          disabled={!selectedMealId || selectedPortions <= 0}
+        >
           Add Meal
         </Button>
       </Box>
