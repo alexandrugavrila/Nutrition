@@ -32,6 +32,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - ./Backend:/app
+    command: flask --app backend.py --debug run --host=0.0.0.0
     networks:
       - nutrition-net
     expose:
