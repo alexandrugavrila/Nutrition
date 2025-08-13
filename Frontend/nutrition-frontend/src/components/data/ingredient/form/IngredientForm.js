@@ -90,7 +90,7 @@ function IngredientForm({ ingredientToEditData }) {
     };
 
     if (isEditMode) {
-      const url = `http://localhost:5000/ingredients/${toDatabaseIngredient.id}`;
+      const url = `/api/ingredients/${toDatabaseIngredient.id}`;
       const method = "PUT";
       const data = toDatabaseIngredient;
 
@@ -99,7 +99,7 @@ function IngredientForm({ ingredientToEditData }) {
         setFetching(false);
       });
     } else {
-      const url = "http://localhost:5000/ingredients";
+      const url = "/api/ingredients";
       const method = "POST";
       const data = toDatabaseIngredient;
 
@@ -114,7 +114,7 @@ function IngredientForm({ ingredientToEditData }) {
 
   const handleIngredientDelete = () => {
     if (ingredientToEdit) {
-      fetch(`http://localhost:5000/ingredients/${ingredientToEdit.id}`, {
+      fetch(`/api/ingredients/${ingredientToEdit.id}`, {
         method: "DELETE",
       })
         .then((response) => {

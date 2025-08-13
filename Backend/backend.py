@@ -11,13 +11,19 @@ from routes.meals import meal_blueprint
 
 app = Flask(__name__)
 
-app.register_blueprint(ingredient_blueprint)
-app.register_blueprint(meal_blueprint)
+# Prefix all API routes with /api so the frontend can proxy requests
+app.register_blueprint(ingredient_blueprint, url_prefix="/api")
+app.register_blueprint(meal_blueprint, url_prefix="/api")
 
 CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-    'SQLALCHEMY_DATABASE_URI',
-    'postgresql://nutrition_user:nutrition_pass@nutrition-db:5432/nutrition'
+# Configure the database connection string. Historically the application
+# looked for `SQLALCHEMY_DATABASE_URI`, but docker-compose provides the
+# URL via the more conventional `DATABASE_URL`.  Attempt to read either
+# environment variable and fall back to the default connection string
+# used by the development stack.
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    os.getenv('SQLALCHEMY_DATABASE_URI')
+    or os.getenv('DATABASE_URL', 'postgresql://nutrition_user:nutrition_pass@db:5432/nutrition')
 )
 db.init_app(app)
 

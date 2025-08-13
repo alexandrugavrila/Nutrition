@@ -10,7 +10,7 @@ export const IngredientsProvider = ({ children }) => {
   const [needsRefetch, setNeedsRefetch] = useState(false);
 
   const fetchData = () => {
-    fetch("http://localhost:5000/ingredients")
+    fetch("/api/ingredients")
       .then((response) => response.json())
       .then((data) => {
         const ingredientsWith1gUnit = data.map((ingredient) => {
