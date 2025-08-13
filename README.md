@@ -45,11 +45,10 @@ Nutrition/
 │   ├── db.py                   # SQLAlchemy setup
 │   └── Dockerfile              # Backend build config
 │
-├── Frontend/
-│   └── nutrition-frontend/     # React app
-│       ├── src/                # App components, context, etc.
-│       ├── Dockerfile          # Frontend build config
-│       └── nginx.conf          # Nginx static serving config
+├── Frontend/                   # React app
+│   ├── src/                # App components, context, etc.
+│   ├── Dockerfile          # Frontend build config
+│   └── nginx.conf          # Nginx static serving config
 │
 ├── Database/                   # SQL seed scripts
 │   ├── createtables.sql
@@ -111,7 +110,7 @@ For detailed instructions on connecting to the development database with DBeaver
 
 ### Frontend (React)
 
-* Built in `Frontend/nutrition-frontend`
+* Built in `Frontend`
 * `App.js` renders:
 
   * `<MealData />`
