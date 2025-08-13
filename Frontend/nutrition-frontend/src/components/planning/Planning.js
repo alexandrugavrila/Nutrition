@@ -10,7 +10,10 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Collapse,
+  Typography,
 } from "@mui/material";
+import { KeyboardArrowDown, KeyboardArrowRight } from "@mui/icons-material";
 
 import { useData } from "../../contexts/DataContext";
 import { formatCellNumber } from "../../utils/utils";
@@ -27,33 +30,63 @@ function Planning() {
     fat: 0,
     fiber: 0,
   });
-  const [plan, setPlan] = useState([]); // [{ mealId, portions }]
+  const [plan, setPlan] = useState([]); // [{type:'meal', mealId, portions} or {type:'ingredient', ingredientId, unitId, amount}]
 
+  const [selectedType, setSelectedType] = useState("meal");
   const [selectedMealId, setSelectedMealId] = useState("");
   const [selectedPortions, setSelectedPortions] = useState(1);
+  const [selectedIngredientId, setSelectedIngredientId] = useState("");
+  const [selectedIngredientUnitId, setSelectedIngredientUnitId] = useState(0);
+  const [selectedIngredientAmount, setSelectedIngredientAmount] = useState(1);
+  const [open, setOpen] = useState({});
 
-  const handleAddMeal = () => {
-    if (!selectedMealId || selectedPortions <= 0) return;
-    const existingIndex = plan.findIndex((p) => p.mealId === selectedMealId);
-    if (existingIndex >= 0) {
-      const updated = [...plan];
-      updated[existingIndex].portions += selectedPortions;
-      setPlan(updated);
+  const handleAddItem = () => {
+    if (selectedType === "meal") {
+      if (!selectedMealId || selectedPortions <= 0) return;
+      const existingIndex = plan.findIndex(
+        (p) => p.type === "meal" && p.mealId === selectedMealId
+      );
+      if (existingIndex >= 0) {
+        const updated = [...plan];
+        updated[existingIndex].portions += selectedPortions;
+        setPlan(updated);
+      } else {
+        setPlan([
+          ...plan,
+          { type: "meal", mealId: selectedMealId, portions: selectedPortions },
+        ]);
+      }
+      setSelectedMealId("");
+      setSelectedPortions(1);
     } else {
-      setPlan([...plan, { mealId: selectedMealId, portions: selectedPortions }]);
+      if (!selectedIngredientId || selectedIngredientAmount <= 0) return;
+      setPlan([
+        ...plan,
+        {
+          type: "ingredient",
+          ingredientId: selectedIngredientId,
+          unitId: selectedIngredientUnitId,
+          amount: selectedIngredientAmount,
+        },
+      ]);
+      setSelectedIngredientId("");
+      setSelectedIngredientUnitId(0);
+      setSelectedIngredientAmount(1);
     }
-    setSelectedMealId("");
-    setSelectedPortions(1);
   };
 
-  const handlePortionChange = (index, portions) => {
-    if (portions <= 0) return;
+  const handleQuantityChange = (index, value) => {
+    if (value <= 0) return;
     const updated = [...plan];
-    updated[index].portions = portions;
+    if (updated[index].type === "meal") {
+      updated[index].portions = value;
+    } else {
+      updated[index].amount = value;
+    }
     setPlan(updated);
   };
 
-  const handleRemoveMeal = (index) => {
+  const handleRemoveItem = (index) => {
     const updated = plan.filter((_, i) => i !== index);
     setPlan(updated);
   };
@@ -91,16 +124,34 @@ function Planning() {
     );
   };
 
+  const calculateItemMacros = (item) => {
+    if (item.type === "meal") {
+      const meal = meals.find((m) => m.id === item.mealId);
+      const macros = calculateMealMacros(meal);
+      return {
+        calories: macros.calories * item.portions,
+        protein: macros.protein * item.portions,
+        fat: macros.fat * item.portions,
+        carbs: macros.carbs * item.portions,
+        fiber: macros.fiber * item.portions,
+      };
+    }
+    return calculateIngredientMacros({
+      ingredient_id: item.ingredientId,
+      unit_id: item.unitId,
+      amount: item.amount,
+    });
+  };
+
   const totalMacros = useMemo(() => {
     return plan.reduce(
       (totals, item) => {
-        const meal = meals.find((m) => m.id === item.mealId);
-        const macros = calculateMealMacros(meal);
-        totals.calories += macros.calories * item.portions;
-        totals.protein += macros.protein * item.portions;
-        totals.fat += macros.fat * item.portions;
-        totals.carbs += macros.carbs * item.portions;
-        totals.fiber += macros.fiber * item.portions;
+        const macros = calculateItemMacros(item);
+        totals.calories += macros.calories;
+        totals.protein += macros.protein;
+        totals.fat += macros.fat;
+        totals.carbs += macros.carbs;
+        totals.fiber += macros.fiber;
         return totals;
       },
       { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 }
@@ -164,44 +215,118 @@ function Planning() {
       <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2 }}>
         <TextField
           select
-          label="Meal"
-          value={selectedMealId}
-          onChange={(e) => setSelectedMealId(e.target.value)}
-          sx={{ minWidth: 200 }}
+          label="Type"
+          value={selectedType}
+          onChange={(e) => setSelectedType(e.target.value)}
+          sx={{ minWidth: 120 }}
         >
-          {meals.map((meal) => (
-            <MenuItem key={meal.id} value={meal.id}>
-              {meal.name}
-            </MenuItem>
-          ))}
+          <MenuItem value="meal">Meal</MenuItem>
+          <MenuItem value="ingredient">Ingredient</MenuItem>
         </TextField>
-        <TextField
-          type="number"
-          label="Portions"
-          value={selectedPortions}
-          onChange={(e) =>
-            setSelectedPortions(parseFloat(e.target.value) || 0)
-          }
-          sx={{ width: 100 }}
-          error={selectedPortions <= 0}
-          helperText={
-            selectedPortions <= 0 ? "Portions must be greater than 0" : ""
-          }
-        />
+        {selectedType === "meal" ? (
+          <>
+            <TextField
+              select
+              label="Meal"
+              value={selectedMealId}
+              onChange={(e) => setSelectedMealId(e.target.value)}
+              sx={{ minWidth: 200 }}
+            >
+              {meals.map((meal) => (
+                <MenuItem key={meal.id} value={meal.id}>
+                  {meal.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              type="number"
+              label="Portions"
+              value={selectedPortions}
+              onChange={(e) =>
+                setSelectedPortions(parseFloat(e.target.value) || 0)
+              }
+              sx={{ width: 100 }}
+              error={selectedPortions <= 0}
+              helperText={
+                selectedPortions <= 0 ? "Portions must be greater than 0" : ""
+              }
+            />
+          </>
+        ) : (
+          <>
+            <TextField
+              select
+              label="Ingredient"
+              value={selectedIngredientId}
+              onChange={(e) => {
+                const id = e.target.value;
+                setSelectedIngredientId(id);
+                const ing = ingredients.find((i) => i.id === id);
+                setSelectedIngredientUnitId(ing?.units[0]?.id || 0);
+              }}
+              sx={{ minWidth: 200 }}
+            >
+              {ingredients.map((ingredient) => (
+                <MenuItem key={ingredient.id} value={ingredient.id}>
+                  {ingredient.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Unit"
+              value={selectedIngredientUnitId}
+              onChange={(e) =>
+                setSelectedIngredientUnitId(parseInt(e.target.value, 10))
+              }
+              sx={{ minWidth: 120 }}
+            >
+              {(ingredients.find((i) => i.id === selectedIngredientId)?.units || []).map(
+                (unit) => (
+                  <MenuItem key={unit.id} value={unit.id}>
+                    {unit.name}
+                  </MenuItem>
+                )
+              )}
+            </TextField>
+            <TextField
+              type="number"
+              label="Amount"
+              value={selectedIngredientAmount}
+              onChange={(e) =>
+                setSelectedIngredientAmount(
+                  parseFloat(e.target.value) || 0
+                )
+              }
+              sx={{ width: 100 }}
+              error={selectedIngredientAmount <= 0}
+              helperText={
+                selectedIngredientAmount <= 0
+                  ? "Amount must be greater than 0"
+                  : ""
+              }
+            />
+          </>
+        )}
         <Button
           variant="contained"
-          onClick={handleAddMeal}
-          disabled={!selectedMealId || selectedPortions <= 0}
+          onClick={handleAddItem}
+          disabled={
+            selectedType === "meal"
+              ? !selectedMealId || selectedPortions <= 0
+              : !selectedIngredientId || selectedIngredientAmount <= 0
+          }
         >
-          Add Meal
+          Add
         </Button>
       </Box>
 
       <Table component={Paper} sx={{ mb: 3 }}>
         <TableHead>
           <TableRow>
-            <TableCell>Meal</TableCell>
-            <TableCell>Portions</TableCell>
+            <TableCell></TableCell>
+            <TableCell>Item</TableCell>
+            <TableCell>Amount</TableCell>
             <TableCell>Calories</TableCell>
             <TableCell>Protein</TableCell>
             <TableCell>Carbs</TableCell>
@@ -212,43 +337,149 @@ function Planning() {
         </TableHead>
         <TableBody>
           {plan.map((item, index) => {
-            const meal = meals.find((m) => m.id === item.mealId);
-            const macros = calculateMealMacros(meal);
-            return (
-              <TableRow key={`${item.mealId}-${index}`}>
-                <TableCell>{meal ? meal.name : ""}</TableCell>
-                <TableCell>
-                  <TextField
-                    type="number"
-                    value={item.portions}
-                    onChange={(e) =>
-                      handlePortionChange(index, parseFloat(e.target.value) || 0)
-                    }
-                    sx={{ width: 80 }}
-                  />
-                </TableCell>
-                <TableCell>
-                  {formatCellNumber(macros.calories * item.portions)}
-                </TableCell>
-                <TableCell>
-                  {formatCellNumber(macros.protein * item.portions)}
-                </TableCell>
-                <TableCell>
-                  {formatCellNumber(macros.carbs * item.portions)}
-                </TableCell>
-                <TableCell>
-                  {formatCellNumber(macros.fat * item.portions)}
-                </TableCell>
-                <TableCell>
-                  {formatCellNumber(macros.fiber * item.portions)}
-                </TableCell>
-                <TableCell>
-                  <Button color="error" onClick={() => handleRemoveMeal(index)}>
-                    Remove
-                  </Button>
-                </TableCell>
-              </TableRow>
-            );
+            if (item.type === "meal") {
+              const meal = meals.find((m) => m.id === item.mealId);
+              const macros = calculateMealMacros(meal);
+              return (
+                <React.Fragment key={`meal-${item.mealId}`}>
+                  <TableRow>
+                    <TableCell onClick={() => setOpen({ ...open, [index]: !open[index] })}>
+                      {open[index] ? <KeyboardArrowDown /> : <KeyboardArrowRight />}
+                    </TableCell>
+                    <TableCell>{meal ? meal.name : ""}</TableCell>
+                    <TableCell>
+                      <TextField
+                        type="number"
+                        value={item.portions}
+                        onChange={(e) =>
+                          handleQuantityChange(index, parseFloat(e.target.value) || 0)
+                        }
+                        sx={{ width: 80 }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {formatCellNumber(macros.calories * item.portions)}
+                    </TableCell>
+                    <TableCell>
+                      {formatCellNumber(macros.protein * item.portions)}
+                    </TableCell>
+                    <TableCell>
+                      {formatCellNumber(macros.carbs * item.portions)}
+                    </TableCell>
+                    <TableCell>
+                      {formatCellNumber(macros.fat * item.portions)}
+                    </TableCell>
+                    <TableCell>
+                      {formatCellNumber(macros.fiber * item.portions)}
+                    </TableCell>
+                    <TableCell>
+                      <Button color="error" onClick={() => handleRemoveItem(index)}>
+                        Remove
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
+                      <Collapse in={open[index]} timeout="auto" unmountOnExit>
+                        <Typography variant="h6" gutterBottom component="div">
+                          Ingredients
+                        </Typography>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Name</TableCell>
+                              <TableCell>Unit</TableCell>
+                              <TableCell>Amount</TableCell>
+                              <TableCell>Calories</TableCell>
+                              <TableCell>Protein</TableCell>
+                              <TableCell>Carbs</TableCell>
+                              <TableCell>Fat</TableCell>
+                              <TableCell>Fiber</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {meal?.ingredients.map((ingredient) => {
+                              const dataIngredient = ingredients.find(
+                                (i) => i.id === ingredient.ingredient_id
+                              );
+                              const unit =
+                                dataIngredient?.units.find(
+                                  (u) => u.id === ingredient.unit_id
+                                ) || dataIngredient?.units[0];
+                              const ingMacros = calculateIngredientMacros(ingredient);
+                              return (
+                                <TableRow key={ingredient.ingredient_id}>
+                                  <TableCell>
+                                    {dataIngredient ? dataIngredient.name : ""}
+                                  </TableCell>
+                                  <TableCell>{unit ? unit.name : ""}</TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(ingredient.amount * item.portions)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(ingMacros.calories * item.portions)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(ingMacros.protein * item.portions)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(ingMacros.carbs * item.portions)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(ingMacros.fat * item.portions)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(ingMacros.fiber * item.portions)}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </Collapse>
+                    </TableCell>
+                  </TableRow>
+                </React.Fragment>
+              );
+            } else {
+              const ingredient = ingredients.find(
+                (i) => i.id === item.ingredientId
+              );
+              const unit = ingredient?.units.find((u) => u.id === item.unitId);
+              const macros = calculateIngredientMacros({
+                ingredient_id: item.ingredientId,
+                unit_id: item.unitId,
+                amount: item.amount,
+              });
+              return (
+                <TableRow key={`ingredient-${index}`}>
+                  <TableCell />
+                  <TableCell>
+                    {ingredient ? ingredient.name : ""}
+                  </TableCell>
+                  <TableCell>
+                    <TextField
+                      type="number"
+                      value={item.amount}
+                      onChange={(e) =>
+                        handleQuantityChange(index, parseFloat(e.target.value) || 0)
+                      }
+                      sx={{ width: 80 }}
+                    /> {unit ? unit.name : ""}
+                  </TableCell>
+                  <TableCell>{formatCellNumber(macros.calories)}</TableCell>
+                  <TableCell>{formatCellNumber(macros.protein)}</TableCell>
+                  <TableCell>{formatCellNumber(macros.carbs)}</TableCell>
+                  <TableCell>{formatCellNumber(macros.fat)}</TableCell>
+                  <TableCell>{formatCellNumber(macros.fiber)}</TableCell>
+                  <TableCell>
+                    <Button color="error" onClick={() => handleRemoveItem(index)}>
+                      Remove
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            }
           })}
         </TableBody>
       </Table>
