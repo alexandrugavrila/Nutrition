@@ -9,6 +9,7 @@ export default defineConfig({
     setupFiles: "./src/tests/setupTests.js",
   },
   server: {
+    port: 3000,
     proxy: {
       "/api": {
         target: "http://backend:5000",
