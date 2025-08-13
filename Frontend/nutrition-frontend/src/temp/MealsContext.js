@@ -12,7 +12,7 @@ export const MealsProvider = ({ children }) => {
   const [needsRefetch, setNeedsRefetch] = useState(false);
 
   const fetchData = () => {
-    fetch("http://localhost:5000/meals")
+    fetch("/api/meals")
       .then((response) => response.json())
       .then((data) => {
         const formattedData = data.map((meal) => ({
