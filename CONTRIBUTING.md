@@ -22,18 +22,20 @@ Data will persist as long as you do not also delete the Docker volume
 
 ## Database management
 
-The Python script import_from_csv.py will remove all existing data from the database and import the specified data.
+The `import_from_csv.py` script will remove all existing data from the database
+and import the specified data. Use the wrapper script so it targets the
+containers for your current branch.
 
 To import production data
 
-```python
-python .\\Database\\import_from_csv.py
+```bash
+./scripts/import-from-csv.sh -production
 ```
 
 To import test data
 
-```python
-python .\\Database\\import_from_csv.py --test
+```bash
+./scripts/import-from-csv.sh -test
 ```
 
 To drop and recreate the tables before importing:

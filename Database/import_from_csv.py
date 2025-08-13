@@ -79,12 +79,14 @@ def import_csv(cur, folder, ordered_tables):
 
 def main():
     parser = argparse.ArgumentParser(description="Import CSVs into PostgreSQL.")
-    parser.add_argument("--test", action="store_true", help="Use test CSV files (e.g., table_test.csv)")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--production", action="store_true", help="Use production CSV files")
+    group.add_argument("--test", action="store_true", help="Use test CSV files (e.g., table_test.csv)")
     args = parser.parse_args()
 
-    data_dir = os.path.join(BASE_DIR, "test_data" if args.test else "production_data")
+    data_dir = os.path.join(BASE_DIR, "production_data" if args.production else "test_data")
 
-    mode = "TEST" if args.test else "PRODUCTION"
+    mode = "PRODUCTION" if args.production else "TEST"
     print(f"Running in {mode} mode — reading from: {data_dir}")
 
     if not os.path.exists(data_dir):
