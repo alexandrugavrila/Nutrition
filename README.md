@@ -79,6 +79,8 @@ POSTGRES_PASSWORD: nutrition_pass
 POSTGRES_DB: nutrition
 ```
 
+The frontend development server proxies API requests to the backend. Set `VITE_API_URL` to override the default target (falls back to `http://localhost:5000`).
+
 Backend connects using:
 
 ```
