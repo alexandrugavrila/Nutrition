@@ -17,7 +17,8 @@ git clone <your-repo-url>
 cd Nutrition
 
 # Start all services for the current Git branch
-pwsh ./scripts/compose-up-branch.ps1 --build
+# Choose one of -production, -test, or -empty to control database seeding
+pwsh ./scripts/compose-up-branch.ps1 -test --build
 
 # When you're done, remove containers and volumes for this branch
 BRANCH=$(git rev-parse --abbrev-ref HEAD | tr '[:upper:]' '[:lower:]' | sed 's#[^a-z0-9]#-#g')
