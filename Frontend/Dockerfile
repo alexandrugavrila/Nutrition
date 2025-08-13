@@ -1,21 +1,21 @@
 # Development stage
 FROM node:23-slim AS dev
 WORKDIR /app
-COPY Frontend/nutrition-frontend/package*.json ./
+COPY Frontend/package*.json ./
 RUN npm install
-COPY Frontend/nutrition-frontend/ .
+COPY Frontend/ .
 CMD ["npm", "run", "dev"]
 
 # Build stage
 FROM node:23-slim AS build
 
 WORKDIR /app
-COPY Frontend/nutrition-frontend/package*.json ./
+COPY Frontend/package*.json ./
 RUN npm install
-COPY Frontend/nutrition-frontend/ .
+COPY Frontend/ .
 RUN npm run build
 
 # Serve with nginx
 FROM nginx:stable-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY Frontend/nutrition-frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY Frontend/nginx.conf /etc/nginx/conf.d/default.conf

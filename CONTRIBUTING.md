@@ -70,7 +70,7 @@ python backend.py
 
 Launch Frontend
 ```bash
-cd Frontend/nutrition-frontend
+cd Frontend
 npm install
 npm start
 ```
