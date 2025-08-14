@@ -11,7 +11,7 @@ param(
   [switch]$empty,
 
   [Parameter(ValueFromRemainingArguments=$true)]
-  [string[]]$Services
+  [string[]]$ComposeArgs
 )
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -28,7 +28,19 @@ $env:FRONTEND_PORT = 3000 + $offset
 
 Write-Host "Starting '$branch' with ports:`n  DB: $env:DB_PORT`n  Backend: $env:BACKEND_PORT`n  Frontend: $env:FRONTEND_PORT"
 
-docker compose -p $project up -d @Services
+# Try to use `docker compose watch` when available. If not supported,
+# fall back to `up --build` so images rebuild automatically.
+$watchAvailable = $false
+try {
+  docker compose watch --help >$null 2>&1
+  if ($LASTEXITCODE -eq 0) { $watchAvailable = $true }
+} catch { }
+
+if ($watchAvailable) {
+  docker compose -p $project watch --build @ComposeArgs
+} else {
+  docker compose -p $project up -d --build @ComposeArgs
+}
 
 if (-not $empty) {
   Write-Host "Waiting for database to be ready..."
