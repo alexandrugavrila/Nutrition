@@ -32,6 +32,14 @@ services:
         condition: service_healthy
     volumes:
       - ./Backend:/app
+    develop:
+      # Sync backend source code into the container and rebuild when dependencies change
+      watch:
+        - action: sync
+          path: ./Backend
+          target: /app
+      rebuild:
+        - Backend/requirements.txt
     command: flask --app backend.py --debug run --host=0.0.0.0
     networks:
       - nutrition-net
@@ -50,6 +58,14 @@ services:
       - /app/node_modules
     environment:
       CHOKIDAR_USEPOLLING: "true"
+    develop:
+      # Sync frontend source code and rebuild the image when package.json changes
+      watch:
+        - action: sync
+          path: ./Frontend
+          target: /app
+      rebuild:
+        - Frontend/package.json
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     networks:
