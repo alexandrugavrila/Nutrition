@@ -28,18 +28,32 @@ $env:FRONTEND_PORT = 3000 + $offset
 
 Write-Host "Starting '$branch' with ports:`n  DB: $env:DB_PORT`n  Backend: $env:BACKEND_PORT`n  Frontend: $env:FRONTEND_PORT"
 
-# Try to use `docker compose watch` when available. If not supported,
-# fall back to `up --build` so images rebuild automatically.
+# Try to use `docker compose watch` when available. Some versions of
+# Docker Compose support the command but not the `--build` flag. Check
+# for both so we don't pass an unsupported option.
 $watchAvailable = $false
+$watchSupportsBuild = $false
 try {
-  docker compose watch --help >$null 2>&1
-  if ($LASTEXITCODE -eq 0) { $watchAvailable = $true }
+  $help = docker compose watch --help 2>&1
+  if ($LASTEXITCODE -eq 0) {
+    $watchAvailable = $true
+    if ($help -match '--build') { $watchSupportsBuild = $true }
+  }
 } catch { }
 
 if ($watchAvailable) {
-  docker compose -p $project watch --build @ComposeArgs
+  if ($watchSupportsBuild) {
+    docker compose -p $project watch --build @ComposeArgs
+  } else {
+    docker compose -p $project watch @ComposeArgs
+  }
 } else {
   docker compose -p $project up -d --build @ComposeArgs
+}
+
+if ($LASTEXITCODE -ne 0) {
+  Write-Error "Docker Compose failed with exit code $LASTEXITCODE"
+  exit $LASTEXITCODE
 }
 
 if (-not $empty) {
