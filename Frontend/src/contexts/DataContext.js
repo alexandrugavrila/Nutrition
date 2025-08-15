@@ -1,5 +1,6 @@
 // DataContext.js
 import React, { createContext, useState, useEffect, useContext } from "react";
+import PropTypes from "prop-types";
 
 const DataContext = createContext();
 
@@ -120,4 +121,8 @@ export const DataProvider = ({ children }) => {
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
+};
+
+DataProvider.propTypes = {
+  children: PropTypes.node,
 };

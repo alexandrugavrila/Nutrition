@@ -1,3 +1,5 @@
+import React from "react";
+import PropTypes from "prop-types";
 import { Autocomplete, TextField, Chip } from "@mui/material";
 
 /**
@@ -22,7 +24,7 @@ function TagFilter({ tags = [], selectedTags = [], onChange = () => {}, label = 
       isOptionEqualToValue={(option, value) => option.id === value.id}
       renderTags={(value, getTagProps) =>
         value.map((option, index) => (
-          <Chip label={option.name} {...getTagProps({ index })} />
+          <Chip key={option.id} label={option.name} {...getTagProps({ index })} />
         ))
       }
       renderInput={(params) => (
@@ -33,3 +35,22 @@ function TagFilter({ tags = [], selectedTags = [], onChange = () => {}, label = 
 }
 
 export default TagFilter;
+
+TagFilter.propTypes = {
+  tags: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      name: PropTypes.string.isRequired,
+      group: PropTypes.string,
+    })
+  ),
+  selectedTags: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      name: PropTypes.string.isRequired,
+      group: PropTypes.string,
+    })
+  ),
+  onChange: PropTypes.func,
+  label: PropTypes.string,
+};

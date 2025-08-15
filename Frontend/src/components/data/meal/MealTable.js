@@ -1,6 +1,7 @@
 // MealTable.js
 
 import React, { useState } from "react";
+import PropTypes from "prop-types";
 import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, Collapse, Typography, TablePagination } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowRight } from "@mui/icons-material";
 
@@ -311,3 +312,8 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
   );
 }
 export default MealTable;
+
+MealTable.propTypes = {
+  onMealDoubleClick: PropTypes.func,
+  onMealCtrlClick: PropTypes.func,
+};

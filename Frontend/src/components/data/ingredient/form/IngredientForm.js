@@ -1,4 +1,5 @@
 import React, { useEffect, useCallback, useReducer } from "react";
+import PropTypes from "prop-types";
 import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Box } from "@mui/material";
 
 import { useData } from "../../../../contexts/DataContext";
@@ -223,3 +224,7 @@ function IngredientForm({ ingredientToEditData }) {
   );
 }
 export default IngredientForm;
+
+IngredientForm.propTypes = {
+  ingredientToEditData: PropTypes.object,
+};

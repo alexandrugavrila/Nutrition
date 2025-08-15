@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import PropTypes from "prop-types";
 import { TextField } from "@mui/material";
 
 function NameEdit({ ingredient, dispatch, needsClearForm }) {
@@ -25,3 +26,11 @@ function NameEdit({ ingredient, dispatch, needsClearForm }) {
 }
 
 export default NameEdit;
+
+NameEdit.propTypes = {
+  ingredient: PropTypes.shape({
+    name: PropTypes.string,
+  }).isRequired,
+  dispatch: PropTypes.func.isRequired,
+  needsClearForm: PropTypes.bool,
+};
