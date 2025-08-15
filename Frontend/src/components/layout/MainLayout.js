@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import PropTypes from "prop-types";
 import { styled, useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import MuiDrawer from "@mui/material/Drawer";
@@ -171,4 +172,8 @@ function MainLayout({ children }) {
 }
 
 export default MainLayout;
+
+MainLayout.propTypes = {
+  children: PropTypes.node,
+};
 

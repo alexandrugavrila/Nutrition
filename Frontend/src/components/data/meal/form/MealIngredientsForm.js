@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import PropTypes from "prop-types";
 import { Button, TextField, Select, MenuItem, Dialog, TableContainer, Table, TableHead, TableRow, TableCell, Paper, TableBody } from "@mui/material";
 
 import { useData } from "../../../../contexts/DataContext";
@@ -226,3 +227,18 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
 }
 
 export default MealIngredientsForm;
+
+MealIngredientsForm.propTypes = {
+  meal: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    ingredients: PropTypes.arrayOf(
+      PropTypes.shape({
+        ingredient_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+        unit_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+        amount: PropTypes.number,
+      })
+    ).isRequired,
+  }).isRequired,
+  dispatch: PropTypes.func.isRequired,
+  needsClearForm: PropTypes.bool,
+};

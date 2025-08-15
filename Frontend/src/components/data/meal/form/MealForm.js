@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useReducer } from "react";
-import { v4 as uuidv4 } from "uuid";
+import PropTypes from "prop-types";
 import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 
 import { useData } from "../../../../contexts/DataContext";
@@ -13,7 +13,7 @@ const intitalState = {
   isEditMode: false,
   mealToEdit: {
     name: "",
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     ingredients: [],
     tags: [],
   },
@@ -35,10 +35,11 @@ const reducer = (state, action) => {
       return { ...state, needsFillForm: action.payload };
     case "SET_CONFIRMATION_DIALOG":
       return { ...state, openConfirmationDialog: action.payload };
-    case "UPDATE_AMOUNT":
+    case "UPDATE_AMOUNT": {
       const updatedIngredients = [...state.mealToEdit.ingredients];
       updatedIngredients[action.payload.index].amount = action.payload.amount;
       return { ...state, mealToEdit: { ...state.mealToEdit, ingredients: updatedIngredients } };
+    }
     default:
       return state;
   }
@@ -53,7 +54,7 @@ function MealForm({ mealToEditData }) {
 
   const initializeEmptyMeal = () => ({
     name: "",
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     ingredients: [],
     tags: [],
   });
@@ -74,6 +75,15 @@ function MealForm({ mealToEditData }) {
 
   const handleMealDelete = () => {
     if (mealToEdit) {
+      fetch(`/api/meals/${mealToEdit.id}`, { method: "DELETE" })
+        .then((response) => {
+          if (!response.ok) {
+            console.error("Failed to remove meal");
+          }
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+        });
     }
     setMealsNeedsRefetch(true);
     handleClearForm();
@@ -163,3 +173,7 @@ function MealForm({ mealToEditData }) {
 }
 
 export default MealForm;
+
+MealForm.propTypes = {
+  mealToEditData: PropTypes.object,
+};

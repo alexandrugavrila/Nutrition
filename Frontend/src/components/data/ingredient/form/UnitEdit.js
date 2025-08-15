@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { v4 as uuidv4 } from "uuid";
+import PropTypes from "prop-types";
 import { Button, Select, MenuItem, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 
 function AddUnitDialog({ open, onClose, onAddUnit }) {
@@ -71,7 +71,7 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }) {
 
   const handleAddUnit = useCallback(
     (name, grams) => {
-      const tempId = uuidv4();
+      const tempId = crypto.randomUUID();
       const newUnit = {
         id: tempId,
         ingredient_id: ingredient.id,
@@ -119,3 +119,19 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }) {
 }
 
 export default UnitEdit;
+
+AddUnitDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onAddUnit: PropTypes.func.isRequired,
+};
+
+UnitEdit.propTypes = {
+  ingredient: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    units: PropTypes.array,
+    selectedUnitId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  }).isRequired,
+  dispatch: PropTypes.func.isRequired,
+  needsClearForm: PropTypes.bool,
+};

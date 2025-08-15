@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import PropTypes from "prop-types";
 
 import TagFilter from "../../../common/TagFilter";
 import { useData } from "../../../../contexts/DataContext";
@@ -45,3 +46,11 @@ function TagEdit({ ingredient, dispatch, needsClearForm }) {
 }
 
 export default TagEdit;
+
+TagEdit.propTypes = {
+  ingredient: PropTypes.shape({
+    tags: PropTypes.array,
+  }).isRequired,
+  dispatch: PropTypes.func.isRequired,
+  needsClearForm: PropTypes.bool,
+};

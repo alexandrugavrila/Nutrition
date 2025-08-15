@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import PropTypes from "prop-types";
 import { TextField } from "@mui/material";
 
 function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) {
@@ -147,3 +148,20 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
 }
 
 export default NutritionEdit;
+
+NutritionEdit.propTypes = {
+  ingredient: PropTypes.shape({
+    units: PropTypes.array,
+    selectedUnitId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    nutrition: PropTypes.shape({
+      calories: PropTypes.number,
+      protein: PropTypes.number,
+      carbohydrates: PropTypes.number,
+      fat: PropTypes.number,
+      fiber: PropTypes.number,
+    }),
+  }).isRequired,
+  dispatch: PropTypes.func.isRequired,
+  needsClearForm: PropTypes.bool,
+  needsFillForm: PropTypes.bool,
+};

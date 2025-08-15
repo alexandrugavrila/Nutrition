@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import PropTypes from "prop-types";
 
 import IngredientTable from "./IngredientTable";
 import IngredientForm from "./form/IngredientForm";
@@ -23,3 +24,7 @@ function IngredientData({ handleAddIngredientToPlan }) {
 }
 
 export default IngredientData;
+
+IngredientData.propTypes = {
+  handleAddIngredientToPlan: PropTypes.func.isRequired,
+};

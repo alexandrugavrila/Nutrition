@@ -1,6 +1,7 @@
 // IngredientTable.js
 
 import React, { useState } from "react";
+import PropTypes from "prop-types";
 import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, MenuItem, Select, TablePagination } from "@mui/material";
 
 import { useData } from "../../../contexts/DataContext";
@@ -164,3 +165,8 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
 }
 
 export default IngredientTable;
+
+IngredientTable.propTypes = {
+  onIngredientDoubleClick: PropTypes.func,
+  onIngredientCtrlClick: PropTypes.func,
+};
