@@ -172,8 +172,8 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
         label="Filter tags"
       />
 
-      <TableContainer component={Paper}>
-        <Table>
+      <TableContainer component={Paper} sx={{ width: "100%" }}>
+        <Table sx={{ tableLayout: "fixed", width: "100%" }}>
           <TableHead>
             <TableRow>
               <TableCell></TableCell>
@@ -215,7 +215,8 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
                         </Typography>
                         <Table
                           size="small"
-                          aria-label="purchases">
+                          aria-label="purchases"
+                          sx={{ tableLayout: "fixed", width: "100%" }}>
                           <TableHead>
                             <TableRow>
                               <TableCell>Name</TableCell>
