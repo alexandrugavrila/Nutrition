@@ -31,6 +31,16 @@ docker compose -p nutrition-$BRANCH down -v
 
 > 📝 The database is seeded automatically on first run using `Database/createtables.sql`, `addingredients.sql`, and `addnutrition.sql`.
 
+## 🐍 Virtual Environment
+
+All development should be run from inside the project's Python virtual environment. Use the helper script to create and activate it:
+
+```powershell
+pwsh ./scripts/activate-venv.ps1
+```
+
+The script creates the `.venv` directory if needed and installs required dependencies.
+
 ---
 
 ## 🗂️ Project Structure
@@ -59,7 +69,9 @@ Nutrition/
 ├── docker-compose.yml          # Orchestration config
 └── scripts/
     ├── compose-up-branch.ps1   # Start stack with branch-specific ports
-    └── print-tree.ps1          # Dev tooling
+    ├── compose-down-branch.ps1
+    ├── import-from-csv.sh
+    └── activate-venv.ps1       # Create and activate the venv
 ```
 
 ---
