@@ -38,17 +38,47 @@ Multiple branches can run in parallel without conflict.
 * Backend API: [http://localhost:\<BACKEND\_PORT>](http://localhost:5000)
 * PostgreSQL: `localhost:<DB_PORT>`
 
+## 🐍 Virtual Environment
+
+All development should be run from inside the project's Python virtual environment. Use the helper script to create and activate it:
+
+```powershell
+pwsh ./scripts/activate-venv.ps1
+```
+
+The script creates the `.venv` directory if needed and installs required dependencies.
+
 ---
 
 ## 🗂️ Project Structure
 
 ```
 Nutrition/
-├── Backend/                  # Flask app (routes, schemas, models)
-├── Frontend/nutrition-frontend/ # React app
-├── Database/                 # SQL seed scripts
-├── docker-compose.yml        # Service orchestration
-└── scripts/                  # Dev helper scripts
+├── Backend/                     # Flask app
+│   ├── db_models/              # SQLAlchemy ORM models
+│   ├── schemas/                # Marshmallow schemas
+│   ├── routes/                 # Ingredient and meal routes
+│   ├── backend.py              # Main Flask entrypoint
+│   ├── db.py                   # SQLAlchemy setup
+│   └── Dockerfile              # Backend build config
+│
+├── Frontend/
+│   └── nutrition-frontend/     # React app
+│       ├── src/                # App components, context, etc.
+│       ├── Dockerfile          # Frontend build config
+│       └── nginx.conf          # Nginx static serving config
+│
+├── Database/                   # SQL seed scripts
+│   ├── createtables.sql
+│   ├── addingredients.sql
+│   └── addnutrition.sql
+│
+├── docker-compose.yml          # Orchestration config
+└── scripts/
+    ├── compose-up-branch.ps1   # Start stack with branch-specific ports
+    ├── compose-down-branch.ps1
+    ├── import-from-csv.sh
+    └── activate-venv.ps1       # Create and activate the venv
 ```
 
 ---

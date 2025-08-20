@@ -5,6 +5,14 @@ The [README](README.md) has the high-level overview and quick start.
 
 ---
 
+## Virtual environment
+
+All development tasks should be run from inside the project's Python virtual environment. The helper script will create and activate it and install dependencies as needed:
+
+```powershell
+pwsh ./scripts/activate-venv.ps1
+```
+
 ## 🔀 Branching
 
 * Use the format:
@@ -133,11 +141,10 @@ You can also run backend/frontend directly on your machine.
 
 ### Backend (Flask)
 
-```bash
-# Create venv
-python -m venv .venv
-.\\.venv\\Scripts\\Activate
-pip install -r Backend/requirements.txt
+Virtual Environment Setup
+```powershell
+pwsh ./scripts/activate-venv.ps1
+```
 
 # Run backend
 python Backend/backend.py
