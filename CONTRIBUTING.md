@@ -1,13 +1,9 @@
-# Contributing
+# 🤝 Contributing Guide
 
-## Branch naming convention
-type/issue-in-kabob-case
+This guide covers **developer setup, branch conventions, database management, and local dev workflows**.
+The [README](README.md) has the high-level overview and quick start.
 
-Types:
-  Feature
-  Refactor
-  Bugfix
-  Housekeeping
+---
 
 ## Virtual environment
 
@@ -17,101 +13,179 @@ All development tasks should be run from inside the project's Python virtual env
 pwsh ./scripts/activate-venv.ps1
 ```
 
-## Rebuilding Containers
+## 🔀 Branching
 
-To manually rebuild containers after a code change
+* Use the format:
+
+  ```
+  [type]/issue-in-kabob-case
+  ```
+* Types: `feature`, `refactor`, `bugfix`, `housekeeping`
+
+---
+
+## 🐳 Docker Workflows
+
+### Rebuilding containers
+
+Always use the helper script for your branch (not raw `docker compose`):
+
+```pwsh
+pwsh ./scripts/compose-up-branch.ps1 -test        # or -production / -empty
+```
+
+This ensures:
+
+* Correct **per-branch project name**
+* Correct **branch-specific ports**
+* Optional CSV import (`-production` / `-test`), or skip with `-empty`
+
+---
+
+### Stopping containers
+
+Clean up branch containers safely with:
+
+```pwsh
+pwsh ./scripts/compose-down-branch.ps1
+```
+
+Options:
+
+* `-Force` → skip confirmation
+* `-PruneImages` → also remove built images
+* Volumes are removed by default (`-v`) so each branch starts fresh
+
+---
+
+## ⚙️ Port Mapping
+
+Each branch gets **unique host ports**, calculated as:
+
+* Base ports → Frontend `3000`, Backend `5000`, DB `5432`
+* Plus branch-specific offset (hash of branch name)
+
+The startup script prints exact values.
+
+### Example
+
+| Branch      | Frontend | Backend | DB   |
+| ----------- | -------- | ------- | ---- |
+| `main`      | 3000     | 5000    | 5432 |
+| `feature/x` | 3004     | 5006    | 5438 |
+| `bugfix/y`  | 3012     | 5012    | 5444 |
+
+In Docker Desktop, ports show as `HOST:CONTAINER` (e.g. `3099:3000`).
+Click the **host port** (3099) to open the frontend in your browser.
+
+---
+
+## 🗄️ Database Management
+
+### Seeding and imports
+
+On a fresh DB volume, Postgres runs the SQL files in `Database/`:
+
+* `createtables.sql`
+* `addingredients.sql`
+* `addnutrition.sql`
+
+In addition, the startup script may run:
+
+* `import_from_csv.py --production` (with `-production`)
+* `import_from_csv.py --test` (with `-test`)
+* Skips import with `-empty`
+
+---
+
+### Resetting from scratch
+
+Drop and recreate tables manually:
 
 ```bash
-docker-compose down -v
-docker-compose up --build
+python ./Database/reset_database.py
 ```
 
-Data will persist as long as you do not also delete the Docker volume
-
-## Database management
-
-The `import_from_csv.py` script will remove all existing data from the database
-and import the specified data. Use the wrapper script so it targets the
-containers for your current branch.
-
-To import production data
+Options:
 
 ```bash
-./scripts/import-from-csv.sh -production
+python ./Database/reset_database.py --test
 ```
 
-To import test data
+---
 
-```bash
-./scripts/import-from-csv.sh -test
-```
+### DBeaver setup
 
-To drop and recreate the tables before importing:
+[DBeaver](https://dbeaver.io/download/) is a free GUI for PostgreSQL.
 
-```python
-python .\\Database\\reset_database.py
-```
+1. **Install** Community Edition
+2. **New Connection** → PostgreSQL
+3. Enter:
 
-To reset with test data:
+| Field    | Value            |
+| -------- | ---------------- |
+| Host     | `localhost`      |
+| Port     | `<DB_PORT>`      |
+| Database | `nutrition`      |
+| Username | `nutrition_user` |
+| Password | `nutrition_pass` |
 
-```python
-python .\\Database\\reset_database.py --test
-```
+👉 `<DB_PORT>` = base 5432 + branch offset (printed on startup).
+In Docker Desktop, shown as `PORT:5432`.
 
-## Local Development (non-Docker)
+---
 
-**Backend:**
+## 💻 Local Development (Non-Docker)
+
+You can also run backend/frontend directly on your machine.
+
+### Backend (Flask)
 
 Virtual Environment Setup
 ```powershell
 pwsh ./scripts/activate-venv.ps1
 ```
 
-Launch Backend
-```bash
-python backend.py
+# Run backend
+python Backend/backend.py
 ```
 
-**Frontend:**
+### Frontend (React)
 
-Launch Frontend
 ```bash
 cd Frontend/nutrition-frontend
 npm install
 npm start
 ```
 
-## Database access
+---
 
-### 🛠️ Database Access with DBeaver
+## 🧩 Project Structure (Developer View)
 
-DBeaver is a free and powerful GUI for inspecting your PostgreSQL database. You can use it to explore tables, run queries, and debug data directly.
+```
+Backend/                  # Flask app
+  ├── db_models/          # SQLAlchemy ORM models
+  ├── schemas/            # Marshmallow schemas
+  ├── routes/             # API routes
+  ├── backend.py          # Entrypoint
+  └── db.py               # SQLAlchemy setup
 
-#### 🔽 Step 1: Install DBeaver
+Frontend/nutrition-frontend/
+  ├── src/                # React components, context
+  ├── Dockerfile          # Frontend build config
+  └── nginx.conf          # Static serving config
 
-* Download and install the Community Edition from:
-  👉 [https://dbeaver.io/download/](https://dbeaver.io/download/)
+Database/                 # SQL + CSV seeding
+scripts/                  # Helper scripts (compose up/down, tooling)
+```
 
-#### ⚙️ Step 2: Connect to the Dockerized Database
+---
 
-1. **Open DBeaver** and click `Database → New Database Connection`
-2. Choose **PostgreSQL** and click **Next**
-3. Enter the following connection info:
+## 📚 Reference
 
-| Field        | Value            |
-| ------------ | ---------------- |
-| **Host**     | `localhost`      |
-| **Port**     | `5432`           |
-| **Database** | `nutrition`      |
-| **Username** | `nutrition_user` |
-| **Password** | `nutrition_pass` |
+* **Frontend ports** → base `3000` + offset
+* **Backend ports** → base `5000` + offset
+* **DB ports** → base `5432` + offset
+* **Credentials** → `nutrition_user` / `nutrition_pass` / `nutrition`
 
-4. Click **Test Connection**.
-   If prompted to download the PostgreSQL driver, allow it.
-5. Click **Finish** to connect.
-
-> 📝 If the connection fails, make sure the Docker containers are running with:
->
-> ```bash
-> docker-compose up
-> ```
+---
