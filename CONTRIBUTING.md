@@ -9,6 +9,14 @@ Types:
   Bugfix
   Housekeeping
 
+## Virtual environment
+
+All development tasks should be run from inside the project's Python virtual environment. The helper script will create and activate it and install dependencies as needed:
+
+```powershell
+pwsh ./scripts/activate-venv.ps1
+```
+
 ## Rebuilding Containers
 
 To manually rebuild containers after a code change
@@ -55,10 +63,8 @@ python .\\Database\\reset_database.py --test
 **Backend:**
 
 Virtual Environment Setup
-```bash
-python -m venv .venv
-.\\.venv\\Scripts\\Activate
-pip install -r Backend/requirements.txt
+```powershell
+pwsh ./scripts/activate-venv.ps1
 ```
 
 Launch Backend
