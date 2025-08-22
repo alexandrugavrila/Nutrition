@@ -84,10 +84,20 @@ function IngredientForm({ ingredientToEditData }) {
   }, []);
 
   const handleIngredientAction = () => {
+    // Prepare ingredient for API by removing temporary UUID ids
     const toDatabaseIngredient = {
       ...ingredientToEdit,
-      units: ingredientToEdit.units.filter((unit) => unit.name !== "1g"), // Remove the 1g unit from ingredientToEdit
+      units: ingredientToEdit.units
+        .filter((unit) => unit.name !== "1g") // Remove the 1g unit from ingredientToEdit
+        .map(({ id, ...unit }) =>
+          typeof id === "number" ? { id, ...unit } : unit
+        ),
     };
+
+    // Remove ingredient id if it's not a number (i.e. UUID)
+    if (typeof toDatabaseIngredient.id !== "number") {
+      delete toDatabaseIngredient.id;
+    }
 
     if (isEditMode) {
       const url = `/api/ingredients/${toDatabaseIngredient.id}`;
