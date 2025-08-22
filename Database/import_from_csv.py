@@ -1,19 +1,14 @@
-"""Import CSV files into the PostgreSQL nutrition database.
-
-The script determines table dependency order using foreign key relationships,
-clears existing data, and loads table contents from CSV files located in either
-the ``production_data`` or ``test_data`` directory.
-"""
+"""Import CSV data into the database using the application's models."""
 
 import os
 import argparse
 import csv
 from collections import defaultdict, deque
 
-from sqlalchemy import Table, create_engine, text
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from Backend.db_models import (
+from Backend.models import (
     Ingredient,
     IngredientUnit,
     Nutrition,
@@ -21,8 +16,8 @@ from Backend.db_models import (
     MealIngredient,
     PossibleIngredientTag,
     PossibleMealTag,
-    ingredient_tags,
-    meal_tags,
+    IngredientTagLink,
+    MealTagLink,
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -34,6 +29,7 @@ DATABASE_URL = os.environ.get(
 )
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
+
 
 def get_table_order(session):
     result = session.execute(
@@ -98,11 +94,11 @@ MODEL_MAP = {
     "ingredient_units": IngredientUnit,
     "nutrition": Nutrition,
     "possible_ingredient_tags": PossibleIngredientTag,
-    "ingredient_tags": ingredient_tags,
+    "ingredient_tags": IngredientTagLink,
     "meals": Meal,
     "meal_ingredients": MealIngredient,
     "possible_meal_tags": PossibleMealTag,
-    "meal_tags": meal_tags,
+    "meal_tags": MealTagLink,
 }
 
 
@@ -118,13 +114,11 @@ def import_csv(session, folder, ordered_tables):
                     print(f"No model found for {table}")
                     continue
                 rows = list(reader)
-                if isinstance(model, Table):
-                    session.execute(model.insert(), rows)
-                else:
-                    objects = [model(**row) for row in rows]
-                    session.add_all(objects)
+                objects = [model(**row) for row in rows]
+                session.add_all(objects)
         else:
             print(f"No CSV found for {table}")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Import CSVs into PostgreSQL.")
@@ -157,6 +151,7 @@ def main():
 
     except Exception as e:
         print(f"Error: {e}")
+
 
 if __name__ == "__main__":
     main()

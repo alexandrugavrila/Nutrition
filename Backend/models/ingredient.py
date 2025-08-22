@@ -1,24 +1,26 @@
 from __future__ import annotations
 
-from typing import Annotated, List, Optional
+from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, String
 
-from .ingredient_unit import IngredientUnitModel
-from .nutrition import NutritionModel
-from .possible_ingredient_tag import PossibleIngredientTagModel
-
-PositiveInt = Annotated[int, Field(gt=0)]
-Name100 = Annotated[str, Field(min_length=1, max_length=100)]
+from .ingredient_unit import IngredientUnit
+from .nutrition import Nutrition
+from .possible_ingredient_tag import PossibleIngredientTag
+from .ingredient_tag import IngredientTagLink
 
 
-class IngredientModel(BaseModel):
+class Ingredient(SQLModel, table=True):
     """Core ingredient information."""
 
-    id: Optional[PositiveInt] = None
-    name: Name100
-    nutrition: Optional[NutritionModel] = None
-    units: List[IngredientUnitModel] = Field(default_factory=list)
-    tags: List[PossibleIngredientTagModel] = Field(default_factory=list)
+    __tablename__ = "ingredients"
 
-    model_config = ConfigDict(from_attributes=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(sa_column=Column(String(100), unique=True, nullable=False))
+
+    nutrition: Optional[Nutrition] = Relationship(back_populates="ingredient")
+    units: List[IngredientUnit] = Relationship(back_populates="ingredient")
+    tags: List[PossibleIngredientTag] = Relationship(
+        back_populates="ingredients", link_model=IngredientTagLink
+    )

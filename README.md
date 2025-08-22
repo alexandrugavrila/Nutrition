@@ -131,7 +131,7 @@ Commit the generated file whenever API models change.
 ```
 Nutrition/
 ├── Backend/                     # FastAPI app
-│   ├── db_models/              # SQLAlchemy ORM models
+│   ├── models/              # SQLAlchemy ORM models
 │   ├── models/                 # Pydantic models
 │   ├── routes/                 # Ingredient and meal routes
 │   ├── backend.py              # FastAPI entrypoint
@@ -164,7 +164,7 @@ Nutrition/
 * **Backend**
 
   * API routes in `Backend/routes/`
-  * SQLAlchemy models in `db_models/`, validated by Marshmallow `schemas/`
+  * SQLAlchemy models in `models/`, validated by Marshmallow `schemas/`
 
 * **Frontend**
 

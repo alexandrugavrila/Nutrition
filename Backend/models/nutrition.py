@@ -1,23 +1,22 @@
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import Annotated, Optional
+from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
-
-PositiveInt = Annotated[int, Field(gt=0)]
-Decimal4 = Annotated[Decimal, Field(ge=0, max_digits=10, decimal_places=4)]
+from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, Numeric
 
 
-class NutritionModel(BaseModel):
+class Nutrition(SQLModel, table=True):
     """Nutritional information for a single ingredient."""
 
-    id: Optional[PositiveInt] = None
-    ingredient_id: Optional[PositiveInt] = None
-    calories: Decimal4
-    fat: Decimal4
-    carbohydrates: Decimal4
-    protein: Decimal4
-    fiber: Decimal4
+    __tablename__ = "nutrition"
 
-    model_config = ConfigDict(from_attributes=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ingredient_id: int = Field(foreign_key="ingredients.id")
+    calories: float = Field(sa_column=Column(Numeric(10, 4), nullable=False))
+    fat: float = Field(sa_column=Column(Numeric(10, 4), nullable=False))
+    carbohydrates: float = Field(sa_column=Column(Numeric(10, 4), nullable=False))
+    protein: float = Field(sa_column=Column(Numeric(10, 4), nullable=False))
+    fiber: float = Field(sa_column=Column(Numeric(10, 4), nullable=False))
+
+    ingredient: Optional["Ingredient"] = Relationship(back_populates="nutrition")

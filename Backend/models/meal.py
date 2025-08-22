@@ -1,22 +1,24 @@
 from __future__ import annotations
 
-from typing import Annotated, List, Optional
+from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, String
 
-from .meal_ingredient import MealIngredientModel
-from .possible_meal_tag import PossibleMealTagModel
-
-PositiveInt = Annotated[int, Field(gt=0)]
-Name100 = Annotated[str, Field(min_length=1, max_length=100)]
+from .meal_ingredient import MealIngredient
+from .possible_meal_tag import PossibleMealTag
+from .meal_tag import MealTagLink
 
 
-class MealModel(BaseModel):
+class Meal(SQLModel, table=True):
     """Meal with associated ingredients and tags."""
 
-    id: Optional[PositiveInt] = None
-    name: Name100
-    ingredients: List[MealIngredientModel] = Field(default_factory=list)
-    tags: List[PossibleMealTagModel] = Field(default_factory=list)
+    __tablename__ = "meals"
 
-    model_config = ConfigDict(from_attributes=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(sa_column=Column(String(100), unique=True, nullable=False))
+
+    ingredients: List[MealIngredient] = Relationship(back_populates="meal")
+    tags: List[PossibleMealTag] = Relationship(
+        back_populates="meals", link_model=MealTagLink
+    )

@@ -159,7 +159,7 @@ npm start
 
 ```
 Backend/                  # FastAPI app
-  ├── db_models/          # SQLAlchemy ORM models
+  ├── models/          # SQLAlchemy ORM models
   ├── models/             # Pydantic models
   ├── routes/             # API routes
   ├── backend.py          # Entrypoint

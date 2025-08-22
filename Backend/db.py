@@ -1,10 +1,10 @@
-"""SQLAlchemy database configuration."""
+"""Database configuration using SQLModel."""
 
 import os
 from typing import Generator
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlmodel import SQLModel, Session, create_engine
+from sqlalchemy.orm import sessionmaker
 
 # Configure the database connection string. Historically the application looked
 # for ``SQLALCHEMY_DATABASE_URI``, but docker-compose provides the URL via the
@@ -22,13 +22,13 @@ DATABASE_URL = (
 # application. ``autocommit`` and ``autoflush`` are disabled so changes are only
 # persisted when explicitly committed.
 engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=Session)
 
-# Base class for declarative models.
-Base = declarative_base()
+# Alias ``SQLModel`` as ``Base`` to mimic the previous declarative base.
+Base = SQLModel
 
 
-def get_db() -> Generator:
+def get_db() -> Generator[Session, None, None]:
     """Provide a transactional scope around a series of operations."""
     db = SessionLocal()
     try:

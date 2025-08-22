@@ -1,108 +1,70 @@
-"""Meal API routes implemented with FastAPI."""
-
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlmodel import Session, select
 
 from db import get_db
-from db_models.meal import Meal as db_Meal
-from db_models.meal_ingredient import MealIngredient as db_MealIngredient
-from db_models.possible_meal_tag import (
-    PossibleMealTag as db_PossibleMealTag,
-)
-from models import MealModel, PossibleMealTagModel
+from models import Meal, PossibleMealTag
 
 router = APIRouter(prefix="/meals", tags=["meals"])
 
 
-@router.get("", response_model=List[MealModel])
-def get_all_meals(db: Session = Depends(get_db)) -> List[MealModel]:
+@router.get("", response_model=List[Meal])
+def get_all_meals(db: Session = Depends(get_db)) -> List[Meal]:
     """Return all meals."""
-    meals = db.query(db_Meal).all()
-    return [MealModel.model_validate(m) for m in meals]
+    return db.exec(select(Meal)).all()
 
 
-@router.get("/{meal_id}", response_model=MealModel)
-def get_meal(meal_id: int, db: Session = Depends(get_db)) -> MealModel:
+@router.get("/{meal_id}", response_model=Meal)
+def get_meal(meal_id: int, db: Session = Depends(get_db)) -> Meal:
     """Retrieve a single meal by ID."""
-    meal = db.get(db_Meal, meal_id)
+    meal = db.get(Meal, meal_id)
     if not meal:
         raise HTTPException(status_code=404, detail="Meal not found")
-    return MealModel.model_validate(meal)
+    return meal
 
 
-@router.get("/possible_tags", response_model=List[PossibleMealTagModel])
-def get_possible_meal_tags(db: Session = Depends(get_db)) -> List[PossibleMealTagModel]:
+@router.get("/possible_tags", response_model=List[PossibleMealTag])
+def get_possible_meal_tags(db: Session = Depends(get_db)) -> List[PossibleMealTag]:
     """Return all possible meal tags."""
-    tags = db.query(db_PossibleMealTag).all()
-    return [PossibleMealTagModel.model_validate(t) for t in tags]
+    return db.exec(select(PossibleMealTag)).all()
 
 
-@router.post("", response_model=MealModel, status_code=201)
-def add_meal(meal_data: MealModel, db: Session = Depends(get_db)) -> MealModel:
+@router.post("", response_model=Meal, status_code=201)
+def add_meal(meal: Meal, db: Session = Depends(get_db)) -> Meal:
     """Create a new meal."""
-    meal = db_Meal(name=meal_data.name)
-
-    for mi in meal_data.ingredients:
-        meal.ingredients.append(
-            db_MealIngredient(
-                ingredient_id=mi.ingredient_id,
-                unit_id=mi.unit_id,
-                unit_quantity=mi.unit_quantity,
-            )
-        )
-
-    for tag in meal_data.tags:
-        if tag.id:
-            db_tag = db.get(db_PossibleMealTag, tag.id)
-            if db_tag:
-                meal.tags.append(db_tag)
-
+    if meal.tags:
+        meal.tags = [db.get(PossibleMealTag, t.id) for t in meal.tags if t.id]
     db.add(meal)
     db.commit()
     db.refresh(meal)
+    return meal
 
-    return MealModel.model_validate(meal)
 
-
-@router.put("/{meal_id}", response_model=MealModel)
-def update_meal(
-    meal_id: int, meal_data: MealModel, db: Session = Depends(get_db)
-) -> MealModel:
+@router.put("/{meal_id}", response_model=Meal)
+def update_meal(meal_id: int, meal_data: Meal, db: Session = Depends(get_db)) -> Meal:
     """Update an existing meal."""
-    meal = db.get(db_Meal, meal_id)
+    meal = db.get(Meal, meal_id)
     if not meal:
         raise HTTPException(status_code=404, detail="Meal not found")
 
     meal.name = meal_data.name
+    meal.ingredients = meal_data.ingredients
+    if meal_data.tags:
+        meal.tags = [db.get(PossibleMealTag, t.id) for t in meal_data.tags if t.id]
+    else:
+        meal.tags = []
 
-    meal.ingredients = []
-    for mi in meal_data.ingredients:
-        meal.ingredients.append(
-            db_MealIngredient(
-                ingredient_id=mi.ingredient_id,
-                unit_id=mi.unit_id,
-                unit_quantity=mi.unit_quantity,
-            )
-        )
-
-    meal.tags = []
-    for tag in meal_data.tags:
-        if tag.id:
-            db_tag = db.get(db_PossibleMealTag, tag.id)
-            if db_tag:
-                meal.tags.append(db_tag)
-
+    db.add(meal)
     db.commit()
-
-    return MealModel.model_validate(meal)
+    db.refresh(meal)
+    return meal
 
 
 @router.delete("/{meal_id}")
 def delete_meal(meal_id: int, db: Session = Depends(get_db)) -> dict:
     """Delete a meal."""
-    meal = db.get(db_Meal, meal_id)
+    meal = db.get(Meal, meal_id)
     if not meal:
         raise HTTPException(status_code=404, detail="Meal not found")
     db.delete(meal)
@@ -111,4 +73,3 @@ def delete_meal(meal_id: int, db: Session = Depends(get_db)) -> dict:
 
 
 __all__ = ["router"]
-
