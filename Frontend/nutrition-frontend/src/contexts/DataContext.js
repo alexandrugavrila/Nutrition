@@ -75,7 +75,26 @@ export const DataProvider = ({ children }) => {
 
   const fetchMeals = () => {
     const url = "/api/meals";
-    fetchData(url, setMeals, setFetching, () => setMealsNeedsRefetch(true));
+    const processData = (data) =>
+      data.map((meal) => ({
+        ...meal,
+        ingredients: meal.ingredients
+          ? meal.ingredients.map((mi) => ({
+              ...mi,
+              unit_quantity: mi.unit_quantity
+                ? parseFloat(mi.unit_quantity)
+                : 0,
+            }))
+          : [],
+      }));
+
+    fetchData(
+      url,
+      setMeals,
+      setFetching,
+      () => setMealsNeedsRefetch(true),
+      processData
+    );
   };
 
   const fetchPossibleMealTags = () => {
