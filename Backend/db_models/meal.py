@@ -2,7 +2,7 @@
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
 
-from db import Base
+from ..db import Base
 from .meal_tag import meal_tags
 
 
