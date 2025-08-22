@@ -1,45 +1,46 @@
-from flask import Blueprint, request, jsonify
-from pydantic import ValidationError
+"""Meal API routes implemented with FastAPI."""
+
+from typing import List
+
+from fastapi import APIRouter, HTTPException
 
 from db import db
 from db_models.meal import Meal as db_Meal
 from db_models.meal_ingredient import MealIngredient as db_MealIngredient
-from db_models.possible_meal_tag import PossibleMealTag as db_PossibleMealTag
+from db_models.possible_meal_tag import (
+    PossibleMealTag as db_PossibleMealTag,
+)
 from models import MealModel, PossibleMealTagModel
 
-meal_blueprint = Blueprint('meal', __name__)
+router = APIRouter()
 
 
-@meal_blueprint.route('/meals', methods=['GET'])
-def get_all_meals():
+@router.get("/meals", response_model=List[MealModel])
+def get_all_meals() -> List[MealModel]:
+    """Return all meals."""
     meals = db_Meal.query.all()
-    data = [MealModel.model_validate(m).model_dump() for m in meals]
-    return jsonify(data)
+    return [MealModel.model_validate(m) for m in meals]
 
 
-@meal_blueprint.route('/meals/<int:meal_id>', methods=['GET'])
-def get_meal(meal_id):
+@router.get("/meals/{meal_id}", response_model=MealModel)
+def get_meal(meal_id: int) -> MealModel:
+    """Retrieve a single meal by ID."""
     meal = db_Meal.query.get(meal_id)
     if not meal:
-        return jsonify({'error': 'Meal not found'}), 404
-    data = MealModel.model_validate(meal).model_dump()
-    return jsonify(data)
+        raise HTTPException(status_code=404, detail="Meal not found")
+    return MealModel.model_validate(meal)
 
 
-@meal_blueprint.route('/meals/possible_tags', methods=['GET'])
-def get_possible_meal_tags():
+@router.get("/meals/possible_tags", response_model=List[PossibleMealTagModel])
+def get_possible_meal_tags() -> List[PossibleMealTagModel]:
+    """Return all possible meal tags."""
     tags = db_PossibleMealTag.query.all()
-    data = [PossibleMealTagModel.model_validate(t).model_dump() for t in tags]
-    return jsonify(data)
+    return [PossibleMealTagModel.model_validate(t) for t in tags]
 
 
-@meal_blueprint.route('/meals', methods=['POST'])
-def add_meal():
-    try:
-        meal_data = MealModel.model_validate(request.json)
-    except ValidationError as e:
-        return jsonify({'error': e.errors()}), 400
-
+@router.post("/meals", response_model=MealModel, status_code=201)
+def add_meal(meal_data: MealModel) -> MealModel:
+    """Create a new meal."""
     meal = db_Meal(name=meal_data.name)
 
     for mi in meal_data.ingredients:
@@ -60,20 +61,15 @@ def add_meal():
     db.session.add(meal)
     db.session.commit()
 
-    data = MealModel.model_validate(meal).model_dump()
-    return jsonify(data), 201
+    return MealModel.model_validate(meal)
 
 
-@meal_blueprint.route('/meals/<int:meal_id>', methods=['PUT'])
-def update_meal(meal_id):
+@router.put("/meals/{meal_id}", response_model=MealModel)
+def update_meal(meal_id: int, meal_data: MealModel) -> MealModel:
+    """Update an existing meal."""
     meal = db_Meal.query.get(meal_id)
     if not meal:
-        return jsonify({'error': 'Meal not found'}), 404
-
-    try:
-        meal_data = MealModel.model_validate(request.json)
-    except ValidationError as e:
-        return jsonify({'error': e.errors()}), 400
+        raise HTTPException(status_code=404, detail="Meal not found")
 
     meal.name = meal_data.name
 
@@ -96,16 +92,19 @@ def update_meal(meal_id):
 
     db.session.commit()
 
-    data = MealModel.model_validate(meal).model_dump()
-    return jsonify(data), 200
+    return MealModel.model_validate(meal)
 
 
-@meal_blueprint.route('/meals/<int:meal_id>', methods=['DELETE'])
-def delete_meal(meal_id):
+@router.delete("/meals/{meal_id}")
+def delete_meal(meal_id: int) -> dict:
+    """Delete a meal."""
     meal = db_Meal.query.get(meal_id)
     if not meal:
-        return jsonify({'error': 'Meal not found'}), 404
+        raise HTTPException(status_code=404, detail="Meal not found")
     db.session.delete(meal)
     db.session.commit()
-    return jsonify({'message': 'Meal deleted successfully'}), 200
+    return {"message": "Meal deleted successfully"}
+
+
+__all__ = ["router"]
 

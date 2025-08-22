@@ -1,8 +1,8 @@
 Flask==3.1.1
-Flask-Cors==6.0.1
 Flask-SQLAlchemy==3.1.1
 psycopg2-binary==2.9.10
 marshmallow==3.21.2
 marshmallow-sqlalchemy==0.29.0
-pydantic==2.7.1
-
+pydantic==2.11.7
+fastapi==0.111.0
+uvicorn==0.29.0
