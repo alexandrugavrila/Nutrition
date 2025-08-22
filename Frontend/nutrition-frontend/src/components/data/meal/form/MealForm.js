@@ -36,9 +36,9 @@ const reducer = (state, action) => {
       return { ...state, needsFillForm: action.payload };
     case "SET_CONFIRMATION_DIALOG":
       return { ...state, openConfirmationDialog: action.payload };
-    case "UPDATE_AMOUNT":
+    case "UPDATE_UNIT_QUANTITY":
       const updatedIngredients = [...state.mealToEdit.ingredients];
-      updatedIngredients[action.payload.index].amount = action.payload.amount;
+      updatedIngredients[action.payload.index].unit_quantity = action.payload.unit_quantity;
       return { ...state, mealToEdit: { ...state.mealToEdit, ingredients: updatedIngredients } };
     default:
       return state;
@@ -72,10 +72,10 @@ function MealForm({ mealToEditData }) {
 
     const toDatabaseMeal = {
       name: mealToEdit.name,
-      ingredients: mealToEdit.ingredients.map(({ ingredient_id, unit_id, amount }) => ({
+      ingredients: mealToEdit.ingredients.map(({ ingredient_id, unit_id, unit_quantity }) => ({
         ingredient_id,
         unit_id,
-        unit_quantity: amount,
+        unit_quantity,
       })),
       tags: mealToEdit.tags
         .filter((tag) => typeof tag.id === "number")
