@@ -1,9 +1,12 @@
 # db_models/meal_tag.py
-from db import db
+from sqlalchemy import Column, ForeignKey, Integer, Table
+
+from db import Base
 
 
-meal_tags = db.Table(
-    'meal_tags',
-    db.Column('meal_id', db.Integer, db.ForeignKey('meals.id'), primary_key=True),
-    db.Column('tag_id', db.Integer, db.ForeignKey('possible_meal_tags.id'), primary_key=True),
+meal_tags = Table(
+    "meal_tags",
+    Base.metadata,
+    Column("meal_id", Integer, ForeignKey("meals.id"), primary_key=True),
+    Column("tag_id", Integer, ForeignKey("possible_meal_tags.id"), primary_key=True),
 )

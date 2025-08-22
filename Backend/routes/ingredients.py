@@ -2,9 +2,10 @@
 
 from typing import List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
-from db import db
+from db import get_db
 from db_models.ingredient import Ingredient as db_Ingredient
 from db_models.nutrition import Nutrition as db_Nutrition
 from db_models.ingredient_unit import IngredientUnit as db_IngredientUnit
@@ -17,23 +18,25 @@ router = APIRouter()
 
 
 @router.get("/ingredients", response_model=List[IngredientModel])
-def get_all_ingredients() -> List[IngredientModel]:
+def get_all_ingredients(db: Session = Depends(get_db)) -> List[IngredientModel]:
     """Return all ingredients."""
-    ingredients = db_Ingredient.query.all()
+    ingredients = db.query(db_Ingredient).all()
     return [IngredientModel.model_validate(i) for i in ingredients]
 
 
 @router.get("/ingredients/{ingredient_id}", response_model=IngredientModel)
-def get_ingredient(ingredient_id: int) -> IngredientModel:
+def get_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> IngredientModel:
     """Retrieve a single ingredient by ID."""
-    ingredient = db_Ingredient.query.get(ingredient_id)
+    ingredient = db.get(db_Ingredient, ingredient_id)
     if not ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
     return IngredientModel.model_validate(ingredient)
 
 
 @router.post("/ingredients", response_model=IngredientModel, status_code=201)
-def add_ingredient(ingredient_data: IngredientModel) -> IngredientModel:
+def add_ingredient(
+    ingredient_data: IngredientModel, db: Session = Depends(get_db)
+) -> IngredientModel:
     """Create a new ingredient."""
     ingredient = db_Ingredient(name=ingredient_data.name)
 
@@ -52,20 +55,25 @@ def add_ingredient(ingredient_data: IngredientModel) -> IngredientModel:
 
     for tag in ingredient_data.tags:
         if tag.id:
-            db_tag = db_PossibleIngredientTag.query.get(tag.id)
+            db_tag = db.get(db_PossibleIngredientTag, tag.id)
             if db_tag:
                 ingredient.tags.append(db_tag)
 
-    db.session.add(ingredient)
-    db.session.commit()
+    db.add(ingredient)
+    db.commit()
+    db.refresh(ingredient)
 
     return IngredientModel.model_validate(ingredient)
 
 
 @router.put("/ingredients/{ingredient_id}", response_model=IngredientModel)
-def update_ingredient(ingredient_id: int, ingredient_data: IngredientModel) -> IngredientModel:
+def update_ingredient(
+    ingredient_id: int,
+    ingredient_data: IngredientModel,
+    db: Session = Depends(get_db),
+) -> IngredientModel:
     """Update an existing ingredient."""
-    ingredient = db_Ingredient.query.get(ingredient_id)
+    ingredient = db.get(db_Ingredient, ingredient_id)
     if not ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
 
@@ -95,23 +103,23 @@ def update_ingredient(ingredient_id: int, ingredient_data: IngredientModel) -> I
     ingredient.tags = []
     for tag in ingredient_data.tags:
         if tag.id:
-            db_tag = db_PossibleIngredientTag.query.get(tag.id)
+            db_tag = db.get(db_PossibleIngredientTag, tag.id)
             if db_tag:
                 ingredient.tags.append(db_tag)
 
-    db.session.commit()
+    db.commit()
 
     return IngredientModel.model_validate(ingredient)
 
 
 @router.delete("/ingredients/{ingredient_id}")
-def delete_ingredient(ingredient_id: int) -> dict:
+def delete_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> dict:
     """Delete an ingredient."""
-    ingredient = db_Ingredient.query.get(ingredient_id)
+    ingredient = db.get(db_Ingredient, ingredient_id)
     if not ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
-    db.session.delete(ingredient)
-    db.session.commit()
+    db.delete(ingredient)
+    db.commit()
     return {"message": "Ingredient deleted successfully"}
 
 
@@ -119,9 +127,9 @@ def delete_ingredient(ingredient_id: int) -> dict:
     "/ingredients/possible_tags",
     response_model=List[PossibleIngredientTagModel],
 )
-def get_all_possible_tags() -> List[PossibleIngredientTagModel]:
+def get_all_possible_tags(db: Session = Depends(get_db)) -> List[PossibleIngredientTagModel]:
     """Return all possible ingredient tags."""
-    tags = db_PossibleIngredientTag.query.all()
+    tags = db.query(db_PossibleIngredientTag).all()
     return [PossibleIngredientTagModel.model_validate(t) for t in tags]
 
 

@@ -1,8 +1,11 @@
 # models/possible_ingredient_tags.py
-from db import db
+from sqlalchemy import Column, Integer, String
 
-class PossibleIngredientTag(db.Model):
-    __tablename__ = 'possible_ingredient_tags'
+from db import Base
 
-    id = db.Column(db.Integer, primary_key=True)
-    tag = db.Column(db.String(50), nullable=False)
+
+class PossibleIngredientTag(Base):
+    __tablename__ = "possible_ingredient_tags"
+
+    id = Column(Integer, primary_key=True)
+    tag = Column(String(50), nullable=False)
