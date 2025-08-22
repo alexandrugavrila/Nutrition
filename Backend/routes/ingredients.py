@@ -1,39 +1,40 @@
-from flask import Blueprint, request, jsonify
-from pydantic import ValidationError
+"""Ingredient API routes implemented with FastAPI."""
+
+from typing import List
+
+from fastapi import APIRouter, HTTPException
 
 from db import db
 from db_models.ingredient import Ingredient as db_Ingredient
 from db_models.nutrition import Nutrition as db_Nutrition
 from db_models.ingredient_unit import IngredientUnit as db_IngredientUnit
-from db_models.possible_ingredient_tag import PossibleIngredientTag as db_PossibleIngredientTag
+from db_models.possible_ingredient_tag import (
+    PossibleIngredientTag as db_PossibleIngredientTag,
+)
 from models import IngredientModel, PossibleIngredientTagModel
 
-ingredient_blueprint = Blueprint('ingredient', __name__)
+router = APIRouter()
 
 
-@ingredient_blueprint.route('/ingredients', methods=['GET'])
-def get_all_ingredients():
+@router.get("/ingredients", response_model=List[IngredientModel])
+def get_all_ingredients() -> List[IngredientModel]:
+    """Return all ingredients."""
     ingredients = db_Ingredient.query.all()
-    data = [IngredientModel.model_validate(i).model_dump() for i in ingredients]
-    return jsonify(data)
+    return [IngredientModel.model_validate(i) for i in ingredients]
 
 
-@ingredient_blueprint.route('/ingredients/<int:ingredient_id>', methods=['GET'])
-def get_ingredient(ingredient_id):
+@router.get("/ingredients/{ingredient_id}", response_model=IngredientModel)
+def get_ingredient(ingredient_id: int) -> IngredientModel:
+    """Retrieve a single ingredient by ID."""
     ingredient = db_Ingredient.query.get(ingredient_id)
     if not ingredient:
-        return jsonify({'error': 'Ingredient not found'}), 404
-    data = IngredientModel.model_validate(ingredient).model_dump()
-    return jsonify(data)
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+    return IngredientModel.model_validate(ingredient)
 
 
-@ingredient_blueprint.route('/ingredients', methods=['POST'])
-def add_ingredient():
-    try:
-        ingredient_data = IngredientModel.model_validate(request.json)
-    except ValidationError as e:
-        return jsonify({'error': e.errors()}), 400
-
+@router.post("/ingredients", response_model=IngredientModel, status_code=201)
+def add_ingredient(ingredient_data: IngredientModel) -> IngredientModel:
+    """Create a new ingredient."""
     ingredient = db_Ingredient(name=ingredient_data.name)
 
     if ingredient_data.nutrition:
@@ -47,9 +48,7 @@ def add_ingredient():
         )
 
     for unit in ingredient_data.units:
-        ingredient.units.append(
-            db_IngredientUnit(name=unit.name, grams=unit.grams)
-        )
+        ingredient.units.append(db_IngredientUnit(name=unit.name, grams=unit.grams))
 
     for tag in ingredient_data.tags:
         if tag.id:
@@ -60,20 +59,15 @@ def add_ingredient():
     db.session.add(ingredient)
     db.session.commit()
 
-    data = IngredientModel.model_validate(ingredient).model_dump()
-    return jsonify(data), 201
+    return IngredientModel.model_validate(ingredient)
 
 
-@ingredient_blueprint.route('/ingredients/<int:ingredient_id>', methods=['PUT'])
-def update_ingredient(ingredient_id):
+@router.put("/ingredients/{ingredient_id}", response_model=IngredientModel)
+def update_ingredient(ingredient_id: int, ingredient_data: IngredientModel) -> IngredientModel:
+    """Update an existing ingredient."""
     ingredient = db_Ingredient.query.get(ingredient_id)
     if not ingredient:
-        return jsonify({'error': 'Ingredient not found'}), 404
-
-    try:
-        ingredient_data = IngredientModel.model_validate(request.json)
-    except ValidationError as e:
-        return jsonify({'error': e.errors()}), 400
+        raise HTTPException(status_code=404, detail="Ingredient not found")
 
     ingredient.name = ingredient_data.name
 
@@ -96,9 +90,7 @@ def update_ingredient(ingredient_id):
 
     ingredient.units = []
     for unit in ingredient_data.units:
-        ingredient.units.append(
-            db_IngredientUnit(name=unit.name, grams=unit.grams)
-        )
+        ingredient.units.append(db_IngredientUnit(name=unit.name, grams=unit.grams))
 
     ingredient.tags = []
     for tag in ingredient_data.tags:
@@ -109,22 +101,29 @@ def update_ingredient(ingredient_id):
 
     db.session.commit()
 
-    data = IngredientModel.model_validate(ingredient).model_dump()
-    return jsonify(data), 200
+    return IngredientModel.model_validate(ingredient)
 
 
-@ingredient_blueprint.route('/ingredients/<int:ingredient_id>', methods=['DELETE'])
-def delete_ingredient(ingredient_id):
+@router.delete("/ingredients/{ingredient_id}")
+def delete_ingredient(ingredient_id: int) -> dict:
+    """Delete an ingredient."""
     ingredient = db_Ingredient.query.get(ingredient_id)
     if not ingredient:
-        return jsonify({'error': 'Ingredient not found'}), 404
+        raise HTTPException(status_code=404, detail="Ingredient not found")
     db.session.delete(ingredient)
     db.session.commit()
-    return jsonify({'message': 'Ingredient deleted successfully'}), 200
+    return {"message": "Ingredient deleted successfully"}
 
 
-@ingredient_blueprint.route('/ingredients/possible_tags', methods=['GET'])
-def get_all_possible_tags():
+@router.get(
+    "/ingredients/possible_tags",
+    response_model=List[PossibleIngredientTagModel],
+)
+def get_all_possible_tags() -> List[PossibleIngredientTagModel]:
+    """Return all possible ingredient tags."""
     tags = db_PossibleIngredientTag.query.all()
-    data = [PossibleIngredientTagModel.model_validate(t).model_dump() for t in tags]
-    return jsonify(data)
+    return [PossibleIngredientTagModel.model_validate(t) for t in tags]
+
+
+__all__ = ["router"]
+
