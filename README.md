@@ -112,6 +112,9 @@ npm install -g openapi-typescript   # run once
 npx openapi-typescript Backend/openapi.json -o Frontend/nutrition-frontend/src/api-types.ts
 ```
 
+Run `scripts/update-api-schema.sh` to regenerate both the backend schema and
+frontend types in one step.
+
 Commit the generated file whenever API models change.
 
 ### Troubleshooting
