@@ -10,7 +10,7 @@ class Ingredient(Base):
     __tablename__ = "ingredients"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(100), nullable=False)
+    name = Column(String(100), nullable=False, unique=True)
     nutrition = relationship(
         "Nutrition", backref="ingredient", uselist=False, cascade="all, delete-orphan"
     )
