@@ -1,13 +1,17 @@
 # models/nutrition.py
-from db import db
+from sqlalchemy import Column, ForeignKey, Integer, Numeric
 
-class Nutrition(db.Model):
-    __tablename__ = 'nutrition'
-    id = db.Column(db.Integer, primary_key=True)
-    ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredients.id'), nullable=False)
-    calories = db.Column(db.Numeric(10, 4), nullable=False)
-    fat = db.Column(db.Numeric(10, 4), nullable=False)
-    carbohydrates = db.Column(db.Numeric(10, 4), nullable=False)
-    protein = db.Column(db.Numeric(10, 4), nullable=False)
-    fiber = db.Column(db.Numeric(10, 4), nullable=False)
+from db import Base
+
+
+class Nutrition(Base):
+    __tablename__ = "nutrition"
+
+    id = Column(Integer, primary_key=True)
+    ingredient_id = Column(Integer, ForeignKey("ingredients.id"), nullable=False)
+    calories = Column(Numeric(10, 4), nullable=False)
+    fat = Column(Numeric(10, 4), nullable=False)
+    carbohydrates = Column(Numeric(10, 4), nullable=False)
+    protein = Column(Numeric(10, 4), nullable=False)
+    fiber = Column(Numeric(10, 4), nullable=False)
 

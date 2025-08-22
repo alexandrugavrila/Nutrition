@@ -1,9 +1,12 @@
 # models/meal_ingredients.py
-from db import db
+from sqlalchemy import Column, Integer, String
 
-class PossibleMealTag(db.Model):
-    __tablename__ = 'possible_meal_tags'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    tag = db.Column(db.String(50), nullable=False)
+from db import Base
+
+
+class PossibleMealTag(Base):
+    __tablename__ = "possible_meal_tags"
+
+    id = Column(Integer, primary_key=True)
+    tag = Column(String(50), nullable=False)
 

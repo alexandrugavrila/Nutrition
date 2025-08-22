@@ -1,10 +1,13 @@
 # db_models/meal_ingredients.py
-from db import db
+from sqlalchemy import Column, ForeignKey, Integer, Numeric, String
 
-class IngredientUnit(db.Model):
-    __tablename__ = 'ingredient_units'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredients.id'), nullable=False)
-    name = db.Column(db.String(50), nullable=False)
-    grams = db.Column(db.Numeric(10, 4), nullable=False)
+from db import Base
+
+
+class IngredientUnit(Base):
+    __tablename__ = "ingredient_units"
+
+    id = Column(Integer, primary_key=True)
+    ingredient_id = Column(Integer, ForeignKey("ingredients.id"), nullable=False)
+    name = Column(String(50), nullable=False)
+    grams = Column(Numeric(10, 4), nullable=False)

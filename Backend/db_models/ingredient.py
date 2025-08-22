@@ -1,19 +1,23 @@
 # models/ingredient.py
-from db import db
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import relationship
+
+from db import Base
 from .ingredient_tag import ingredient_tags
 
-class Ingredient(db.Model):
-    __tablename__ = 'ingredients'
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    nutrition = db.relationship(
-        'Nutrition', backref='ingredient', uselist=False, cascade='all, delete-orphan'
+class Ingredient(Base):
+    __tablename__ = "ingredients"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False)
+    nutrition = relationship(
+        "Nutrition", backref="ingredient", uselist=False, cascade="all, delete-orphan"
     )
-    units = db.relationship(
-        'IngredientUnit', backref='ingredient', cascade='all, delete-orphan'
+    units = relationship(
+        "IngredientUnit", backref="ingredient", cascade="all, delete-orphan"
     )
-    tags = db.relationship(
-        'PossibleIngredientTag', secondary=ingredient_tags, backref='ingredients'
+    tags = relationship(
+        "PossibleIngredientTag", secondary=ingredient_tags, backref="ingredients"
     )
 
