@@ -82,35 +82,30 @@ Click the **host port** (3099) to open the frontend in your browser.
 
 ## 🗄️ Database Management
 
-### Seeding and imports
+### Migrations and resets
 
-On a fresh DB volume, Postgres runs the SQL files in `Database/`:
-
-* `createtables.sql`
-* `addingredients.sql`
-* `addnutrition.sql`
-
-In addition, the startup script may run:
-
-* `import_from_csv.py --production` (with `-production`)
-* `import_from_csv.py --test` (with `-test`)
-* Skips import with `-empty`
-
----
-
-### Resetting from scratch
-
-Drop and recreate tables manually:
+The project uses [Alembic](https://alembic.sqlalchemy.org/) for all schema
+changes. Run the following from the repository root:
 
 ```bash
-python ./Database/reset_database.py
+# Apply all migrations
+alembic upgrade head
+
+# Reset the database
+alembic downgrade base && alembic upgrade head
 ```
 
-Options:
+### Seeding data
+
+To load CSV data for development or tests:
 
 ```bash
-python ./Database/reset_database.py --test
+python Database/import_from_csv.py --production
+python Database/import_from_csv.py --test
 ```
+
+The `DB_PORT` environment variable is respected so the script can connect to the
+branch-specific database container.
 
 ---
 
@@ -175,7 +170,7 @@ Frontend/nutrition-frontend/
   ├── Dockerfile          # Frontend build config
   └── nginx.conf          # Static serving config
 
-Database/                 # SQL + CSV seeding
+Database/                 # CSV data and import script
 scripts/                  # Helper scripts (compose up/down, tooling)
 ```
 

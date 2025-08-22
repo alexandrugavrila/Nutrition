@@ -6,24 +6,50 @@ the ``production_data`` or ``test_data`` directory.
 """
 
 import os
-import psycopg2
 import argparse
 import csv
 from collections import defaultdict, deque
 
-from db_config import DB_CONFIG, BASE_DIR
+from sqlalchemy import Table, create_engine, text
+from sqlalchemy.orm import sessionmaker
 
-def get_table_order(cur):
-    # Get all public tables
-    cur.execute("""
+from Backend.db_models import (
+    Ingredient,
+    IngredientUnit,
+    Nutrition,
+    Meal,
+    MealIngredient,
+    PossibleIngredientTag,
+    PossibleMealTag,
+    ingredient_tags,
+    meal_tags,
+)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+DB_PORT = int(os.environ.get("DB_PORT", 5432))
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    f"postgresql://nutrition_user:nutrition_pass@localhost:{DB_PORT}/nutrition",
+)
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine)
+
+def get_table_order(session):
+    result = session.execute(
+        text(
+            """
         SELECT tablename
         FROM pg_tables
         WHERE schemaname='public';
-    """)
-    tables = [r[0] for r in cur.fetchall()]
+    """
+        )
+    )
+    tables = [r[0] for r in result]
 
-    # Build dependency graph
-    cur.execute("""
+    result = session.execute(
+        text(
+            """
         SELECT
             tc.table_name AS child,
             ccu.table_name AS parent
@@ -36,14 +62,15 @@ def get_table_order(cur):
               ON ccu.constraint_name = tc.constraint_name
               AND ccu.table_schema = tc.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY';
-    """)
+    """
+        )
+    )
     deps = defaultdict(set)
     reverse_deps = defaultdict(set)
-    for child, parent in cur.fetchall():
+    for child, parent in result:
         deps[child].add(parent)
         reverse_deps[parent].add(child)
 
-    # Topological sort (Kahn's algorithm)
     no_deps = deque([t for t in tables if t not in deps])
     ordered = []
     while no_deps:
@@ -56,24 +83,46 @@ def get_table_order(cur):
 
     return ordered
 
-def wipe_data(cur, ordered_tables):
+
+def wipe_data(session, ordered_tables):
     print("🧹 Wiping existing data...")
-    cur.execute(f"TRUNCATE TABLE {', '.join(reversed(ordered_tables))} RESTART IDENTITY CASCADE;")
-    
-def import_csv(cur, folder, ordered_tables):
+    session.execute(
+        text(
+            f"TRUNCATE TABLE {', '.join(reversed(ordered_tables))} RESTART IDENTITY CASCADE;"
+        )
+    )
+
+
+MODEL_MAP = {
+    "ingredients": Ingredient,
+    "ingredient_units": IngredientUnit,
+    "nutrition": Nutrition,
+    "possible_ingredient_tags": PossibleIngredientTag,
+    "ingredient_tags": ingredient_tags,
+    "meals": Meal,
+    "meal_ingredients": MealIngredient,
+    "possible_meal_tags": PossibleMealTag,
+    "meal_tags": meal_tags,
+}
+
+
+def import_csv(session, folder, ordered_tables):
     for table in ordered_tables:
         file_path = os.path.join(folder, f"{table}.csv")
         if os.path.exists(file_path):
             print(f"Importing {file_path}...")
             with open(file_path, "r", encoding="utf-8") as f:
-                reader = csv.reader(f)
-                headers = next(reader)
-                for row in reader:
-                    placeholders = ", ".join(["%s"] * len(row))
-                    cur.execute(
-                        f"INSERT INTO {table} ({', '.join(headers)}) VALUES ({placeholders})",
-                        row
-                    )
+                reader = csv.DictReader(f)
+                model = MODEL_MAP.get(table)
+                if model is None:
+                    print(f"No model found for {table}")
+                    continue
+                rows = list(reader)
+                if isinstance(model, Table):
+                    session.execute(model.insert(), rows)
+                else:
+                    objects = [model(**row) for row in rows]
+                    session.add_all(objects)
         else:
             print(f"No CSV found for {table}")
 
@@ -94,18 +143,16 @@ def main():
         return
 
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
-        cursor = conn.cursor()
+        session = SessionLocal()
 
-        ordered_tables = get_table_order(cursor)
+        ordered_tables = get_table_order(session)
         print(f"Load order: {ordered_tables}")
 
-        wipe_data(cursor, ordered_tables)
-        import_csv(cursor, data_dir, ordered_tables)
+        wipe_data(session, ordered_tables)
+        import_csv(session, data_dir, ordered_tables)
 
-        conn.commit()
-        cursor.close()
-        conn.close()
+        session.commit()
+        session.close()
         print("All CSVs imported successfully.")
 
     except Exception as e:

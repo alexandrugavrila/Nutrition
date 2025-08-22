@@ -62,8 +62,8 @@ The server will be available at <http://localhost:8000> by default.
 
 ## 🛠️ Database Migrations
 
-The backend uses [Alembic](https://alembic.sqlalchemy.org/) for schema migrations.
-Run the following commands from the repository root.
+The backend uses [Alembic](https://alembic.sqlalchemy.org/) for schema
+migrations and resets. Run the following commands from the repository root.
 
 ```bash
 # Create a new migration after updating models
@@ -71,6 +71,15 @@ alembic revision --autogenerate -m "describe your change"
 
 # Apply all pending migrations
 alembic upgrade head
+
+# Reset the database (drops all tables and reapplies migrations)
+alembic downgrade base && alembic upgrade head
+```
+
+To load sample data from the CSV files in `Database/`, run:
+
+```bash
+python Database/import_from_csv.py --test   # or --production
 ```
 
 ---
@@ -93,10 +102,10 @@ Nutrition/
 │       ├── Dockerfile          # Frontend build config
 │       └── nginx.conf          # Nginx static serving config
 │
-├── Database/                   # SQL seed scripts
-│   ├── createtables.sql
-│   ├── addingredients.sql
-│   └── addnutrition.sql
+├── Database/                   # CSV data + import utilities
+│   ├── production_data/
+│   ├── test_data/
+│   └── import_from_csv.py
 │
 ├── docker-compose.yml          # Orchestration config
 └── scripts/
@@ -122,8 +131,8 @@ Nutrition/
 
 * **Database**
 
-  * Seeded with initial tables + nutrition data from `Database/`
-  * Can be reset or re-imported (see contributing guide)
+  * Schema managed via Alembic migrations
+  * Optional CSV seed data in `Database/` (use `import_from_csv.py`)
 
 ---
 
