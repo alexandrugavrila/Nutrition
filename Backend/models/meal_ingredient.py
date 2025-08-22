@@ -1,25 +1,23 @@
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import Annotated, Optional
+from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from .ingredient import IngredientModel
-from .ingredient_unit import IngredientUnitModel
-
-PositiveInt = Annotated[int, Field(gt=0)]
-Decimal4 = Annotated[Decimal, Field(ge=0, max_digits=10, decimal_places=4)]
+from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, Numeric
 
 
-class MealIngredientModel(BaseModel):
+class MealIngredient(SQLModel, table=True):
     """Link between a meal and an ingredient with quantity information."""
 
-    ingredient_id: PositiveInt
-    meal_id: Optional[PositiveInt] = None
-    unit_id: Optional[PositiveInt] = None
-    unit_quantity: Optional[Decimal4] = None
-    ingredient: Optional[IngredientModel] = None
-    unit: Optional[IngredientUnitModel] = None
+    __tablename__ = "meal_ingredients"
 
-    model_config = ConfigDict(from_attributes=True)
+    ingredient_id: int = Field(foreign_key="ingredients.id", primary_key=True)
+    meal_id: int = Field(foreign_key="meals.id", primary_key=True)
+    unit_id: Optional[int] = Field(default=None, foreign_key="ingredient_units.id")
+    unit_quantity: Optional[float] = Field(
+        default=None, sa_column=Column(Numeric(10, 4))
+    )
+
+    ingredient: Optional["Ingredient"] = Relationship()
+    meal: Optional["Meal"] = Relationship(back_populates="ingredients")
+    unit: Optional["IngredientUnit"] = Relationship()

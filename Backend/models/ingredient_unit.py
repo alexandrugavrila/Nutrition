@@ -1,21 +1,19 @@
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import Annotated, Optional
+from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
-
-PositiveInt = Annotated[int, Field(gt=0)]
-Name50 = Annotated[str, Field(min_length=1, max_length=50)]
-Decimal4 = Annotated[Decimal, Field(ge=0, max_digits=10, decimal_places=4)]
+from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, String, Numeric
 
 
-class IngredientUnitModel(BaseModel):
+class IngredientUnit(SQLModel, table=True):
     """Measurement unit for an ingredient."""
 
-    id: Optional[PositiveInt] = None
-    ingredient_id: Optional[PositiveInt] = None
-    name: Name50
-    grams: Decimal4
+    __tablename__ = "ingredient_units"
 
-    model_config = ConfigDict(from_attributes=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ingredient_id: int = Field(foreign_key="ingredients.id")
+    name: str = Field(sa_column=Column(String(50), nullable=False))
+    grams: float = Field(sa_column=Column(Numeric(10, 4), nullable=False))
+
+    ingredient: Optional["Ingredient"] = Relationship(back_populates="units")
