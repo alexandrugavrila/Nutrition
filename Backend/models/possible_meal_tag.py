@@ -14,7 +14,7 @@ class PossibleMealTag(SQLModel, table=True):
     __tablename__ = "possible_meal_tags"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    tag: str = Field(sa_column=Column(String(50), unique=True, nullable=False))
+    name: str = Field(sa_column=Column(String(50), unique=True, nullable=False))
 
     meals: List["Meal"] = Relationship(
         back_populates="tags", link_model=MealTagLink

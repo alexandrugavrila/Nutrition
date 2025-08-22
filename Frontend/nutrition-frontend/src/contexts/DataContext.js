@@ -18,16 +18,36 @@ export const DataProvider = ({ children }) => {
   const ingredientProcessingTagNames = ["Whole Food", "Lightly Processed", "Highly Processed"];
   const ingredientGroupTagNames = ["Vegetable", "Fruit", "Meat", "Dairy", "Grain"];
 
-  const ingredientProcessingTags = possibleIngredientTags ? possibleIngredientTags.filter((tag) => ingredientProcessingTagNames.includes(tag.name)) : [];
-  const ingredientGroupTags = possibleIngredientTags ? possibleIngredientTags.filter((tag) => ingredientGroupTagNames.includes(tag.name)) : [];
-  const ingredientOtherTags = possibleIngredientTags ? possibleIngredientTags.filter((tag) => !ingredientProcessingTagNames.includes(tag.name) && !ingredientGroupTagNames.includes(tag.name)) : [];
+  const ingredientProcessingTags = possibleIngredientTags
+    ? possibleIngredientTags.filter(({ name }) => ingredientProcessingTagNames.includes(name))
+    : [];
+  const ingredientGroupTags = possibleIngredientTags
+    ? possibleIngredientTags.filter(({ name }) => ingredientGroupTagNames.includes(name))
+    : [];
+  const ingredientOtherTags = possibleIngredientTags
+    ? possibleIngredientTags.filter(
+        ({ name }) =>
+          !ingredientProcessingTagNames.includes(name) &&
+          !ingredientGroupTagNames.includes(name)
+      )
+    : [];
 
   const mealDietTagNames = ["Vegetarian", "Vegan", "Carnivore"];
   const mealTypeTagNames = ["Breakfast", "Lunch", "Dinner", "Snack"];
 
-  const mealDietTags = possibleMealTags ? possibleMealTags.filter((tag) => mealDietTagNames.includes(tag.name)) : [];
-  const mealTypeTags = possibleMealTags ? possibleMealTags.filter((tag) => mealTypeTagNames.includes(tag.name)) : [];
-  const mealOtherTags = possibleMealTags ? possibleMealTags.filter((tag) => !mealDietTagNames.includes(tag.name) && !mealTypeTagNames.includes(tag.name)) : [];
+  const mealDietTags = possibleMealTags
+    ? possibleMealTags.filter(({ name }) => mealDietTagNames.includes(name))
+    : [];
+  const mealTypeTags = possibleMealTags
+    ? possibleMealTags.filter(({ name }) => mealTypeTagNames.includes(name))
+    : [];
+  const mealOtherTags = possibleMealTags
+    ? possibleMealTags.filter(
+        ({ name }) =>
+          !mealDietTagNames.includes(name) &&
+          !mealTypeTagNames.includes(name)
+      )
+    : [];
 
   const fetchData = async (url, setData, setLoading, errorHandler, processData) => {
     setLoading(true);
