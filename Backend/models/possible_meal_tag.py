@@ -12,6 +12,6 @@ class PossibleMealTagModel(BaseModel):
     """Tag that can be associated with a meal."""
 
     id: Optional[PositiveInt] = None
-    tag: Name50
+    tag: Optional[Name50] = None
 
     model_config = ConfigDict(from_attributes=True)

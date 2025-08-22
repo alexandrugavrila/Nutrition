@@ -16,10 +16,10 @@ class MealIngredientModel(BaseModel):
     """Link between a meal and an ingredient with quantity information."""
 
     ingredient_id: PositiveInt
-    meal_id: PositiveInt
+    meal_id: Optional[PositiveInt] = None
     unit_id: Optional[PositiveInt] = None
     unit_quantity: Optional[Decimal4] = None
-    ingredient: IngredientModel
+    ingredient: Optional[IngredientModel] = None
     unit: Optional[IngredientUnitModel] = None
 
     model_config = ConfigDict(from_attributes=True)

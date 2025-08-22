@@ -13,7 +13,7 @@ class NutritionModel(BaseModel):
     """Nutritional information for a single ingredient."""
 
     id: Optional[PositiveInt] = None
-    ingredient_id: PositiveInt
+    ingredient_id: Optional[PositiveInt] = None
     calories: Decimal4
     fat: Decimal4
     carbohydrates: Decimal4
