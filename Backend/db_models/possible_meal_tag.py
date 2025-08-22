@@ -8,5 +8,5 @@ class PossibleMealTag(Base):
     __tablename__ = "possible_meal_tags"
 
     id = Column(Integer, primary_key=True)
-    tag = Column(String(50), nullable=False)
+    tag = Column(String(50), nullable=False, unique=True)
 
