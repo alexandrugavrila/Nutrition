@@ -14,7 +14,7 @@ class IngredientUnitModel(BaseModel):
     """Measurement unit for an ingredient."""
 
     id: Optional[PositiveInt] = None
-    ingredient_id: PositiveInt
+    ingredient_id: Optional[PositiveInt] = None
     name: Name50
     grams: Decimal4
 
