@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 
 import { useData } from "../../../../contexts/DataContext";
+import { handleFetchRequest } from "../../../../utils/utils";
 
 import MealNameForm from "./MealNameForm";
 import MealIngredientsForm from "./MealIngredientsForm";
@@ -46,7 +47,7 @@ const reducer = (state, action) => {
 
 function MealForm({ mealToEditData }) {
   //#region States
-  const { setMealsNeedsRefetch } = useData();
+  const { setMealsNeedsRefetch, setFetching } = useData();
   const [state, dispatch] = useReducer(reducer, intitalState);
 
   const { isOpen, openConfirmationDialog, isEditMode, mealToEdit, needsClearForm, needsFillForm } = state;
@@ -67,16 +68,57 @@ function MealForm({ mealToEditData }) {
   }, []);
 
   const handleMealAction = () => {
-    dispatch({ type: "SET_FILL_FORM", payload: true });
-    setMealsNeedsRefetch(true);
-    handleClearForm();
+    setFetching(true);
+
+    const toDatabaseMeal = {
+      name: mealToEdit.name,
+      ingredients: mealToEdit.ingredients.map(({ ingredient_id, unit_id, amount }) => ({
+        ingredient_id,
+        unit_id,
+        unit_quantity: amount,
+      })),
+      tags: mealToEdit.tags
+        .filter((tag) => typeof tag.id === "number")
+        .map((tag) => ({ id: tag.id })),
+    };
+
+    const url = isEditMode ? `/api/meals/${mealToEdit.id}` : "/api/meals";
+    const method = isEditMode ? "PUT" : "POST";
+
+    handleFetchRequest(url, method, toDatabaseMeal)
+      .then(() => {
+        setMealsNeedsRefetch(true);
+        if (!isEditMode) {
+          handleClearForm();
+        }
+      })
+      .finally(() => {
+        setFetching(false);
+      });
   };
 
   const handleMealDelete = () => {
     if (mealToEdit) {
+      setFetching(true);
+      fetch(`/api/meals/${mealToEdit.id}`, {
+        method: "DELETE",
+      })
+        .then((response) => {
+          if (response.ok) {
+            setMealsNeedsRefetch(true);
+            handleClearForm();
+          } else {
+            console.error("Failed to remove meal");
+          }
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+        })
+        .finally(() => {
+          setFetching(false);
+          handleCloseConfirmationDialog();
+        });
     }
-    setMealsNeedsRefetch(true);
-    handleClearForm();
   };
 
   const handleCloseConfirmationDialog = () => {
