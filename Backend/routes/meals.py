@@ -13,17 +13,17 @@ from db_models.possible_meal_tag import (
 )
 from models import MealModel, PossibleMealTagModel
 
-router = APIRouter()
+router = APIRouter(prefix="/meals", tags=["meals"])
 
 
-@router.get("/meals", response_model=List[MealModel])
+@router.get("", response_model=List[MealModel])
 def get_all_meals(db: Session = Depends(get_db)) -> List[MealModel]:
     """Return all meals."""
     meals = db.query(db_Meal).all()
     return [MealModel.model_validate(m) for m in meals]
 
 
-@router.get("/meals/{meal_id}", response_model=MealModel)
+@router.get("/{meal_id}", response_model=MealModel)
 def get_meal(meal_id: int, db: Session = Depends(get_db)) -> MealModel:
     """Retrieve a single meal by ID."""
     meal = db.get(db_Meal, meal_id)
@@ -32,14 +32,14 @@ def get_meal(meal_id: int, db: Session = Depends(get_db)) -> MealModel:
     return MealModel.model_validate(meal)
 
 
-@router.get("/meals/possible_tags", response_model=List[PossibleMealTagModel])
+@router.get("/possible_tags", response_model=List[PossibleMealTagModel])
 def get_possible_meal_tags(db: Session = Depends(get_db)) -> List[PossibleMealTagModel]:
     """Return all possible meal tags."""
     tags = db.query(db_PossibleMealTag).all()
     return [PossibleMealTagModel.model_validate(t) for t in tags]
 
 
-@router.post("/meals", response_model=MealModel, status_code=201)
+@router.post("", response_model=MealModel, status_code=201)
 def add_meal(meal_data: MealModel, db: Session = Depends(get_db)) -> MealModel:
     """Create a new meal."""
     meal = db_Meal(name=meal_data.name)
@@ -66,7 +66,7 @@ def add_meal(meal_data: MealModel, db: Session = Depends(get_db)) -> MealModel:
     return MealModel.model_validate(meal)
 
 
-@router.put("/meals/{meal_id}", response_model=MealModel)
+@router.put("/{meal_id}", response_model=MealModel)
 def update_meal(
     meal_id: int, meal_data: MealModel, db: Session = Depends(get_db)
 ) -> MealModel:
@@ -99,7 +99,7 @@ def update_meal(
     return MealModel.model_validate(meal)
 
 
-@router.delete("/meals/{meal_id}")
+@router.delete("/{meal_id}")
 def delete_meal(meal_id: int, db: Session = Depends(get_db)) -> dict:
     """Delete a meal."""
     meal = db.get(db_Meal, meal_id)
