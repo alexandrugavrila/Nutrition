@@ -1,7 +1,7 @@
 # db_models/meal_ingredients.py
 from sqlalchemy import Column, ForeignKey, Integer, Numeric, String
 
-from db import Base
+from ..db import Base
 
 
 class IngredientUnit(Base):

@@ -1,7 +1,7 @@
 # models/nutrition.py
 from sqlalchemy import Column, ForeignKey, Integer, Numeric
 
-from db import Base
+from ..db import Base
 
 
 class Nutrition(Base):

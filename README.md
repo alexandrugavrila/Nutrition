@@ -60,6 +60,21 @@ The server will be available at <http://localhost:8000> by default.
 
 ---
 
+## 🛠️ Database Migrations
+
+The backend uses [Alembic](https://alembic.sqlalchemy.org/) for schema migrations.
+Run the following commands from the repository root.
+
+```bash
+# Create a new migration after updating models
+alembic revision --autogenerate -m "describe your change"
+
+# Apply all pending migrations
+alembic upgrade head
+```
+
+---
+
 ## 🗂️ Project Structure
 
 ```

@@ -10,6 +10,7 @@ from alembic import context
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from Backend.db import Base, DATABASE_URL
+from Backend import db_models  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", DATABASE_URL)

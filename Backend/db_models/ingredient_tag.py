@@ -1,7 +1,7 @@
 # db_models/ingredient_tag.py
 from sqlalchemy import Column, ForeignKey, Integer, Table
 
-from db import Base
+from ..db import Base
 
 
 ingredient_tags = Table(

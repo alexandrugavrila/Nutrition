@@ -2,7 +2,7 @@
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
 
-from db import Base
+from ..db import Base
 from .ingredient_tag import ingredient_tags
 
 
