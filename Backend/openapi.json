@@ -1,0 +1,18 @@
+{
+  "openapi": "3.0.2",
+  "info": {
+    "title": "Nutrition API",
+    "version": "1.0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "Ingredient": {
+        "type": "object"
+      },
+      "Meal": {
+        "type": "object"
+      }
+    }
+  }
+}
