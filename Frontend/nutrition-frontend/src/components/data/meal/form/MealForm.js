@@ -72,11 +72,17 @@ function MealForm({ mealToEditData }) {
 
     const toDatabaseMeal = {
       name: mealToEdit.name,
-      ingredients: mealToEdit.ingredients.map(({ ingredient_id, unit_id, unit_quantity }) => ({
-        ingredient_id,
-        unit_id,
-        unit_quantity,
-      })),
+      ingredients: mealToEdit.ingredients
+        .filter(
+          ({ ingredient_id, unit_id }) =>
+            typeof ingredient_id === "number" &&
+            (unit_id === null || typeof unit_id === "number")
+        )
+        .map(({ ingredient_id, unit_id, amount }) => ({
+          ingredient_id,
+          unit_id,
+          unit_quantity: amount,
+        })),
       tags: mealToEdit.tags
         .filter((tag) => typeof tag.id === "number")
         .map((tag) => ({ id: tag.id })),
