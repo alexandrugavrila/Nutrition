@@ -79,8 +79,9 @@ def delete_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> dict
 def get_all_possible_tags(
     db: Session = Depends(get_db),
 ) -> List[PossibleIngredientTag]:
-    """Return all possible ingredient tags."""
-    return db.exec(select(PossibleIngredientTag)).all()
+    """Return all possible ingredient tags ordered by name."""
+    statement = select(PossibleIngredientTag).order_by(PossibleIngredientTag.name)
+    return db.exec(statement).all()
 
 
 __all__ = ["router"]

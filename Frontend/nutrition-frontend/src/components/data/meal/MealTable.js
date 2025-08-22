@@ -38,7 +38,7 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
       return false;
     }
     return selectedTags.some((selectedTag) =>
-      meal.tags.some((tag) => tag.name === selectedTag.name)
+      meal.tags.some(({ name }) => name === selectedTag.name)
     );
   };
 

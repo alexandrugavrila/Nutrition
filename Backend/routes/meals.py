@@ -26,8 +26,9 @@ def get_meal(meal_id: int, db: Session = Depends(get_db)) -> Meal:
 
 @router.get("/possible_tags", response_model=List[PossibleMealTag])
 def get_possible_meal_tags(db: Session = Depends(get_db)) -> List[PossibleMealTag]:
-    """Return all possible meal tags."""
-    return db.exec(select(PossibleMealTag)).all()
+    """Return all possible meal tags ordered by name."""
+    statement = select(PossibleMealTag).order_by(PossibleMealTag.name)
+    return db.exec(statement).all()
 
 
 @router.post("", response_model=Meal, status_code=201)
