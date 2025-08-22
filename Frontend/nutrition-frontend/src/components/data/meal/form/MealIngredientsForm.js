@@ -10,7 +10,7 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
   //#region States
   const { ingredients } = useData();
   const [openIngredientsDialog, setOpenIngredientsDialog] = useState(false);
-  const [amounts, setAmounts] = useState({}); // Use an object to track amounts by ingredient index
+  const [unitQuantities, setUnitQuantities] = useState({}); // Use an object to track unit quantities by ingredient index
   const [totalMacros, setTotalMacros] = useState({
     calories: 0,
     protein: 0,
@@ -39,31 +39,31 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
       ingredient_id: ingredient.id,
       meal_id: meal.id,
       unit_id: ingredient.selectedUnitId ? ingredient.selectedUnitId : null,
-      amount: 1,
+      unit_quantity: 1,
     };
   };
 
-  const handleAmountChange = (event, index) => {
-    const newAmounts = { ...amounts, [index]: event.target.value };
-    setAmounts(newAmounts);
-    handleUpdateIngredientAmount(index, event.target.value);
+  const handleUnitQuantityChange = (event, index) => {
+    const newUnitQuantities = { ...unitQuantities, [index]: event.target.value };
+    setUnitQuantities(newUnitQuantities);
+    handleUpdateIngredientUnitQuantity(index, event.target.value);
   };
 
-  const handleAmountBlur = (index) => {
-    if (amounts[index] === "") {
-      const newAmounts = { ...amounts, [index]: "0" };
-      setAmounts(newAmounts);
-      handleUpdateIngredientAmount(index, "0");
+  const handleUnitQuantityBlur = (index) => {
+    if (unitQuantities[index] === "") {
+      const newUnitQuantities = { ...unitQuantities, [index]: "0" };
+      setUnitQuantities(newUnitQuantities);
+      handleUpdateIngredientUnitQuantity(index, "0");
     }
   };
 
-  const handleUpdateIngredientAmount = (index, value) => {
+  const handleUpdateIngredientUnitQuantity = (index, value) => {
     const updatedIngredients = [...meal.ingredients];
     updatedIngredients[index] = {
       ...updatedIngredients[index],
-      amount: parseFloat(value),
+      unit_quantity: parseFloat(value),
     };
-    if (!isNaN(updatedIngredients[index].amount)) {
+    if (!isNaN(updatedIngredients[index].unit_quantity)) {
       // Don't update if the field is empty
       dispatch({ type: "SET_MEAL", payload: { ...meal, ingredients: updatedIngredients } });
     }
@@ -79,11 +79,11 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
       const dataUnit = dataIngredient.units.find((unit) => unit.id === unitId) || dataIngredient.units[0]; // Fallback to the first unit if not found
 
       return {
-        calories: dataIngredient.nutrition.calories ? dataIngredient.nutrition.calories * dataUnit.grams * meal_ingredient.amount : 0,
-        protein: dataIngredient.nutrition.protein ? dataIngredient.nutrition.protein * dataUnit.grams * meal_ingredient.amount : 0,
-        fat: dataIngredient.nutrition.fat ? dataIngredient.nutrition.fat * dataUnit.grams * meal_ingredient.amount : 0,
-        carbs: dataIngredient.nutrition.carbohydrates ? dataIngredient.nutrition.carbohydrates * dataUnit.grams * meal_ingredient.amount : 0,
-        fiber: dataIngredient.nutrition.fiber ? dataIngredient.nutrition.fiber * dataUnit.grams * meal_ingredient.amount : 0,
+        calories: dataIngredient.nutrition.calories ? dataIngredient.nutrition.calories * dataUnit.grams * meal_ingredient.unit_quantity : 0,
+        protein: dataIngredient.nutrition.protein ? dataIngredient.nutrition.protein * dataUnit.grams * meal_ingredient.unit_quantity : 0,
+        fat: dataIngredient.nutrition.fat ? dataIngredient.nutrition.fat * dataUnit.grams * meal_ingredient.unit_quantity : 0,
+        carbs: dataIngredient.nutrition.carbohydrates ? dataIngredient.nutrition.carbohydrates * dataUnit.grams * meal_ingredient.unit_quantity : 0,
+        fiber: dataIngredient.nutrition.fiber ? dataIngredient.nutrition.fiber * dataUnit.grams * meal_ingredient.unit_quantity : 0,
       };
     },
     [ingredients]
@@ -108,12 +108,12 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
   }, [needsClearForm, dispatch, meal]); // Clear ingredients when needsClearForm is true
 
   useEffect(() => {
-    const initialAmounts = meal.ingredients.reduce((acc, ingredient, index) => {
-      acc[index] = ingredient.amount.toString();
+    const initialUnitQuantities = meal.ingredients.reduce((acc, ingredient, index) => {
+      acc[index] = ingredient.unit_quantity.toString();
       return acc;
     }, {});
-    setAmounts(initialAmounts);
-  }, [meal]); // Initialize or reset the amounts when meal changes, ensuring inputs are up-to-date
+    setUnitQuantities(initialUnitQuantities);
+  }, [meal]); // Initialize or reset the unit quantities when meal changes, ensuring inputs are up-to-date
 
   useEffect(() => {
     const totals = meal.ingredients.reduce(
@@ -187,9 +187,9 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
                   <TableCell>
                     <TextField
                       type="number"
-                      value={amounts[index] || ""}
-                      onChange={(event) => handleAmountChange(event, index)}
-                      onBlur={() => handleAmountBlur(index)}
+                      value={unitQuantities[index] || ""}
+                      onChange={(event) => handleUnitQuantityChange(event, index)}
+                      onBlur={() => handleUnitQuantityBlur(index)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter") event.target.blur();
                       }}

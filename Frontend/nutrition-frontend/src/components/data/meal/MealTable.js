@@ -107,19 +107,19 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
 
     return {
       calories: dataIngredient.nutrition.calories
-        ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.amount
+        ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.unit_quantity
         : 0,
       protein: dataIngredient.nutrition.protein
-        ? dataIngredient.nutrition.protein * dataUnit.grams * ingredient.amount
+        ? dataIngredient.nutrition.protein * dataUnit.grams * ingredient.unit_quantity
         : 0,
       fat: dataIngredient.nutrition.fat
-        ? dataIngredient.nutrition.fat * dataUnit.grams * ingredient.amount
+        ? dataIngredient.nutrition.fat * dataUnit.grams * ingredient.unit_quantity
         : 0,
       carbs: dataIngredient.nutrition.carbohydrates
-        ? dataIngredient.nutrition.carbohydrates * dataUnit.grams * ingredient.amount
+        ? dataIngredient.nutrition.carbohydrates * dataUnit.grams * ingredient.unit_quantity
         : 0,
       fiber: dataIngredient.nutrition.fiber
-        ? dataIngredient.nutrition.fiber * dataUnit.grams * ingredient.amount
+        ? dataIngredient.nutrition.fiber * dataUnit.grams * ingredient.unit_quantity
         : 0,
     };
   };
@@ -248,7 +248,7 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
                                   </TableCell>
                                   <TableCell>{unit ? unit.name : ""}</TableCell>
                                   <TableCell>
-                                    {formatCellNumber(ingredient.amount)}
+                                    {formatCellNumber(ingredient.unit_quantity)}
                                   </TableCell>
                                   <TableCell>
                                     {formatCellNumber(

@@ -100,11 +100,11 @@ function Planning() {
       dataIngredient.units.find((u) => u.id === ingredient.unit_id) || dataIngredient.units[0];
     const grams = unit ? unit.grams : 0;
     return {
-      calories: (dataIngredient.nutrition.calories || 0) * grams * ingredient.amount,
-      protein: (dataIngredient.nutrition.protein || 0) * grams * ingredient.amount,
-      fat: (dataIngredient.nutrition.fat || 0) * grams * ingredient.amount,
-      carbs: (dataIngredient.nutrition.carbohydrates || 0) * grams * ingredient.amount,
-      fiber: (dataIngredient.nutrition.fiber || 0) * grams * ingredient.amount,
+      calories: (dataIngredient.nutrition.calories || 0) * grams * ingredient.unit_quantity,
+      protein: (dataIngredient.nutrition.protein || 0) * grams * ingredient.unit_quantity,
+      fat: (dataIngredient.nutrition.fat || 0) * grams * ingredient.unit_quantity,
+      carbs: (dataIngredient.nutrition.carbohydrates || 0) * grams * ingredient.unit_quantity,
+      fiber: (dataIngredient.nutrition.fiber || 0) * grams * ingredient.unit_quantity,
     };
   };
 
@@ -139,7 +139,7 @@ function Planning() {
     return calculateIngredientMacros({
       ingredient_id: item.ingredientId,
       unit_id: item.unitId,
-      amount: item.amount,
+      unit_quantity: item.amount,
     });
   };
 
@@ -414,7 +414,7 @@ function Planning() {
                                   </TableCell>
                                   <TableCell>{unit ? unit.name : ""}</TableCell>
                                   <TableCell>
-                                    {formatCellNumber(ingredient.amount * item.portions)}
+                                    {formatCellNumber(ingredient.unit_quantity * item.portions)}
                                   </TableCell>
                                   <TableCell>
                                     {formatCellNumber(ingMacros.calories * item.portions)}
@@ -449,7 +449,7 @@ function Planning() {
               const macros = calculateIngredientMacros({
                 ingredient_id: item.ingredientId,
                 unit_id: item.unitId,
-                amount: item.amount,
+                unit_quantity: item.amount,
               });
               return (
                 <TableRow key={`ingredient-${index}`}>
