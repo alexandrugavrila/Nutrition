@@ -14,17 +14,17 @@ from db_models.possible_ingredient_tag import (
 )
 from models import IngredientModel, PossibleIngredientTagModel
 
-router = APIRouter()
+router = APIRouter(prefix="/ingredients", tags=["ingredients"])
 
 
-@router.get("/ingredients", response_model=List[IngredientModel])
+@router.get("/", response_model=List[IngredientModel])
 def get_all_ingredients(db: Session = Depends(get_db)) -> List[IngredientModel]:
     """Return all ingredients."""
     ingredients = db.query(db_Ingredient).all()
     return [IngredientModel.model_validate(i) for i in ingredients]
 
 
-@router.get("/ingredients/{ingredient_id}", response_model=IngredientModel)
+@router.get("/{ingredient_id}", response_model=IngredientModel)
 def get_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> IngredientModel:
     """Retrieve a single ingredient by ID."""
     ingredient = db.get(db_Ingredient, ingredient_id)
@@ -33,7 +33,7 @@ def get_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> Ingredi
     return IngredientModel.model_validate(ingredient)
 
 
-@router.post("/ingredients", response_model=IngredientModel, status_code=201)
+@router.post("/", response_model=IngredientModel, status_code=201)
 def add_ingredient(
     ingredient_data: IngredientModel, db: Session = Depends(get_db)
 ) -> IngredientModel:
@@ -66,7 +66,7 @@ def add_ingredient(
     return IngredientModel.model_validate(ingredient)
 
 
-@router.put("/ingredients/{ingredient_id}", response_model=IngredientModel)
+@router.put("/{ingredient_id}", response_model=IngredientModel)
 def update_ingredient(
     ingredient_id: int,
     ingredient_data: IngredientModel,
@@ -112,7 +112,7 @@ def update_ingredient(
     return IngredientModel.model_validate(ingredient)
 
 
-@router.delete("/ingredients/{ingredient_id}")
+@router.delete("/{ingredient_id}")
 def delete_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> dict:
     """Delete an ingredient."""
     ingredient = db.get(db_Ingredient, ingredient_id)
@@ -124,7 +124,7 @@ def delete_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> dict
 
 
 @router.get(
-    "/ingredients/possible_tags",
+    "/possible_tags",
     response_model=List[PossibleIngredientTagModel],
 )
 def get_all_possible_tags(db: Session = Depends(get_db)) -> List[PossibleIngredientTagModel]:
