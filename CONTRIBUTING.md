@@ -62,7 +62,7 @@ Options:
 
 Each branch gets **unique host ports**, calculated as:
 
-* Base ports → Frontend `3000`, Backend `5000`, DB `5432`
+* Base ports → Frontend `3000`, Backend `8000`, DB `5432`
 * Plus branch-specific offset (hash of branch name)
 
 The startup script prints exact values.
@@ -71,9 +71,9 @@ The startup script prints exact values.
 
 | Branch      | Frontend | Backend | DB   |
 | ----------- | -------- | ------- | ---- |
-| `main`      | 3000     | 5000    | 5432 |
-| `feature/x` | 3004     | 5006    | 5438 |
-| `bugfix/y`  | 3012     | 5012    | 5444 |
+| `main`      | 3000     | 8000    | 5432 |
+| `feature/x` | 3004     | 8006    | 5438 |
+| `bugfix/y`  | 3012     | 8012    | 5444 |
 
 In Docker Desktop, ports show as `HOST:CONTAINER` (e.g. `3099:3000`).
 Click the **host port** (3099) to open the frontend in your browser.
@@ -139,7 +139,7 @@ In Docker Desktop, shown as `PORT:5432`.
 
 You can also run backend/frontend directly on your machine.
 
-### Backend (Flask)
+### Backend (FastAPI)
 
 Virtual Environment Setup
 ```powershell
@@ -147,7 +147,7 @@ pwsh ./scripts/activate-venv.ps1
 ```
 
 # Run backend
-python Backend/backend.py
+uvicorn Backend.backend:app --reload
 ```
 
 ### Frontend (React)
@@ -163,9 +163,9 @@ npm start
 ## 🧩 Project Structure (Developer View)
 
 ```
-Backend/                  # Flask app
+Backend/                  # FastAPI app
   ├── db_models/          # SQLAlchemy ORM models
-  ├── schemas/            # Marshmallow schemas
+  ├── models/             # Pydantic models
   ├── routes/             # API routes
   ├── backend.py          # Entrypoint
   └── db.py               # SQLAlchemy setup
@@ -184,7 +184,7 @@ scripts/                  # Helper scripts (compose up/down, tooling)
 ## 📚 Reference
 
 * **Frontend ports** → base `3000` + offset
-* **Backend ports** → base `5000` + offset
+* **Backend ports** → base `8000` + offset
 * **DB ports** → base `5432` + offset
 * **Credentials** → `nutrition_user` / `nutrition_pass` / `nutrition`
 

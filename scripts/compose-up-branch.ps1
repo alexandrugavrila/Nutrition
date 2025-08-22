@@ -41,7 +41,7 @@ $project    = "nutrition-$sanitized"
 # Stable, per-branch port offsets (0–99)
 $offset              = [math]::Abs($branch.GetHashCode()) % 100
 $env:DB_PORT        = 5432 + $offset
-$env:BACKEND_PORT   = 5000 + $offset
+$env:BACKEND_PORT   = 8000 + $offset
 $env:FRONTEND_PORT  = 3000 + $offset
 
 Write-Host "Starting '$branch' with ports:`n  DB: $env:DB_PORT`n  Backend: $env:BACKEND_PORT`n  Frontend: $env:FRONTEND_PORT"
