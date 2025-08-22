@@ -60,19 +60,20 @@ The server will be available at <http://localhost:8000> by default.
 
 ---
 
-## 🛠️ Database Migrations
 
-The backend uses [Alembic](https://alembic.sqlalchemy.org/) for schema
-migrations and resets. Run the following commands from the repository root.
+## 🛠️ Running Migrations
+
+The backend uses [Alembic](https://alembic.sqlalchemy.org/) for schema changes.
+Run these commands from the repository root:
 
 ```bash
-# Create a new migration after updating models
+# create a new migration after updating models
 alembic revision --autogenerate -m "describe your change"
 
-# Apply all pending migrations
+# apply all pending migrations
 alembic upgrade head
 
-# Reset the database (drops all tables and reapplies migrations)
+# reset the database (drops all tables and reapplies migrations)
 alembic downgrade base && alembic upgrade head
 ```
 
@@ -81,6 +82,47 @@ To load sample data from the CSV files in `Database/`, run:
 ```bash
 python Database/import_from_csv.py --test   # or --production
 ```
+
+### Troubleshooting
+* "No changes detected" – ensure new models are imported in `alembic/env.py`.
+* Migration fails to apply – verify the database URL matches your running service.
+* Stuck in a bad state – reset with `alembic downgrade base && alembic upgrade head`.
+
+## 📚 Generating OpenAPI
+
+FastAPI exposes an OpenAPI schema at `/openapi.json`. Generate a local copy:
+
+```bash
+uvicorn Backend.backend:app --port 8000 &
+curl http://localhost:8000/openapi.json -o Backend/openapi.json
+kill %1
+```
+
+### Troubleshooting
+* 404 on `/openapi.json` – confirm the server started and you're hitting the correct port.
+* Missing fields – ensure migrations were applied and models import correctly.
+
+## 🔄 Syncing Frontend Types
+
+Use [`openapi-typescript`](https://github.com/drwpow/openapi-typescript) to keep
+frontend TypeScript definitions aligned with the API:
+
+```bash
+npm install -g openapi-typescript   # run once
+npx openapi-typescript Backend/openapi.json -o Frontend/nutrition-frontend/src/api-types.ts
+```
+
+Commit the generated file whenever API models change.
+
+### Troubleshooting
+* `openapi-typescript` not found – install globally or add to `devDependencies`.
+* Generated types missing endpoints – regenerate the OpenAPI spec and rerun the command.
+
+## 🚦 CI/CD Expectations
+
+* PRs that modify backend models must include an Alembic migration.
+* API changes require an updated `Backend/openapi.json` and synced frontend types.
+* All tests (`pytest` and `npm test`) should pass before merging.
 
 ---
 
