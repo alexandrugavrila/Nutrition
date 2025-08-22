@@ -6,8 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from db import Base, engine
-from routes.ingredients import router as ingredient_router
-from routes.meals import router as meal_router
+from routes import ingredients_router, meals_router
 
 app = FastAPI()
 
@@ -22,8 +21,8 @@ app.add_middleware(
 )
 
 # Prefix all API routes with /api so the frontend can proxy requests.
-app.include_router(ingredient_router, prefix="/api")
-app.include_router(meal_router, prefix="/api")
+app.include_router(ingredients_router, prefix="/api")
+app.include_router(meals_router, prefix="/api")
 
 
 @app.on_event("startup")

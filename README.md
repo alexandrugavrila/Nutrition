@@ -48,6 +48,16 @@ pwsh ./scripts/activate-venv.ps1
 
 The script creates the `.venv` directory if needed and installs required dependencies.
 
+## ▶️ Run the Backend
+
+Start the FastAPI application locally with [uvicorn](https://www.uvicorn.org/):
+
+```bash
+uvicorn Backend.backend:app --reload
+```
+
+The server will be available at <http://localhost:8000> by default.
+
 ---
 
 ## 🗂️ Project Structure
