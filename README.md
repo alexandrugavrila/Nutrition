@@ -3,7 +3,7 @@
 A full-stack nutrition planning and tracking app built with:
 
 * 🖥️ **React** frontend (Material UI + Context API)
-* 🐍 **Flask** backend (SQLAlchemy + Marshmallow)
+* 🐍 **FastAPI** backend (SQLAlchemy + Pydantic)
 * 🐘 **PostgreSQL** database (seeded with food and nutrition data)
 * 🐳 **Docker** for development and deployment
 
@@ -35,7 +35,7 @@ Multiple branches can run in parallel without conflict.
 ### 3. Access services
 
 * Frontend: [http://localhost:\<FRONTEND\_PORT>](http://localhost:3000)
-* Backend API: [http://localhost:\<BACKEND\_PORT>](http://localhost:5000)
+* Backend API: [http://localhost:\<BACKEND\_PORT>](http://localhost:8000)
 * PostgreSQL: `localhost:<DB_PORT>`
 
 ## 🐍 Virtual Environment
@@ -64,11 +64,11 @@ The server will be available at <http://localhost:8000> by default.
 
 ```
 Nutrition/
-├── Backend/                     # Flask app
+├── Backend/                     # FastAPI app
 │   ├── db_models/              # SQLAlchemy ORM models
-│   ├── schemas/                # Marshmallow schemas
+│   ├── models/                 # Pydantic models
 │   ├── routes/                 # Ingredient and meal routes
-│   ├── backend.py              # Main Flask entrypoint
+│   ├── backend.py              # FastAPI entrypoint
 │   ├── db.py                   # SQLAlchemy setup
 │   └── Dockerfile              # Backend build config
 │
