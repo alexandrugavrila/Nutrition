@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Box,
   Button,
@@ -91,57 +91,66 @@ function Planning() {
     setPlan(updated);
   };
 
-  const calculateIngredientMacros = (ingredient) => {
-    const dataIngredient = ingredients.find((i) => i.id === ingredient.ingredient_id);
-    if (!dataIngredient) {
-      return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
-    }
-    const unit =
-      dataIngredient.units.find((u) => u.id === ingredient.unit_id) || dataIngredient.units[0];
-    const grams = unit ? unit.grams : 0;
-    return {
-      calories: (dataIngredient.nutrition.calories || 0) * grams * ingredient.unit_quantity,
-      protein: (dataIngredient.nutrition.protein || 0) * grams * ingredient.unit_quantity,
-      fat: (dataIngredient.nutrition.fat || 0) * grams * ingredient.unit_quantity,
-      carbs: (dataIngredient.nutrition.carbohydrates || 0) * grams * ingredient.unit_quantity,
-      fiber: (dataIngredient.nutrition.fiber || 0) * grams * ingredient.unit_quantity,
-    };
-  };
-
-  const calculateMealMacros = (meal) => {
-    if (!meal) return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
-    return meal.ingredients.reduce(
-      (totals, ingredient) => {
-        const macros = calculateIngredientMacros(ingredient);
-        totals.calories += macros.calories;
-        totals.protein += macros.protein;
-        totals.fat += macros.fat;
-        totals.carbs += macros.carbs;
-        totals.fiber += macros.fiber;
-        return totals;
-      },
-      { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 }
-    );
-  };
-
-  const calculateItemMacros = (item) => {
-    if (item.type === "meal") {
-      const meal = meals.find((m) => m.id === item.mealId);
-      const macros = calculateMealMacros(meal);
+  const calculateIngredientMacros = useCallback(
+    (ingredient) => {
+      const dataIngredient = ingredients.find((i) => i.id === ingredient.ingredient_id);
+      if (!dataIngredient) {
+        return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
+      }
+      const unit =
+        dataIngredient.units.find((u) => u.id === ingredient.unit_id) || dataIngredient.units[0];
+      const grams = unit ? unit.grams : 0;
       return {
-        calories: macros.calories * item.portions,
-        protein: macros.protein * item.portions,
-        fat: macros.fat * item.portions,
-        carbs: macros.carbs * item.portions,
-        fiber: macros.fiber * item.portions,
+        calories: (dataIngredient.nutrition.calories || 0) * grams * ingredient.unit_quantity,
+        protein: (dataIngredient.nutrition.protein || 0) * grams * ingredient.unit_quantity,
+        fat: (dataIngredient.nutrition.fat || 0) * grams * ingredient.unit_quantity,
+        carbs: (dataIngredient.nutrition.carbohydrates || 0) * grams * ingredient.unit_quantity,
+        fiber: (dataIngredient.nutrition.fiber || 0) * grams * ingredient.unit_quantity,
       };
-    }
-    return calculateIngredientMacros({
-      ingredient_id: item.ingredientId,
-      unit_id: item.unitId,
-      unit_quantity: item.amount,
-    });
-  };
+    },
+    [ingredients]
+  );
+
+  const calculateMealMacros = useCallback(
+    (meal) => {
+      if (!meal) return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
+      return meal.ingredients.reduce(
+        (totals, ingredient) => {
+          const macros = calculateIngredientMacros(ingredient);
+          totals.calories += macros.calories;
+          totals.protein += macros.protein;
+          totals.fat += macros.fat;
+          totals.carbs += macros.carbs;
+          totals.fiber += macros.fiber;
+          return totals;
+        },
+        { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 }
+      );
+    },
+    [calculateIngredientMacros]
+  );
+
+  const calculateItemMacros = useCallback(
+    (item) => {
+      if (item.type === "meal") {
+        const meal = meals.find((m) => m.id === item.mealId);
+        const macros = calculateMealMacros(meal);
+        return {
+          calories: macros.calories * item.portions,
+          protein: macros.protein * item.portions,
+          fat: macros.fat * item.portions,
+          carbs: macros.carbs * item.portions,
+          fiber: macros.fiber * item.portions,
+        };
+      }
+      return calculateIngredientMacros({
+        ingredient_id: item.ingredientId,
+        unit_id: item.unitId,
+        unit_quantity: item.amount,
+      });
+    },
+    [meals, calculateMealMacros, calculateIngredientMacros]
+  );
 
   const totalMacros = useMemo(() => {
     return plan.reduce(
@@ -156,7 +165,7 @@ function Planning() {
       },
       { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 }
     );
-  }, [plan, meals, ingredients, calculateItemMacros]);
+  }, [plan, calculateItemMacros]);
 
   const perDayMacros = useMemo(() => {
     if (days <= 0) {

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import App from "../App";
@@ -36,15 +36,11 @@ test("renders tabs and switches between Meals and Ingredients views", async () =
   expect(mockMealData).toHaveBeenCalledTimes(1);
   expect(mockIngredientData).not.toHaveBeenCalled();
 
-  await act(async () => {
-    await userEvent.click(ingredientsTab);
-  });
+  await userEvent.click(ingredientsTab);
   expect(mockIngredientData).toHaveBeenCalledTimes(1);
   expect(mockMealData).toHaveBeenCalledTimes(1);
 
-  await act(async () => {
-    await userEvent.click(mealsTab);
-  });
+  await userEvent.click(mealsTab);
   expect(mockMealData).toHaveBeenCalledTimes(2);
   expect(mockIngredientData).toHaveBeenCalledTimes(1);
 });
@@ -57,9 +53,7 @@ test("provides handleAddIngredientToPlan only to IngredientData", async () => {
   expect(mockMealData).toHaveBeenCalled();
   expect(mockMealData.mock.calls[0][0].handleAddIngredientToPlan).toBeUndefined();
 
-  await act(async () => {
-    await userEvent.click(screen.getByRole("tab", { name: /Ingredients/i }));
-  });
+  await userEvent.click(screen.getByRole("tab", { name: /Ingredients/i }));
 
   expect(mockIngredientData).toHaveBeenCalled();
   const props = mockIngredientData.mock.calls[0][0];
