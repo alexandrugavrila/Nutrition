@@ -5,8 +5,8 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .db import Base, engine
-from .routes import ingredients_router, meals_router
+from Backend.db import Base, engine
+from Backend.routes import ingredients_router, meals_router
 
 app = FastAPI()
 
