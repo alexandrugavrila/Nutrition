@@ -7,6 +7,7 @@ set -e
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_PATH="${VENV_PATH:-$ROOT_DIR/.venv}"
 REQUIREMENTS_PATH="${REQUIREMENTS_PATH:-$ROOT_DIR/Backend/requirements.txt}"
+FRONTEND_PATH="${FRONTEND_PATH:-$ROOT_DIR/Frontend}"
 
 venv_created=false
 if [ ! -d "$VENV_PATH" ]; then
@@ -29,4 +30,16 @@ current_hash="$(sha256sum "$REQUIREMENTS_PATH" | awk '{print $1}')"
 if $venv_created || [ ! -f "$HASH_PATH" ] || [ "$current_hash" != "$(cat "$HASH_PATH")" ]; then
     pip install -r "$REQUIREMENTS_PATH"
     echo "$current_hash" > "$HASH_PATH"
+fi
+
+PACKAGE_LOCK_PATH="$FRONTEND_PATH/package-lock.json"
+NODE_MODULES_PATH="$FRONTEND_PATH/node_modules"
+NPM_HASH_PATH="$VENV_PATH/.npm.hash"
+
+if [ -f "$PACKAGE_LOCK_PATH" ]; then
+    current_npm_hash="$(sha256sum "$PACKAGE_LOCK_PATH" | awk '{print $1}')"
+    if $venv_created || [ ! -d "$NODE_MODULES_PATH" ] || [ ! -f "$NPM_HASH_PATH" ] || [ "$current_npm_hash" != "$(cat "$NPM_HASH_PATH")" ]; then
+        (cd "$FRONTEND_PATH" && npm install)
+        echo "$current_npm_hash" > "$NPM_HASH_PATH"
+    fi
 fi

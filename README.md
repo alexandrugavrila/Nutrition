@@ -47,8 +47,9 @@ pwsh ./scripts/activate-venv.ps1
 ```
 
 The script creates the `.venv` directory if needed and installs or updates
-dependencies. It caches a hash of `Backend/requirements.txt` inside the virtual
-environment and automatically reruns `pip install` whenever that file changes.
+dependencies. It caches hashes of `Backend/requirements.txt` and
+`Frontend/package-lock.json` inside the virtual environment and automatically
+reruns `pip install` and `npm install` whenever those files change.
 
 ## ▶️ Run the Backend
 

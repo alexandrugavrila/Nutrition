@@ -9,7 +9,8 @@ The [README](README.md) has the high-level overview and quick start.
 
 All development tasks should be run from inside the project's Python virtual environment.
 Run one of the activation scripts from the repository root before using any tooling.
-The script will create the environment if it doesn't exist and install dependencies as needed.
+The script will create the environment if it doesn't exist and install both
+backend Python packages and frontend Node modules as needed.
 
 Windows (PowerShell):
 
@@ -166,9 +167,10 @@ uvicorn Backend.backend:app --reload
 
 ### Frontend (React)
 
+Dependencies are installed automatically by the activation script.
+
 ```bash
 cd Frontend
-npm install
 npm start
 ```
 
