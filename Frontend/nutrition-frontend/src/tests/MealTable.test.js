@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import MealTable from "../components/data/meal/MealTable";
@@ -64,8 +64,12 @@ describe("MealTable tag filtering", () => {
 
   test("filters meals by a single selected tag and excludes meals without tags", async () => {
     renderWithData();
-    await userEvent.click(screen.getByLabelText(/Filter tags/i));
-    await userEvent.click(screen.getByRole("option", { name: "Dinner" }));
+    await act(async () => {
+      await userEvent.click(screen.getByLabelText(/Filter tags/i));
+    });
+    await act(async () => {
+      await userEvent.click(screen.getByRole("option", { name: "Dinner" }));
+    });
     expect(screen.getByText("Chicken Dinner")).toBeInTheDocument();
     expect(screen.queryByText("Veg Breakfast")).not.toBeInTheDocument();
     expect(screen.queryByText("Snack")).not.toBeInTheDocument();
@@ -74,10 +78,18 @@ describe("MealTable tag filtering", () => {
 
   test("filters meals when multiple tags are selected", async () => {
     renderWithData();
-    await userEvent.click(screen.getByLabelText(/Filter tags/i));
-    await userEvent.click(screen.getByRole("option", { name: "Breakfast" }));
-    await userEvent.click(screen.getByLabelText(/Filter tags/i));
-    await userEvent.click(screen.getByRole("option", { name: "Dinner" }));
+    await act(async () => {
+      await userEvent.click(screen.getByLabelText(/Filter tags/i));
+    });
+    await act(async () => {
+      await userEvent.click(screen.getByRole("option", { name: "Breakfast" }));
+    });
+    await act(async () => {
+      await userEvent.click(screen.getByLabelText(/Filter tags/i));
+    });
+    await act(async () => {
+      await userEvent.click(screen.getByRole("option", { name: "Dinner" }));
+    });
     expect(screen.getByText("Veg Breakfast")).toBeInTheDocument();
     expect(screen.getByText("Chicken Dinner")).toBeInTheDocument();
     expect(screen.queryByText("Snack")).not.toBeInTheDocument();
@@ -85,10 +97,14 @@ describe("MealTable tag filtering", () => {
 
   test("combines search and tag filters", async () => {
     renderWithData();
-    await userEvent.click(screen.getByLabelText(/Filter tags/i));
-    await userEvent.click(screen.getByRole("option", { name: "Dinner" }));
-    fireEvent.change(screen.getByLabelText(/Search by name/i), {
-      target: { value: "Chicken" },
+    await act(async () => {
+      await userEvent.click(screen.getByLabelText(/Filter tags/i));
+    });
+    await act(async () => {
+      await userEvent.click(screen.getByRole("option", { name: "Dinner" }));
+    });
+    await act(async () => {
+      await userEvent.type(screen.getByLabelText(/Search by name/i), "Chicken");
     });
     expect(screen.getByText("Chicken Dinner")).toBeInTheDocument();
     expect(screen.queryByText("Veg Breakfast")).not.toBeInTheDocument();
