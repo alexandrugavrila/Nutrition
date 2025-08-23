@@ -76,7 +76,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/meals": {
+    "/api/meals/": {
         parameters: {
             query?: never;
             header?: never;
@@ -87,13 +87,13 @@ export interface paths {
          * Get All Meals
          * @description Return all meals.
          */
-        get: operations["get_all_meals_api_meals_get"];
+        get: operations["get_all_meals_api_meals__get"];
         put?: never;
         /**
          * Add Meal
          * @description Create a new meal.
          */
-        post: operations["add_meal_api_meals_post"];
+        post: operations["add_meal_api_meals__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -387,7 +387,7 @@ export interface operations {
             };
         };
     };
-    get_all_meals_api_meals_get: {
+    get_all_meals_api_meals__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -407,7 +407,7 @@ export interface operations {
             };
         };
     };
-    add_meal_api_meals_post: {
+    add_meal_api_meals__post: {
         parameters: {
             query?: never;
             header?: never;

@@ -9,7 +9,7 @@ from ..models import Meal, PossibleMealTag
 router = APIRouter(prefix="/meals", tags=["meals"])
 
 
-@router.get("", response_model=List[Meal])
+@router.get("/", response_model=List[Meal])
 def get_all_meals(db: Session = Depends(get_db)) -> List[Meal]:
     """Return all meals."""
     return db.exec(select(Meal)).all()
@@ -31,7 +31,7 @@ def get_possible_meal_tags(db: Session = Depends(get_db)) -> List[PossibleMealTa
     return db.exec(statement).all()
 
 
-@router.post("", response_model=Meal, status_code=201)
+@router.post("/", response_model=Meal, status_code=201)
 def add_meal(meal: Meal, db: Session = Depends(get_db)) -> Meal:
     """Create a new meal."""
     if meal.tags:
