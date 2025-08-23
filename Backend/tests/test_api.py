@@ -4,6 +4,7 @@ from typing import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -15,7 +16,12 @@ from Backend import models  # ensure models are imported for SQLModel metadata
 
 @pytest.fixture(name="client")
 def client_fixture() -> Iterator[TestClient]:
-    engine = create_engine(os.environ["DATABASE_URL"])
+    database_url = os.environ.get("DATABASE_URL", "sqlite://")
+    engine = create_engine(
+        database_url,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     SQLModel.metadata.create_all(engine)
 
     def override_get_db() -> Iterator[Session]:

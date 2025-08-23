@@ -7,12 +7,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, Session, create_engine
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+# Add repository root to ``sys.path`` so ``Backend`` package is importable
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from backend import app
-from db import get_db
-import models  # ensure models are imported for SQLModel metadata
-from models import PossibleIngredientTag, PossibleMealTag
+from Backend.backend import app
+from Backend.db import get_db
+from Backend import models  # ensure models are imported for SQLModel metadata
+from Backend.models import PossibleIngredientTag, PossibleMealTag
 
 
 @pytest.fixture(name="engine")
