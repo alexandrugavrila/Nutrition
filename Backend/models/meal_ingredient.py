@@ -9,8 +9,12 @@ class MealIngredient(SQLModel, table=True):
 
     __tablename__ = "meal_ingredients"
 
-    ingredient_id: int = Field(foreign_key="ingredients.id", primary_key=True)
-    meal_id: int = Field(foreign_key="meals.id", primary_key=True)
+    ingredient_id: Optional[int] = Field(
+        default=None, foreign_key="ingredients.id", primary_key=True
+    )
+    meal_id: Optional[int] = Field(
+        default=None, foreign_key="meals.id", primary_key=True
+    )
     unit_id: Optional[int] = Field(default=None, foreign_key="ingredient_units.id")
     unit_quantity: Optional[float] = Field(
         default=None, sa_column=Column(Numeric(10, 4))

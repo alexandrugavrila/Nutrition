@@ -10,7 +10,9 @@ class IngredientUnit(SQLModel, table=True):
     __tablename__ = "ingredient_units"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    ingredient_id: int = Field(foreign_key="ingredients.id")
+    ingredient_id: Optional[int] = Field(
+        default=None, foreign_key="ingredients.id"
+    )
     name: str = Field(sa_column=Column(String(50), nullable=False))
     grams: float = Field(sa_column=Column(Numeric(10, 4), nullable=False))
 
