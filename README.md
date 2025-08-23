@@ -34,9 +34,9 @@ Multiple branches can run in parallel without conflict.
 
 ### 3. Access services
 
-* Frontend: [http://localhost:\<FRONTEND\_PORT>](http://localhost:3000)
-* Backend API: [http://localhost:\<BACKEND\_PORT>](http://localhost:8000)
-* PostgreSQL: `localhost:<DB_PORT>`
+* Frontend: `http://localhost:<FRONTEND_PORT>` (e.g., `http://localhost:3000` on `main`)
+* Backend API: `http://localhost:<BACKEND_PORT>` (e.g., `http://localhost:8000` on `main`)
+* PostgreSQL: `localhost:<DB_PORT>` (e.g., `localhost:5432` on `main`)
 
 ## 🐍 Virtual Environment
 
@@ -65,6 +65,11 @@ The server will be available at <http://localhost:8000> by default.
 
 ## 🛠️ Running Migrations
 
+> **Note:** SQLModel models are the source of truth. Database migrations and the OpenAPI
+> schema are generated from these models. After modifying models, run `alembic revision --autogenerate`
+> and `scripts/update-api-schema.sh`, then commit the new migration, `Backend/openapi.json`, and
+> `Frontend/nutrition-frontend/src/api-types.ts`.
+
 The backend uses [Alembic](https://alembic.sqlalchemy.org/) for schema changes.
 Run these commands from the repository root:
 
@@ -92,7 +97,23 @@ python Database/import_from_csv.py --test   # or --production
 
 ## 📚 Generating OpenAPI
 
-FastAPI exposes an OpenAPI schema at `/openapi.json`. Generate a local copy:
+Use `scripts/update-api-schema.sh` as the single source of truth for generating
+`Backend/openapi.json` and syncing frontend TypeScript types. The script spins
+up a temporary FastAPI server, fetches `/openapi.json`, and runs
+[`openapi-typescript`](https://github.com/drwpow/openapi-typescript). Set the
+port with `BACKEND_PORT` (defaults to `8000`) and run:
+
+```bash
+npm --prefix Frontend/nutrition-frontend install   # run once
+export BACKEND_PORT=8000  # optional
+scripts/update-api-schema.sh
+```
+
+Run this script whenever API models change and commit the generated files.
+
+### Advanced: Manual workflow
+
+If you need to generate the schema manually:
 
 ```bash
 uvicorn Backend.backend:app --port 8000 &
@@ -101,29 +122,9 @@ kill %1
 ```
 
 ### Troubleshooting
-* 404 on `/openapi.json` – confirm the server started and you're hitting the correct port.
-* Missing fields – ensure migrations were applied and models import correctly.
-
-## 🔄 Syncing Frontend Types
-
-Use [`openapi-typescript`](https://github.com/drwpow/openapi-typescript) to keep
-frontend TypeScript definitions aligned with the API. The OpenAPI schema and
-TypeScript types are currently synced manually via `scripts/update-api-schema.sh`,
-which regenerates both the backend schema and frontend types. Set the port used
-by the temporary backend server with the `BACKEND_PORT` environment variable
-(defaults to `8000`) and run the script:
-
-```bash
-npm --prefix Frontend install   # run once
-export BACKEND_PORT=8000  # optional
-scripts/update-api-schema.sh
-```
-
-Run the script whenever API models change and commit the generated file.
-
-### Troubleshooting
 * `openapi-typescript` not found – ensure frontend dev dependencies are installed.
-* Generated types missing endpoints – regenerate the OpenAPI spec and rerun the command.
+* Generated types missing endpoints – ensure migrations were applied and rerun the script.
+* 404 on `/openapi.json` – confirm the backend server started and you're hitting the correct port.
 
 ## 🚦 CI/CD Expectations
 
