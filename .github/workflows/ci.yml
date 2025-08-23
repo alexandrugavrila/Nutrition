@@ -7,9 +7,23 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nutrition
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nutrition"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       PYTHONPATH: ${{ github.workspace }}
-      DATABASE_URL: sqlite:///./app.db
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nutrition
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
@@ -27,6 +41,18 @@ jobs:
         run: |
           source scripts/activate-venv.sh
           pytest
+      - name: Teardown database
+        if: always()
+        run: |
+          source scripts/activate-venv.sh
+          python - <<'PY'
+          import os
+          from sqlalchemy import create_engine, text
+          engine = create_engine(os.environ['DATABASE_URL'])
+          with engine.begin() as conn:
+              conn.execute(text('DROP SCHEMA public CASCADE'))
+              conn.execute(text('CREATE SCHEMA public'))
+          PY
 
   frontend:
     runs-on: ubuntu-latest

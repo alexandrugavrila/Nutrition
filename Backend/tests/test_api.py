@@ -4,8 +4,9 @@ from typing import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.pool import StaticPool
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import Session, create_engine
+from alembic import command
+from alembic.config import Config
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -16,12 +17,9 @@ import models  # ensure models are imported for SQLModel metadata
 
 @pytest.fixture(name="client")
 def client_fixture() -> Iterator[TestClient]:
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
+    engine = create_engine(os.environ["DATABASE_URL"])
+    config = Config("alembic.ini")
+    command.upgrade(config, "head")
 
     def override_get_db() -> Iterator[Session]:
         with Session(engine) as session:
@@ -31,7 +29,7 @@ def client_fixture() -> Iterator[TestClient]:
     with TestClient(app) as client:
         yield client
 
-    SQLModel.metadata.drop_all(engine)
+    command.downgrade(config, "base")
     app.dependency_overrides.clear()
 
 
