@@ -46,7 +46,9 @@ All development should be run from inside the project's Python virtual environme
 pwsh ./scripts/activate-venv.ps1
 ```
 
-The script creates the `.venv` directory if needed and installs required dependencies.
+The script creates the `.venv` directory if needed and installs or updates
+dependencies. It caches a hash of `Backend/requirements.txt` inside the virtual
+environment and automatically reruns `pip install` whenever that file changes.
 
 ## ▶️ Run the Backend
 
