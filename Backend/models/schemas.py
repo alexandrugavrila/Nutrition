@@ -50,6 +50,12 @@ class IngredientCreate(SQLModel):
     tags: List[TagRef] = Field(default_factory=list)
 
 
+class IngredientUpdate(IngredientCreate):
+    """Schema for updating an ingredient."""
+
+    pass
+
+
 class IngredientRead(SQLModel):
     """Schema for reading ingredient data."""
 
@@ -70,6 +76,12 @@ class MealCreate(SQLModel):
     tags: List[TagRef] = Field(default_factory=list)
 
 
+class MealUpdate(MealCreate):
+    """Schema for updating a meal."""
+
+    pass
+
+
 class MealRead(SQLModel):
     """Schema for reading meal data."""
 
@@ -87,7 +99,9 @@ __all__ = [
     "MealIngredientCreate",
     "TagRef",
     "IngredientCreate",
+    "IngredientUpdate",
     "IngredientRead",
     "MealCreate",
+    "MealUpdate",
     "MealRead",
 ]

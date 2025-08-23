@@ -2,10 +2,11 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
+from sqlalchemy.orm import selectinload
 
 from ..db import get_db
-from ..models import Meal, PossibleMealTag
-from ..models.schemas import MealCreate, MealRead
+from ..models import Meal, PossibleMealTag, Ingredient, MealIngredient
+from ..models.schemas import MealCreate, MealRead, MealUpdate
 
 router = APIRouter(prefix="/meals", tags=["meals"])
 
@@ -41,13 +42,28 @@ def add_meal(meal: MealCreate, db: Session = Depends(get_db)) -> MealRead:
         meal_obj.tags = [db.get(PossibleMealTag, t.id) for t in meal.tags if t.id]
     db.add(meal_obj)
     db.commit()
-    db.refresh(meal_obj)
+
+    statement = (
+        select(Meal)
+        .options(
+            selectinload(Meal.ingredients)
+            .selectinload(MealIngredient.ingredient)
+            .selectinload(Ingredient.nutrition),
+            selectinload(Meal.ingredients)
+            .selectinload(MealIngredient.ingredient)
+            .selectinload(Ingredient.units),
+            selectinload(Meal.ingredients).selectinload(MealIngredient.unit),
+            selectinload(Meal.tags),
+        )
+        .where(Meal.id == meal_obj.id)
+    )
+    meal_obj = db.exec(statement).one()
     return MealRead.model_validate(meal_obj)
 
 
 @router.put("/{meal_id}", response_model=MealRead)
 def update_meal(
-    meal_id: int, meal_data: MealCreate, db: Session = Depends(get_db)
+    meal_id: int, meal_data: MealUpdate, db: Session = Depends(get_db)
 ) -> MealRead:
     """Update an existing meal."""
     meal = db.get(Meal, meal_id)
@@ -65,7 +81,22 @@ def update_meal(
 
     db.add(meal)
     db.commit()
-    db.refresh(meal)
+
+    statement = (
+        select(Meal)
+        .options(
+            selectinload(Meal.ingredients)
+            .selectinload(MealIngredient.ingredient)
+            .selectinload(Ingredient.nutrition),
+            selectinload(Meal.ingredients)
+            .selectinload(MealIngredient.ingredient)
+            .selectinload(Ingredient.units),
+            selectinload(Meal.ingredients).selectinload(MealIngredient.unit),
+            selectinload(Meal.tags),
+        )
+        .where(Meal.id == meal.id)
+    )
+    meal = db.exec(statement).one()
     return MealRead.model_validate(meal)
 
 

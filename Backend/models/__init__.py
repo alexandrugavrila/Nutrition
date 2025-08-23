@@ -13,8 +13,10 @@ from .schemas import (
     MealIngredientCreate,
     TagRef,
     IngredientCreate,
+    IngredientUpdate,
     IngredientRead,
     MealCreate,
+    MealUpdate,
     MealRead,
 )
 
@@ -33,7 +35,9 @@ __all__ = [
     "MealIngredientCreate",
     "TagRef",
     "IngredientCreate",
+    "IngredientUpdate",
     "IngredientRead",
     "MealCreate",
+    "MealUpdate",
     "MealRead",
 ]
