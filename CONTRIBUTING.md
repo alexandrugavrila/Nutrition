@@ -167,7 +167,7 @@ uvicorn Backend.backend:app --reload
 ### Frontend (React)
 
 ```bash
-cd Frontend/nutrition-frontend
+cd Frontend
 npm install
 npm start
 ```
@@ -189,7 +189,7 @@ Backend/                  # FastAPI app
   ├── backend.py          # Entrypoint
   └── db.py               # SQLModel setup
 
-Frontend/nutrition-frontend/
+Frontend/
   ├── src/                # React components, context
   ├── Dockerfile          # Frontend build config
   └── nginx.conf          # Static serving config

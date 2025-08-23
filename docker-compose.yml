@@ -40,12 +40,12 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Frontend/nutrition-frontend/Dockerfile
+      dockerfile: Frontend/Dockerfile
       target: dev
     depends_on:
       - backend
     volumes:
-      - ./Frontend/nutrition-frontend:/app
+      - ./Frontend:/app
       - /app/node_modules
     environment:
       CHOKIDAR_USEPOLLING: "true"

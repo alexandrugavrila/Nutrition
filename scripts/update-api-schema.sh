@@ -24,4 +24,4 @@ done
 curl "http://localhost:${BACKEND_PORT}/openapi.json" -o Backend/openapi.json
 
 # Generate TypeScript types for the frontend
-npx --prefix Frontend/nutrition-frontend openapi-typescript Backend/openapi.json -o Frontend/nutrition-frontend/src/api-types.ts
+npx --prefix Frontend openapi-typescript Backend/openapi.json -o Frontend/src/api-types.ts
