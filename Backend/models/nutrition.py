@@ -10,7 +10,9 @@ class Nutrition(SQLModel, table=True):
     __tablename__ = "nutrition"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    ingredient_id: int = Field(foreign_key="ingredients.id")
+    ingredient_id: Optional[int] = Field(
+        default=None, foreign_key="ingredients.id"
+    )
     calories: float = Field(sa_column=Column(Numeric(10, 4), nullable=False))
     fat: float = Field(sa_column=Column(Numeric(10, 4), nullable=False))
     carbohydrates: float = Field(sa_column=Column(Numeric(10, 4), nullable=False))

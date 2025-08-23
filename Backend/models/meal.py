@@ -16,7 +16,10 @@ class Meal(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(sa_column=Column(String(100), unique=True, nullable=False))
 
-    ingredients: List[MealIngredient] = Relationship(back_populates="meal")
+    ingredients: List[MealIngredient] = Relationship(
+        back_populates="meal",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
     tags: List[PossibleMealTag] = Relationship(
         back_populates="meals", link_model=MealTagLink
     )
