@@ -7,17 +7,41 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nutrition
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nutrition"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       PYTHONPATH: ${{ github.workspace }}
-      DATABASE_URL: sqlite:///./app.db
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nutrition
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
+        id: setup-python
         with:
           python-version: '3.11'
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Cache backend dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: backend-${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('Backend/requirements.txt') }}
+          restore-keys: |
+            backend-${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}-
+      - name: Verify pip cache
+        run: ls -al ~/.cache/pip || echo 'No pip cache found'
       - name: Install backend dependencies
         run: |
           source scripts/activate-venv.sh
@@ -40,19 +64,47 @@ jobs:
         run: |
           source scripts/activate-venv.sh
           pytest
+      - name: Teardown database
+        if: always()
+        run: |
+          source scripts/activate-venv.sh
+          python - <<'PY'
+          import os
+          from sqlalchemy import create_engine, text
+          engine = create_engine(os.environ['DATABASE_URL'])
+          with engine.begin() as conn:
+              conn.execute(text('DROP SCHEMA public CASCADE'))
+              conn.execute(text('CREATE SCHEMA public'))
+          PY
 
   frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
+        id: setup-node
         with:
           node-version: '20'
+      - name: Cache frontend dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: frontend-${{ runner.os }}-npm-${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('Frontend/nutrition-frontend/package-lock.json') }}
+          restore-keys: |
+            frontend-${{ runner.os }}-npm-${{ steps.setup-node.outputs.node-version }}-
+      - name: Verify npm cache
+        run: ls -al ~/.npm || echo 'No npm cache found'
       - name: Install frontend dependencies
         working-directory: Frontend/nutrition-frontend
         run: npm ci
+      - name: Frontend lint
+        working-directory: Frontend/nutrition-frontend
+        run: npm run lint
       - name: Frontend tests
         working-directory: Frontend/nutrition-frontend
         env:
           CI: true
         run: npm test -- --watchAll=false
+      - name: Production build
+        working-directory: Frontend/nutrition-frontend
+        run: npm run build
