@@ -14,8 +14,11 @@ if [ ! -d "$VENV_PATH" ]; then
     venv_created=true
 fi
 
-# shellcheck disable=SC1090
-source "$VENV_PATH/bin/activate"
+# Activate the virtual environment unless we're already inside it.
+if [ "$VIRTUAL_ENV" != "$VENV_PATH" ]; then
+    # shellcheck disable=SC1090
+    source "$VENV_PATH/bin/activate"
+fi
 
 # Reinstall dependencies if the venv was just created or the requirements
 # file has changed since the last install. The hash is cached inside the venv
