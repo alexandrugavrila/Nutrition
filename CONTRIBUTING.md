@@ -7,10 +7,20 @@ The [README](README.md) has the high-level overview and quick start.
 
 ## Virtual environment
 
-All development tasks should be run from inside the project's Python virtual environment. The helper script will create and activate it and install dependencies as needed:
+All development tasks should be run from inside the project's Python virtual environment.
+Run one of the activation scripts from the repository root before using any tooling.
+The script will create the environment if it doesn't exist and install dependencies as needed.
+
+Windows (PowerShell):
 
 ```powershell
 pwsh ./scripts/activate-venv.ps1
+```
+
+macOS/Linux (Bash):
+
+```bash
+source ./scripts/activate-venv.sh
 ```
 
 ## 🔀 Branching
@@ -136,9 +146,18 @@ You can also run backend/frontend directly on your machine.
 
 ### Backend (FastAPI)
 
-Virtual Environment Setup
+Virtual environment setup (run one):
+
+Windows (PowerShell):
+
 ```powershell
 pwsh ./scripts/activate-venv.ps1
+```
+
+macOS/Linux (Bash):
+
+```bash
+source ./scripts/activate-venv.sh
 ```
 
 # Run backend
