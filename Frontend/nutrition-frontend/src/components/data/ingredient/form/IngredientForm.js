@@ -1,3 +1,4 @@
+// @ts-check
 import React, { useEffect, useCallback, useReducer } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Box } from "@mui/material";
@@ -10,6 +11,11 @@ import NutritionEdit from "./NutritionEdit";
 import TagEdit from "./TagEdit";
 
 import { handleFetchRequest } from "../../../../utils/utils";
+
+/**
+ * @typedef {import("../../../../api-types").operations["add_ingredient_api_ingredients__post"]["requestBody"]["content"]["application/json"]} IngredientRequest
+ * @typedef {import("../../../../api-types").operations["add_ingredient_api_ingredients__post"]["responses"][201]["content"]["application/json"]} IngredientResponse
+ */
 
 const initialState = {
   isOpen: false,
@@ -102,7 +108,7 @@ function IngredientForm({ ingredientToEditData }) {
     if (isEditMode) {
       const url = `/api/ingredients/${toDatabaseIngredient.id}`;
       const method = "PUT";
-      const data = toDatabaseIngredient;
+      const data = /** @type {IngredientRequest} */ (toDatabaseIngredient);
 
       handleFetchRequest(url, method, data).then(() => {
         setIngredientsNeedsRefetch(true);
@@ -111,7 +117,7 @@ function IngredientForm({ ingredientToEditData }) {
     } else {
       const url = "/api/ingredients";
       const method = "POST";
-      const data = toDatabaseIngredient;
+      const data = /** @type {IngredientRequest} */ (toDatabaseIngredient);
 
       handleFetchRequest(url, method, data).then(() => {
         setIngredientsNeedsRefetch(true);
@@ -128,6 +134,7 @@ function IngredientForm({ ingredientToEditData }) {
         method: "DELETE",
       })
         .then((response) => {
+          /** @type {Promise<IngredientResponse>} */ (response.json());
           if (response.ok) {
             setIngredientsNeedsRefetch(true);
           } else {
