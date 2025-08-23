@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Box,
   Button,
@@ -91,7 +91,7 @@ function Planning() {
     setPlan(updated);
   };
 
-  const calculateIngredientMacros = (ingredient) => {
+  const calculateIngredientMacros = useCallback((ingredient) => {
     const dataIngredient = ingredients.find((i) => i.id === ingredient.ingredient_id);
     if (!dataIngredient) {
       return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
@@ -106,9 +106,9 @@ function Planning() {
       carbs: (dataIngredient.nutrition.carbohydrates || 0) * grams * ingredient.unit_quantity,
       fiber: (dataIngredient.nutrition.fiber || 0) * grams * ingredient.unit_quantity,
     };
-  };
+  }, [ingredients]);
 
-  const calculateMealMacros = (meal) => {
+  const calculateMealMacros = useCallback((meal) => {
     if (!meal) return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
     return meal.ingredients.reduce(
       (totals, ingredient) => {
@@ -120,11 +120,11 @@ function Planning() {
         totals.fiber += macros.fiber;
         return totals;
       },
-      { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 }
-    );
-  };
+        { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 }
+      );
+  }, [calculateIngredientMacros]);
 
-  const calculateItemMacros = (item) => {
+  const calculateItemMacros = useCallback((item) => {
     if (item.type === "meal") {
       const meal = meals.find((m) => m.id === item.mealId);
       const macros = calculateMealMacros(meal);
@@ -141,7 +141,7 @@ function Planning() {
       unit_id: item.unitId,
       unit_quantity: item.amount,
     });
-  };
+  }, [meals, calculateMealMacros, calculateIngredientMacros]);
 
   const totalMacros = useMemo(() => {
     return plan.reduce(
@@ -156,7 +156,7 @@ function Planning() {
       },
       { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 }
     );
-  }, [plan, meals, ingredients, calculateItemMacros]);
+  }, [plan, calculateItemMacros]);
 
   const perDayMacros = useMemo(() => {
     if (days <= 0) {
