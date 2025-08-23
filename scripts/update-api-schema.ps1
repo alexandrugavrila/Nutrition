@@ -30,8 +30,9 @@ if (-not $python) {
     }
 }
 
-# Launch the FastAPI app in the background
-$uvicorn = Start-Process -FilePath $python -ArgumentList $pythonArgs + @("-m", "uvicorn", "Backend.backend:app", "--port", $backendPort) -PassThru
+# Launch the FastAPI app in the background. Ensure that the Python arguments
+# array is combined correctly before being passed to Start-Process.
+$uvicorn = Start-Process -FilePath $python -ArgumentList ($pythonArgs + @("-m", "uvicorn", "Backend.backend:app", "--port", $backendPort)) -PassThru
 
 try {
     # Wait for the server to be ready and capture the schema
