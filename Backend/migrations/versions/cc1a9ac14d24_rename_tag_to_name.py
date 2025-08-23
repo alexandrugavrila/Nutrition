@@ -1,8 +1,10 @@
-"""rename tag column to name in possible tag tables"""
-# Rename tag column to name in possible tag tables
+"""Previous migration renamed `tag` columns to `name`.
 
-from alembic import op
-import sqlalchemy as sa
+With the initial schema already using `name`, this revision becomes a no-op.
+"""
+
+from alembic import op  # noqa: F401
+import sqlalchemy as sa  # noqa: F401
 
 # revision identifiers, used by Alembic.
 revision = "cc1a9ac14d24"
@@ -12,10 +14,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.alter_column("possible_ingredient_tags", "tag", new_column_name="name")
-    op.alter_column("possible_meal_tags", "tag", new_column_name="name")
+    """No-op since tables already use `name`."""
+    pass
 
 
 def downgrade() -> None:
-    op.alter_column("possible_ingredient_tags", "name", new_column_name="tag")
-    op.alter_column("possible_meal_tags", "name", new_column_name="tag")
+    """No-op."""
+    pass

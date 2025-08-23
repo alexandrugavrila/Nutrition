@@ -15,6 +15,15 @@ def get_all_ingredients(db: Session = Depends(get_db)) -> List[Ingredient]:
     return db.exec(select(Ingredient)).all()
 
 
+@router.get("/possible_tags", response_model=List[PossibleIngredientTag])
+def get_all_possible_tags(
+    db: Session = Depends(get_db),
+) -> List[PossibleIngredientTag]:
+    """Return all possible ingredient tags ordered by name."""
+    statement = select(PossibleIngredientTag).order_by(PossibleIngredientTag.name)
+    return db.exec(statement).all()
+
+
 @router.get("/{ingredient_id}", response_model=Ingredient)
 def get_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> Ingredient:
     """Retrieve a single ingredient by ID."""
@@ -73,15 +82,6 @@ def delete_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> dict
     db.delete(ingredient)
     db.commit()
     return {"message": "Ingredient deleted successfully"}
-
-
-@router.get("/possible_tags", response_model=List[PossibleIngredientTag])
-def get_all_possible_tags(
-    db: Session = Depends(get_db),
-) -> List[PossibleIngredientTag]:
-    """Return all possible ingredient tags ordered by name."""
-    statement = select(PossibleIngredientTag).order_by(PossibleIngredientTag.name)
-    return db.exec(statement).all()
 
 
 __all__ = ["router"]
