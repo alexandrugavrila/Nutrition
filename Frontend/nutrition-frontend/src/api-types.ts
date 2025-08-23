@@ -3,560 +3,422 @@
  * Do not make direct changes to the file.
  */
 
+
 export interface paths {
-    "/api/ingredients/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get All Ingredients
-         * @description Return all ingredients.
-         */
-        get: operations["get_all_ingredients_api_ingredients__get"];
-        put?: never;
-        /**
-         * Add Ingredient
-         * @description Create a new ingredient.
-         */
-        post: operations["add_ingredient_api_ingredients__post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ingredients/{ingredient_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Ingredient
-         * @description Retrieve a single ingredient by ID.
-         */
-        get: operations["get_ingredient_api_ingredients__ingredient_id__get"];
-        /**
-         * Update Ingredient
-         * @description Update an existing ingredient.
-         */
-        put: operations["update_ingredient_api_ingredients__ingredient_id__put"];
-        post?: never;
-        /**
-         * Delete Ingredient
-         * @description Delete an ingredient.
-         */
-        delete: operations["delete_ingredient_api_ingredients__ingredient_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ingredients/possible_tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get All Possible Tags
-         * @description Return all possible ingredient tags ordered by name.
-         */
-        get: operations["get_all_possible_tags_api_ingredients_possible_tags_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/meals": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get All Meals
-         * @description Return all meals.
-         */
-        get: operations["get_all_meals_api_meals_get"];
-        put?: never;
-        /**
-         * Add Meal
-         * @description Create a new meal.
-         */
-        post: operations["add_meal_api_meals_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/meals/{meal_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Meal
-         * @description Retrieve a single meal by ID.
-         */
-        get: operations["get_meal_api_meals__meal_id__get"];
-        /**
-         * Update Meal
-         * @description Update an existing meal.
-         */
-        put: operations["update_meal_api_meals__meal_id__put"];
-        post?: never;
-        /**
-         * Delete Meal
-         * @description Delete a meal.
-         */
-        delete: operations["delete_meal_api_meals__meal_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/meals/possible_tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Possible Meal Tags
-         * @description Return all possible meal tags ordered by name.
-         */
-        get: operations["get_possible_meal_tags_api_meals_possible_tags_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
+  "/api/ingredients/": {
+    /**
+     * Get All Ingredients
+     * @description Return all ingredients.
+     */
+    get: operations["get_all_ingredients_api_ingredients__get"];
+    /**
+     * Add Ingredient
+     * @description Create a new ingredient.
+     */
+    post: operations["add_ingredient_api_ingredients__post"];
+  };
+  "/api/ingredients/{ingredient_id}": {
+    /**
+     * Get Ingredient
+     * @description Retrieve a single ingredient by ID.
+     */
+    get: operations["get_ingredient_api_ingredients__ingredient_id__get"];
+    /**
+     * Update Ingredient
+     * @description Update an existing ingredient.
+     */
+    put: operations["update_ingredient_api_ingredients__ingredient_id__put"];
+    /**
+     * Delete Ingredient
+     * @description Delete an ingredient.
+     */
+    delete: operations["delete_ingredient_api_ingredients__ingredient_id__delete"];
+  };
+  "/api/ingredients/possible_tags": {
+    /**
+     * Get All Possible Tags
+     * @description Return all possible ingredient tags ordered by name.
+     */
+    get: operations["get_all_possible_tags_api_ingredients_possible_tags_get"];
+  };
+  "/api/meals": {
+    /**
+     * Get All Meals
+     * @description Return all meals.
+     */
+    get: operations["get_all_meals_api_meals_get"];
+    /**
+     * Add Meal
+     * @description Create a new meal.
+     */
+    post: operations["add_meal_api_meals_post"];
+  };
+  "/api/meals/{meal_id}": {
+    /**
+     * Get Meal
+     * @description Retrieve a single meal by ID.
+     */
+    get: operations["get_meal_api_meals__meal_id__get"];
+    /**
+     * Update Meal
+     * @description Update an existing meal.
+     */
+    put: operations["update_meal_api_meals__meal_id__put"];
+    /**
+     * Delete Meal
+     * @description Delete a meal.
+     */
+    delete: operations["delete_meal_api_meals__meal_id__delete"];
+  };
+  "/api/meals/possible_tags": {
+    /**
+     * Get Possible Meal Tags
+     * @description Return all possible meal tags ordered by name.
+     */
+    get: operations["get_possible_meal_tags_api_meals_possible_tags_get"];
+  };
 }
+
 export type webhooks = Record<string, never>;
+
 export interface components {
-    schemas: {
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
-        };
-        /**
-         * Ingredient
-         * @description Core ingredient information.
-         */
-        Ingredient: {
-            /** Id */
-            id?: number | null;
-            /** Name */
-            name: string;
-        };
-        /**
-         * Meal
-         * @description Meal with associated ingredients and tags.
-         */
-        Meal: {
-            /** Id */
-            id?: number | null;
-            /** Name */
-            name: string;
-        };
-        /**
-         * PossibleIngredientTag
-         * @description Tag that can be associated with an ingredient.
-         */
-        PossibleIngredientTag: {
-            /** Id */
-            id?: number | null;
-            /** Name */
-            name: string;
-        };
-        /**
-         * PossibleMealTag
-         * @description Tag that can be associated with a meal.
-         */
-        PossibleMealTag: {
-            /** Id */
-            id?: number | null;
-            /** Name */
-            name: string;
-        };
-        /** ValidationError */
-        ValidationError: {
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
-        };
+  schemas: {
+    /** HTTPValidationError */
+    HTTPValidationError: {
+      /** Detail */
+      detail?: components["schemas"]["ValidationError"][];
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    /**
+     * Ingredient
+     * @description Core ingredient information.
+     */
+    Ingredient: {
+      /** Id */
+      id?: number | null;
+      /** Name */
+      name: string;
+    };
+    /**
+     * Meal
+     * @description Meal with associated ingredients and tags.
+     */
+    Meal: {
+      /** Id */
+      id?: number | null;
+      /** Name */
+      name: string;
+    };
+    /**
+     * PossibleIngredientTag
+     * @description Tag that can be associated with an ingredient.
+     */
+    PossibleIngredientTag: {
+      /** Id */
+      id?: number | null;
+      /** Name */
+      name: string;
+    };
+    /**
+     * PossibleMealTag
+     * @description Tag that can be associated with a meal.
+     */
+    PossibleMealTag: {
+      /** Id */
+      id?: number | null;
+      /** Name */
+      name: string;
+    };
+    /** ValidationError */
+    ValidationError: {
+      /** Location */
+      loc: (string | number)[];
+      /** Message */
+      msg: string;
+      /** Error Type */
+      type: string;
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
+
 export type $defs = Record<string, never>;
+
+export type external = Record<string, never>;
+
 export interface operations {
-    get_all_ingredients_api_ingredients__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+
+  /**
+   * Get All Ingredients
+   * @description Return all ingredients.
+   */
+  get_all_ingredients_api_ingredients__get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["Ingredient"][];
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Ingredient"][];
-                };
-            };
-        };
+      };
     };
-    add_ingredient_api_ingredients__post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Ingredient"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Ingredient"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  /**
+   * Add Ingredient
+   * @description Create a new ingredient.
+   */
+  add_ingredient_api_ingredients__post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["Ingredient"];
+      };
     };
-    get_ingredient_api_ingredients__ingredient_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                ingredient_id: number;
-            };
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        content: {
+          "application/json": components["schemas"]["Ingredient"];
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Ingredient"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
+      };
     };
-    update_ingredient_api_ingredients__ingredient_id__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                ingredient_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Ingredient"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Ingredient"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  /**
+   * Get Ingredient
+   * @description Retrieve a single ingredient by ID.
+   */
+  get_ingredient_api_ingredients__ingredient_id__get: {
+    parameters: {
+      path: {
+        ingredient_id: number;
+      };
     };
-    delete_ingredient_api_ingredients__ingredient_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                ingredient_id: number;
-            };
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["Ingredient"];
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
+      };
     };
-    get_all_possible_tags_api_ingredients_possible_tags_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PossibleIngredientTag"][];
-                };
-            };
-        };
+  };
+  /**
+   * Update Ingredient
+   * @description Update an existing ingredient.
+   */
+  update_ingredient_api_ingredients__ingredient_id__put: {
+    parameters: {
+      path: {
+        ingredient_id: number;
+      };
     };
-    get_all_meals_api_meals_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Meal"][];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["Ingredient"];
+      };
     };
-    add_meal_api_meals_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["Ingredient"];
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Meal"];
-            };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Meal"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+      };
     };
-    get_meal_api_meals__meal_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                meal_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Meal"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  /**
+   * Delete Ingredient
+   * @description Delete an ingredient.
+   */
+  delete_ingredient_api_ingredients__ingredient_id__delete: {
+    parameters: {
+      path: {
+        ingredient_id: number;
+      };
     };
-    update_meal_api_meals__meal_id__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                meal_id: number;
-            };
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Meal"];
-            };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Meal"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+      };
     };
-    delete_meal_api_meals__meal_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                meal_id: number;
-            };
-            cookie?: never;
+  };
+  /**
+   * Get All Possible Tags
+   * @description Return all possible ingredient tags ordered by name.
+   */
+  get_all_possible_tags_api_ingredients_possible_tags_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["PossibleIngredientTag"][];
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+      };
     };
-    get_possible_meal_tags_api_meals_possible_tags_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+  };
+  /**
+   * Get All Meals
+   * @description Return all meals.
+   */
+  get_all_meals_api_meals_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["Meal"][];
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PossibleMealTag"][];
-                };
-            };
-        };
+      };
     };
+  };
+  /**
+   * Add Meal
+   * @description Create a new meal.
+   */
+  add_meal_api_meals_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["Meal"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        content: {
+          "application/json": components["schemas"]["Meal"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Get Meal
+   * @description Retrieve a single meal by ID.
+   */
+  get_meal_api_meals__meal_id__get: {
+    parameters: {
+      path: {
+        meal_id: number;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["Meal"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Update Meal
+   * @description Update an existing meal.
+   */
+  update_meal_api_meals__meal_id__put: {
+    parameters: {
+      path: {
+        meal_id: number;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["Meal"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["Meal"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Delete Meal
+   * @description Delete a meal.
+   */
+  delete_meal_api_meals__meal_id__delete: {
+    parameters: {
+      path: {
+        meal_id: number;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Get Possible Meal Tags
+   * @description Return all possible meal tags ordered by name.
+   */
+  get_possible_meal_tags_api_meals_possible_tags_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["PossibleMealTag"][];
+        };
+      };
+    };
+  };
 }

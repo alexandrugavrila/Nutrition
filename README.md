@@ -98,6 +98,10 @@ curl http://localhost:8000/openapi.json -o Backend/openapi.json
 kill %1
 ```
 
+The `scripts/update-api-schema.sh` script automates these steps and also
+generates frontend TypeScript types. It is run automatically in CI but can be
+executed locally when backend models change.
+
 ### Troubleshooting
 * 404 on `/openapi.json` – confirm the server started and you're hitting the correct port.
 * Missing fields – ensure migrations were applied and models import correctly.
@@ -105,16 +109,18 @@ kill %1
 ## 🔄 Syncing Frontend Types
 
 Use [`openapi-typescript`](https://github.com/drwpow/openapi-typescript) to keep
-frontend TypeScript definitions aligned with the API. The OpenAPI schema and
-TypeScript types are currently synced manually via `scripts/update-api-schema.sh`,
-which regenerates both the backend schema and frontend types:
+frontend TypeScript definitions aligned with the API. The helper script
+`scripts/update-api-schema.sh` regenerates both the backend OpenAPI schema and
+the frontend types in one step:
 
 ```bash
-npm --prefix Frontend/nutrition-frontend install   # run once
-npx --prefix Frontend/nutrition-frontend openapi-typescript Backend/openapi.json -o Frontend/nutrition-frontend/src/api-types.ts
+scripts/update-api-schema.sh
 ```
 
-Run the script whenever API models change and commit the generated file.
+A GitHub Actions workflow runs this script whenever backend files change and
+fails if `Backend/openapi.json` or `Frontend/nutrition-frontend/src/api-types.ts`
+are out of date. Run the script locally and commit the generated files before
+pushing.
 
 ### Troubleshooting
 * `openapi-typescript` not found – ensure frontend dev dependencies are installed.
@@ -124,6 +130,8 @@ Run the script whenever API models change and commit the generated file.
 
 * PRs that modify backend models must include an Alembic migration.
 * API changes require an updated `Backend/openapi.json` and synced frontend types.
+  A dedicated workflow runs `scripts/update-api-schema.sh` and fails if these
+  files are out of date.
 * All tests (`pytest` and `npm test`) should pass before merging.
 
 ---
