@@ -25,7 +25,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "lint": "eslint . --ext js,jsx,ts,tsx"
   },
   "eslintConfig": {
     "extends": [
@@ -47,7 +48,7 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.0",
+    "eslint": "^8.57.1",
     "openapi-typescript": "^6.7.6"
   }
 }
-
