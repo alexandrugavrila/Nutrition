@@ -13,7 +13,7 @@ trap cleanup EXIT INT
 BACKEND_PORT="${BACKEND_PORT:-8000}"
 
 # Launch the FastAPI app in the background
-PYTHONPATH=Backend uvicorn backend:app --port "$BACKEND_PORT" &
+uvicorn Backend.backend:app --port "$BACKEND_PORT" &
 UVICORN_PID=$!
 # Wait for the server to be ready
 until curl --silent --fail "http://localhost:${BACKEND_PORT}/openapi.json" >/dev/null; do

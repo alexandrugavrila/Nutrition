@@ -85,3 +85,4 @@ def delete_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> dict
 
 
 __all__ = ["router"]
+
