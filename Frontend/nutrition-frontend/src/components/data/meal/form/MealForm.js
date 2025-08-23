@@ -1,3 +1,4 @@
+// @ts-check
 import React, { useEffect, useCallback, useReducer } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
@@ -7,6 +8,11 @@ import { handleFetchRequest } from "../../../../utils/utils";
 
 import MealNameForm from "./MealNameForm";
 import MealIngredientsForm from "./MealIngredientsForm";
+
+/**
+ * @typedef {import("../../../../api-types").operations["add_meal_api_meals_post"]["requestBody"]["content"]["application/json"]} MealRequest
+ * @typedef {import("../../../../api-types").operations["add_meal_api_meals_post"]["responses"][201]["content"]["application/json"]} MealResponse
+ */
 
 const intitalState = {
   isOpen: false,
@@ -91,7 +97,7 @@ function MealForm({ mealToEditData }) {
     const url = isEditMode ? `/api/meals/${mealToEdit.id}` : "/api/meals";
     const method = isEditMode ? "PUT" : "POST";
 
-    handleFetchRequest(url, method, toDatabaseMeal)
+    handleFetchRequest(url, method, /** @type {MealRequest} */ (toDatabaseMeal))
       .then(() => {
         setMealsNeedsRefetch(true);
         if (!isEditMode) {
@@ -110,6 +116,7 @@ function MealForm({ mealToEditData }) {
         method: "DELETE",
       })
         .then((response) => {
+          /** @type {Promise<MealResponse>} */ (response.json());
           if (response.ok) {
             setMealsNeedsRefetch(true);
             handleClearForm();
