@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      DATABASE_URL: sqlite:///./app.db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install backend dependencies
+        run: |
+          source scripts/activate-venv.sh
+          pip install pytest
+      - name: Run Alembic migrations
+        run: |
+          source scripts/activate-venv.sh
+          alembic upgrade head
+      - name: Backend tests
+        run: |
+          source scripts/activate-venv.sh
+          pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install frontend dependencies
+        working-directory: Frontend/nutrition-frontend
+        run: npm ci
+      - name: Frontend tests
+        working-directory: Frontend/nutrition-frontend
+        env:
+          CI: true
+        run: npm test -- --watchAll=false
