@@ -17,4 +17,4 @@ kill $UVICORN_PID
 wait $UVICORN_PID 2>/dev/null || true
 
 # Generate TypeScript types for the frontend
-npx openapi-typescript Backend/openapi.json -o Frontend/nutrition-frontend/src/api-types.ts
+npx --prefix Frontend/nutrition-frontend openapi-typescript Backend/openapi.json -o Frontend/nutrition-frontend/src/api-types.ts
