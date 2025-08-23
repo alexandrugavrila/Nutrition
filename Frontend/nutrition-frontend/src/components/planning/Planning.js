@@ -156,7 +156,7 @@ function Planning() {
       },
       { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 }
     );
-  }, [plan, meals, ingredients]);
+  }, [plan, meals, ingredients, calculateItemMacros]);
 
   const perDayMacros = useMemo(() => {
     if (days <= 0) {
