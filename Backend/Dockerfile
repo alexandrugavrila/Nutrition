@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
 COPY Backend/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-# Copy backend source
-COPY Backend/ /app
+# Copy backend source preserving package structure
+COPY Backend/ /app/Backend
 
-CMD ["uvicorn", "backend:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "Backend.backend:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
