@@ -37,8 +37,8 @@ class Meal(SQLModel, table=True):
             MealIngredient.model_validate(mi.model_dump()) for mi in data.ingredients
         ]
 
-        meal.tags = [
-            PossibleMealTag.model_construct(id=tag.id) for tag in data.tags
-        ]
+        # Tags are populated in the routes after resolving the provided IDs
+        # against the database. ``Meal.from_create`` therefore leaves the
+        # ``tags`` relationship empty here.
 
         return meal

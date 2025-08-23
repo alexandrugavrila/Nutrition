@@ -47,9 +47,9 @@ class Ingredient(SQLModel, table=True):
             IngredientUnit.model_validate(unit.model_dump()) for unit in data.units
         ]
 
-        # Use ``model_construct`` to allow placeholder tags with only IDs.
-        ingredient.tags = [
-            PossibleIngredientTag.model_construct(id=tag.id) for tag in data.tags
-        ]
+        # Tags are resolved separately in the routes using the database session
+        # to load existing ``PossibleIngredientTag`` records by ID.
+        # ``Ingredient.from_create`` therefore leaves the ``tags`` collection
+        # empty so that the routes can populate it appropriately.
 
         return ingredient
