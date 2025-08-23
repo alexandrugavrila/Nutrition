@@ -15,6 +15,13 @@ def get_all_meals(db: Session = Depends(get_db)) -> List[Meal]:
     return db.exec(select(Meal)).all()
 
 
+@router.get("/possible_tags", response_model=List[PossibleMealTag])
+def get_possible_meal_tags(db: Session = Depends(get_db)) -> List[PossibleMealTag]:
+    """Return all possible meal tags ordered by name."""
+    statement = select(PossibleMealTag).order_by(PossibleMealTag.name)
+    return db.exec(statement).all()
+
+
 @router.get("/{meal_id}", response_model=Meal)
 def get_meal(meal_id: int, db: Session = Depends(get_db)) -> Meal:
     """Retrieve a single meal by ID."""
@@ -22,13 +29,6 @@ def get_meal(meal_id: int, db: Session = Depends(get_db)) -> Meal:
     if not meal:
         raise HTTPException(status_code=404, detail="Meal not found")
     return meal
-
-
-@router.get("/possible_tags", response_model=List[PossibleMealTag])
-def get_possible_meal_tags(db: Session = Depends(get_db)) -> List[PossibleMealTag]:
-    """Return all possible meal tags ordered by name."""
-    statement = select(PossibleMealTag).order_by(PossibleMealTag.name)
-    return db.exec(statement).all()
 
 
 @router.post("/", response_model=Meal, status_code=201)
