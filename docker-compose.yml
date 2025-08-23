@@ -31,6 +31,7 @@ services:
         condition: service_healthy
     volumes:
       - ./Backend:/app/Backend
+      - ./alembic.ini:/app/alembic.ini:ro
     command: uvicorn Backend.backend:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - nutrition-net

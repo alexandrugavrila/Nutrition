@@ -20,4 +20,7 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 # Copy backend source preserving package structure
 COPY Backend/ /app/Backend
 
+# Copy Alembic configuration for database migrations
+COPY alembic.ini /app/alembic.ini
+
 CMD ["uvicorn", "Backend.backend:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
