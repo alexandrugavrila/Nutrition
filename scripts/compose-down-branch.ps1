@@ -34,6 +34,23 @@ function Get-ComposeProjects {
   return $projects
 }
 
+function Prioritize-CurrentBranch {
+  param(
+    [string[]]$Projects
+  )
+  try {
+    $branch = (git rev-parse --abbrev-ref HEAD).Trim()
+    if ($branch) {
+      $sanitized = ($branch.ToLower() -replace '[^a-z0-9]', '-').Trim('-')
+      $currentProj = "nutrition-$sanitized"
+      if ($Projects -contains $currentProj) {
+        $Projects = @($currentProj) + ($Projects | Where-Object { $_ -ne $currentProj })
+      }
+    }
+  } catch { }
+  return $Projects
+}
+
 function Select-Projects {
   param(
     [string[]]$Projects
@@ -42,22 +59,18 @@ function Select-Projects {
     Write-Host "No Compose projects found with the expected prefix." -ForegroundColor Yellow
     return @()
   }
-
-  # GUI pick if available
-  if (Get-Command Out-GridView -ErrorAction SilentlyContinue) {
-    $picked = $Projects | Out-GridView -Title "Select Compose project(s) to delete (Ctrl/Cmd+Click for multiple)" -PassThru
-    return @($picked)
-  }
-
-  # Console picker
-  Write-Host "Select a project to delete:" -ForegroundColor Cyan
+  Write-Host "Select project(s) to delete:" -ForegroundColor Cyan
   for ($i = 0; $i -lt $Projects.Count; $i++) {
     "{0,2}) {1}" -f ($i+1), $Projects[$i]
   }
-  $inputIdx = Read-Host "Enter number (or comma-separated list)"
+
+  $inputIdx = Read-Host "Enter space-separated numbers or 'all'"
   if (-not $inputIdx) { return @() }
 
-  $indices = $inputIdx -split '[,\s]+' | Where-Object { $_ -match '^\d+$' } | ForEach-Object { [int]$_ }
+  $trimmed = $inputIdx.Trim().ToLower()
+  if ($trimmed -eq 'all') { return $Projects }
+
+  $indices = $inputIdx -split '\s+' | Where-Object { $_ -match '^\d+$' } | ForEach-Object { [int]$_ }
   $selection = foreach ($idx in $indices) {
     if ($idx -ge 1 -and $idx -le $Projects.Count) { $Projects[$idx-1] }
   }
@@ -69,6 +82,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
 $projects = Get-ComposeProjects
+$projects = Prioritize-CurrentBranch -Projects $projects
 if (-not $projects -or $projects.Count -eq 0) { exit 0 }
 
 $chosen = Select-Projects -Projects $projects
