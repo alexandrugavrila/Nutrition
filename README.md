@@ -109,11 +109,14 @@ kill %1
 Use [`openapi-typescript`](https://github.com/drwpow/openapi-typescript) to keep
 frontend TypeScript definitions aligned with the API. The OpenAPI schema and
 TypeScript types are currently synced manually via `scripts/update-api-schema.sh`,
-which regenerates both the backend schema and frontend types:
+which regenerates both the backend schema and frontend types. Set the port used
+by the temporary backend server with the `BACKEND_PORT` environment variable
+(defaults to `8000`) and run the script:
 
 ```bash
 npm --prefix Frontend/nutrition-frontend install   # run once
-npx --prefix Frontend/nutrition-frontend openapi-typescript Backend/openapi.json -o Frontend/nutrition-frontend/src/api-types.ts
+export BACKEND_PORT=8000  # optional
+scripts/update-api-schema.sh
 ```
 
 Run the script whenever API models change and commit the generated file.
