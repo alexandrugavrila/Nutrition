@@ -5,8 +5,8 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
-# add project path to sys.path to allow importing Backend.db
-sys.path.append(str(Path(__file__).resolve().parents[1]))
+# add repository root to sys.path to allow importing Backend modules
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from Backend.db import Base, DATABASE_URL
 from Backend import models  # noqa: F401
