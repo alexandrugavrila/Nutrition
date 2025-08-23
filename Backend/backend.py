@@ -3,6 +3,14 @@
 import os
 from contextlib import asynccontextmanager
 
+import sys
+import python_multipart
+
+# Ensure Starlette imports the modern `python_multipart` module instead of the
+# deprecated `multipart` alias. This prevents a PendingDeprecationWarning during
+# application startup.
+sys.modules["multipart"] = python_multipart
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
