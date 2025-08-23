@@ -56,6 +56,7 @@ jobs:
       - name: Update API schema
         run: |
           source scripts/activate-venv.sh
+          export BACKEND_PORT=8000
           scripts/update-api-schema.sh
       - name: Ensure API schema is up to date
         run: |
