@@ -14,8 +14,13 @@ if (-Not (Test-Path $VenvPath)) {
 
 & "$VenvPath\Scripts\Activate.ps1"
 
-# Install dependencies if the venv was just created or requirements are missing
-pip show sqlmodel > $null 2>&1
-if ($venvCreated -or -not $?) {
+# Install dependencies if the venv was just created or the requirements
+# file has changed since the last install. A hash of the requirements file is
+# cached inside the venv to avoid unnecessary reinstalls.
+$hashPath = Join-Path $VenvPath ".requirements.hash"
+$currentHash = (Get-FileHash $RequirementsPath -Algorithm SHA256).Hash
+
+if ($venvCreated -or -not (Test-Path $hashPath) -or (Get-Content $hashPath) -ne $currentHash) {
     pip install -r $RequirementsPath
+    Set-Content $hashPath $currentHash
 }
