@@ -74,6 +74,14 @@ if ($LASTEXITCODE -ne 0) {
   exit 1
 }
 
+# --- Run database migrations ---
+Write-Host "Applying database migrations..."
+docker compose -p $project exec -T backend alembic upgrade head
+if ($LASTEXITCODE -ne 0) {
+  Write-Error "Database migration failed with exit code $LASTEXITCODE."
+  exit $LASTEXITCODE
+}
+
 # --- Seed data depending on mode ---
 if ($production) {
   Write-Host "Importing production data..."
