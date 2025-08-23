@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
 
+from sqlalchemy import delete
 from ..db import get_db
 from ..models import Meal, PossibleMealTag, Ingredient, MealIngredient
 from ..models.schemas import MealCreate, MealRead, MealUpdate
@@ -70,14 +71,21 @@ def update_meal(
     if not meal:
         raise HTTPException(status_code=404, detail="Meal not found")
 
-    new_data = Meal.from_create(meal_data)
+    meal.name = meal_data.name
+    db.exec(delete(MealIngredient).where(MealIngredient.meal_id == meal_id))
+    meal.ingredients = []
+    for mi_data in meal_data.ingredients:
+        mi_obj = MealIngredient.model_validate(mi_data.model_dump())
+        mi_obj.meal_id = meal_id
+        meal.ingredients.append(mi_obj)
 
-    meal.name = new_data.name
-    meal.ingredients = new_data.ingredients
-    if meal_data.tags:
-        meal.tags = [db.get(PossibleMealTag, t.id) for t in meal_data.tags if t.id]
-    else:
-        meal.tags = []
+    with db.no_autoflush:
+        if meal_data.tags:
+            meal.tags = [
+                db.get(PossibleMealTag, t.id) for t in meal_data.tags if t.id
+            ]
+        else:
+            meal.tags = []
 
     db.add(meal)
     db.commit()

@@ -5,7 +5,12 @@ from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
 
 from ..db import get_db
-from ..models import Ingredient, PossibleIngredientTag
+from ..models import (
+    Ingredient,
+    PossibleIngredientTag,
+    IngredientUnit,
+    Nutrition,
+)
 from ..models.schemas import IngredientCreate, IngredientRead, IngredientUpdate
 
 router = APIRouter(prefix="/ingredients", tags=["ingredients"])
@@ -73,17 +78,26 @@ def update_ingredient(
     if not ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
 
-    new_data = Ingredient.from_create(ingredient_data)
+    ingredient.name = ingredient_data.name
 
-    ingredient.name = new_data.name
-    ingredient.nutrition = new_data.nutrition
-    ingredient.units = new_data.units
-    if ingredient_data.tags:
-        ingredient.tags = [
-            db.get(PossibleIngredientTag, t.id) for t in ingredient_data.tags if t.id
-        ]
+    if ingredient_data.nutrition:
+        ingredient.nutrition = Nutrition.model_validate(
+            ingredient_data.nutrition.model_dump()
+        )
     else:
-        ingredient.tags = []
+        ingredient.nutrition = None
+
+    ingredient.units = [
+        IngredientUnit.model_validate(u.model_dump()) for u in ingredient_data.units
+    ]
+
+    with db.no_autoflush:
+        if ingredient_data.tags:
+            ingredient.tags = [
+                db.get(PossibleIngredientTag, t.id) for t in ingredient_data.tags if t.id
+            ]
+        else:
+            ingredient.tags = []
 
     db.add(ingredient)
     db.commit()

@@ -14,6 +14,6 @@ class IngredientUnit(SQLModel, table=True):
         default=None, foreign_key="ingredients.id"
     )
     name: str = Field(sa_column=Column(String(50), nullable=False))
-    grams: float = Field(sa_column=Column(Numeric(10, 4), nullable=False))
+    grams: float = Field(sa_column=Column(Numeric(10, 4, asdecimal=False), nullable=False))
 
     ingredient: Optional["Ingredient"] = Relationship(back_populates="units")

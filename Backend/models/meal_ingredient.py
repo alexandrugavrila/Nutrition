@@ -17,7 +17,7 @@ class MealIngredient(SQLModel, table=True):
     )
     unit_id: Optional[int] = Field(default=None, foreign_key="ingredient_units.id")
     unit_quantity: Optional[float] = Field(
-        default=None, sa_column=Column(Numeric(10, 4))
+        default=None, sa_column=Column(Numeric(10, 4, asdecimal=False))
     )
 
     ingredient: Optional["Ingredient"] = Relationship()
