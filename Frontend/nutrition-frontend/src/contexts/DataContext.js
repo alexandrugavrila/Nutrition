@@ -1,5 +1,11 @@
 // DataContext.js
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+} from "react";
 
 const DataContext = createContext();
 
@@ -49,25 +55,28 @@ export const DataProvider = ({ children }) => {
       )
     : [];
 
-  const fetchData = async (url, setData, setLoading, errorHandler, processData) => {
-    setLoading(true);
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+  const fetchData = useCallback(
+    async (url, setData, setLoading, errorHandler, processData) => {
+      setLoading(true);
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+        const processedData = processData ? processData(data) : data;
+        setData(processedData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        errorHandler(error);
+      } finally {
+        setLoading(false);
       }
-      const data = await response.json();
-      const processedData = processData ? processData(data) : data;
-      setData(processedData);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      errorHandler(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    []
+  );
 
-  const fetchIngredients = () => {
+  const fetchIngredients = useCallback(() => {
     const url = "/api/ingredients";
 
     const add1gUnit = (data) => {
@@ -85,15 +94,26 @@ export const DataProvider = ({ children }) => {
       });
     };
 
-    fetchData(url, setIngredients, setFetching, () => setIngredientsNeedsRefetch(true), add1gUnit);
-  };
+    fetchData(
+      url,
+      setIngredients,
+      setFetching,
+      () => setIngredientsNeedsRefetch(true),
+      add1gUnit
+    );
+  }, [fetchData]);
 
-  const fetchPossibleIngredientTags = () => {
+  const fetchPossibleIngredientTags = useCallback(() => {
     const url = "/api/ingredients/possible_tags";
-    fetchData(url, setPossibleIngredientTags, setFetching, () => console.error("Error fetching tags"));
-  };
+    fetchData(
+      url,
+      setPossibleIngredientTags,
+      setFetching,
+      () => console.error("Error fetching tags")
+    );
+  }, [fetchData]);
 
-  const fetchMeals = () => {
+  const fetchMeals = useCallback(() => {
     const url = "/api/meals";
     const processData = (data) =>
       data.map((meal) => ({
@@ -115,12 +135,17 @@ export const DataProvider = ({ children }) => {
       () => setMealsNeedsRefetch(true),
       processData
     );
-  };
+  }, [fetchData]);
 
-  const fetchPossibleMealTags = () => {
+  const fetchPossibleMealTags = useCallback(() => {
     const url = "/api/meals/possible_tags";
-    fetchData(url, setPossibleMealTags, setFetching, () => console.error("Error fetching tags"));
-  };
+    fetchData(
+      url,
+      setPossibleMealTags,
+      setFetching,
+      () => console.error("Error fetching tags")
+    );
+  }, [fetchData]);
 
   //#region Effects
   useEffect(() => {
@@ -128,7 +153,12 @@ export const DataProvider = ({ children }) => {
     fetchPossibleIngredientTags();
     fetchMeals();
     fetchPossibleMealTags();
-  }, []); // Initial fetch
+  }, [
+    fetchIngredients,
+    fetchPossibleIngredientTags,
+    fetchMeals,
+    fetchPossibleMealTags,
+  ]); // Initial fetch
 
   useEffect(() => {
     if (ingredientsNeedsRefetch) {
@@ -139,7 +169,12 @@ export const DataProvider = ({ children }) => {
       fetchMeals();
       setMealsNeedsRefetch(false);
     }
-  }, [ingredientsNeedsRefetch, mealsNeedsRefetch]); // Handle needsRefetch
+  }, [
+    ingredientsNeedsRefetch,
+    mealsNeedsRefetch,
+    fetchIngredients,
+    fetchMeals,
+  ]); // Handle needsRefetch
   //#endregion Effects
 
   const value = {
