@@ -15,8 +15,8 @@ function DataPage() {
   return (
     <Box sx={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
       <Tabs value={dataTab} onChange={handleDataTabChange} aria-label="data tabs" centered>
-        <Tab label="Meals" />
-        <Tab label="Ingredients" />
+        <Tab label="Meals" disableRipple />
+        <Tab label="Ingredients" disableRipple />
       </Tabs>
       {dataTab === 0 && <MealData />}
       {dataTab === 1 && <IngredientData handleAddIngredientToPlan={() => {}} />}
