@@ -17,6 +17,6 @@ fi
 # shellcheck disable=SC1090
 source "$VENV_PATH/bin/activate"
 
-if $venv_created || ! pip show fastapi >/dev/null 2>&1; then
+if $venv_created || ! pip show sqlmodel >/dev/null 2>&1; then
     pip install -r "$REQUIREMENTS_PATH"
 fi

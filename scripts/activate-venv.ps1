@@ -15,7 +15,7 @@ if (-Not (Test-Path $VenvPath)) {
 & "$VenvPath\Scripts\Activate.ps1"
 
 # Install dependencies if the venv was just created or requirements are missing
-pip show fastapi > $null 2>&1
+pip show sqlmodel > $null 2>&1
 if ($venvCreated -or -not $?) {
     pip install -r $RequirementsPath
 }
