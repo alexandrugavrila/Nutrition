@@ -153,17 +153,22 @@ npm install
 npm start
 ```
 
+## OpenAPI / TypeScript Sync
+
+The OpenAPI schema and frontend TypeScript types are currently synced manually
+using `scripts/update-api-schema.sh`. Run this script whenever backend models
+change and commit the updated files.
+
 ---
 
 ## 🧩 Project Structure (Developer View)
 
 ```
 Backend/                  # FastAPI app
-  ├── models/          # SQLAlchemy ORM models
-  ├── models/             # Pydantic models
+  ├── models/          # SQLModel models
   ├── routes/             # API routes
   ├── backend.py          # Entrypoint
-  └── db.py               # SQLAlchemy setup
+  └── db.py               # SQLModel setup
 
 Frontend/nutrition-frontend/
   ├── src/                # React components, context
