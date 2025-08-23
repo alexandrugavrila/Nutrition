@@ -2,10 +2,11 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
+from sqlalchemy.orm import selectinload
 
 from ..db import get_db
 from ..models import Ingredient, PossibleIngredientTag
-from ..models.schemas import IngredientCreate, IngredientRead
+from ..models.schemas import IngredientCreate, IngredientRead, IngredientUpdate
 
 router = APIRouter(prefix="/ingredients", tags=["ingredients"])
 
@@ -47,14 +48,24 @@ def add_ingredient(
         ]
     db.add(ingredient_obj)
     db.commit()
-    db.refresh(ingredient_obj)
+
+    statement = (
+        select(Ingredient)
+        .options(
+            selectinload(Ingredient.nutrition),
+            selectinload(Ingredient.units),
+            selectinload(Ingredient.tags),
+        )
+        .where(Ingredient.id == ingredient_obj.id)
+    )
+    ingredient_obj = db.exec(statement).one()
     return IngredientRead.model_validate(ingredient_obj)
 
 
 @router.put("/{ingredient_id}", response_model=IngredientRead)
 def update_ingredient(
     ingredient_id: int,
-    ingredient_data: IngredientCreate,
+    ingredient_data: IngredientUpdate,
     db: Session = Depends(get_db),
 ) -> IngredientRead:
     """Update an existing ingredient."""
@@ -76,7 +87,17 @@ def update_ingredient(
 
     db.add(ingredient)
     db.commit()
-    db.refresh(ingredient)
+
+    statement = (
+        select(Ingredient)
+        .options(
+            selectinload(Ingredient.nutrition),
+            selectinload(Ingredient.units),
+            selectinload(Ingredient.tags),
+        )
+        .where(Ingredient.id == ingredient.id)
+    )
+    ingredient = db.exec(statement).one()
     return IngredientRead.model_validate(ingredient)
 
 
