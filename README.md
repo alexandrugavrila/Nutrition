@@ -3,7 +3,7 @@
 A full-stack nutrition planning and tracking app built with:
 
 * 🖥️ **React** frontend (Material UI + Context API)
-* 🐍 **FastAPI** backend (SQLAlchemy + Pydantic)
+* 🐍 **FastAPI** backend (SQLModel)
 * 🐘 **PostgreSQL** database (seeded with food and nutrition data)
 * 🐳 **Docker** for development and deployment
 
@@ -105,17 +105,16 @@ kill %1
 ## 🔄 Syncing Frontend Types
 
 Use [`openapi-typescript`](https://github.com/drwpow/openapi-typescript) to keep
-frontend TypeScript definitions aligned with the API:
+frontend TypeScript definitions aligned with the API. The OpenAPI schema and
+TypeScript types are currently synced manually via `scripts/update-api-schema.sh`,
+which regenerates both the backend schema and frontend types:
 
 ```bash
 npm --prefix Frontend/nutrition-frontend install   # run once
 npx --prefix Frontend/nutrition-frontend openapi-typescript Backend/openapi.json -o Frontend/nutrition-frontend/src/api-types.ts
 ```
 
-Run `scripts/update-api-schema.sh` to regenerate both the backend schema and
-frontend types in one step.
-
-Commit the generated file whenever API models change.
+Run the script whenever API models change and commit the generated file.
 
 ### Troubleshooting
 * `openapi-typescript` not found – ensure frontend dev dependencies are installed.
@@ -134,11 +133,10 @@ Commit the generated file whenever API models change.
 ```
 Nutrition/
 ├── Backend/                     # FastAPI app
-│   ├── models/              # SQLAlchemy ORM models
-│   ├── models/                 # Pydantic models
+│   ├── models/                 # SQLModel models
 │   ├── routes/                 # Ingredient and meal routes
 │   ├── backend.py              # FastAPI entrypoint
-│   ├── db.py                   # SQLAlchemy setup
+│   ├── db.py                   # SQLModel setup
 │   └── Dockerfile              # Backend build config
 │
 ├── Frontend/
@@ -167,7 +165,7 @@ Nutrition/
 * **Backend**
 
   * API routes in `Backend/routes/`
-  * SQLAlchemy models in `models/`, validated by Marshmallow `schemas/`
+  * SQLModel models in `Backend/models/`
 
 * **Frontend**
 
