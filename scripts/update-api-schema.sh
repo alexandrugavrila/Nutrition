@@ -1,9 +1,13 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/usr/bin/env sh
+set -eu
+# Enable pipefail if supported (e.g., bash, zsh)
+if [ -n "${BASH_VERSION-}" ] || [ -n "${ZSH_VERSION-}" ]; then
+  set -o pipefail
+fi
 
 UVICORN_PID=""
 cleanup() {
-  if [[ -n "${UVICORN_PID:-}" ]]; then
+  if [ -n "${UVICORN_PID:-}" ]; then
     kill "$UVICORN_PID" 2>/dev/null || true
     wait "$UVICORN_PID" 2>/dev/null || true
   fi
