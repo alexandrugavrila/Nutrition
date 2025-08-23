@@ -108,8 +108,8 @@ Use [`openapi-typescript`](https://github.com/drwpow/openapi-typescript) to keep
 frontend TypeScript definitions aligned with the API:
 
 ```bash
-npm install -g openapi-typescript   # run once
-npx openapi-typescript Backend/openapi.json -o Frontend/nutrition-frontend/src/api-types.ts
+npm --prefix Frontend/nutrition-frontend install   # run once
+npx --prefix Frontend/nutrition-frontend openapi-typescript Backend/openapi.json -o Frontend/nutrition-frontend/src/api-types.ts
 ```
 
 Run `scripts/update-api-schema.sh` to regenerate both the backend schema and
@@ -118,7 +118,7 @@ frontend types in one step.
 Commit the generated file whenever API models change.
 
 ### Troubleshooting
-* `openapi-typescript` not found – install globally or add to `devDependencies`.
+* `openapi-typescript` not found – ensure frontend dev dependencies are installed.
 * Generated types missing endpoints – regenerate the OpenAPI spec and rerun the command.
 
 ## 🚦 CI/CD Expectations
