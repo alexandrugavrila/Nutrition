@@ -31,6 +31,24 @@ $autoMode = $Auto.IsPresent -or $env:CI -eq "true"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
+$activationLog = [System.IO.Path]::GetTempFileName()
+if (-not $env:VIRTUAL_ENV -or -not (Get-Command uvicorn -ErrorAction SilentlyContinue)) {
+    Write-Host "Activating virtual environment..."
+    & "$PSScriptRoot/activate-venv.ps1" *> $activationLog 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Get-Content $activationLog
+        Remove-Item $activationLog
+        Write-Error "Failed to activate virtual environment"
+        exit 1
+    }
+}
+Remove-Item $activationLog -ErrorAction SilentlyContinue
+
+if (-not (Get-Command uvicorn -ErrorAction SilentlyContinue)) {
+    Write-Error "uvicorn command not found after attempting to activate virtual environment"
+    exit 1
+}
+
 #############################
 # Check OpenAPI / Frontend
 #############################
