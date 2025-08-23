@@ -145,11 +145,10 @@ Nutrition/
 │   ├── db.py                   # SQLModel setup
 │   └── Dockerfile              # Backend build config
 │
-├── Frontend/
-│   └── nutrition-frontend/     # React app
-│       ├── src/                # App components, context, etc.
-│       ├── Dockerfile          # Frontend build config
-│       └── nginx.conf          # Nginx static serving config
+├── Frontend/                   # React app
+│   ├── src/                    # App components, context, etc.
+│   ├── Dockerfile              # Frontend build config
+│   └── nginx.conf              # Nginx static serving config
 │
 ├── Database/                   # CSV data + import utilities
 │   ├── production_data/
@@ -175,7 +174,7 @@ Nutrition/
 
 * **Frontend**
 
-  * Built in `Frontend/nutrition-frontend/`
+  * Built in `Frontend/`
   * Uses global `DataContext.js` to fetch and manage meals, ingredients, and tags
 
 * **Database**
