@@ -12,7 +12,10 @@ if (-Not (Test-Path $VenvPath)) {
     $venvCreated = $true
 }
 
-& "$VenvPath\Scripts\Activate.ps1"
+# Activate the virtual environment unless we're already inside it.
+if ($env:VIRTUAL_ENV -ne $VenvPath) {
+    & "$VenvPath\Scripts\Activate.ps1"
+}
 
 # Install dependencies if the venv was just created or the requirements
 # file has changed since the last install. A hash of the requirements file is
