@@ -28,6 +28,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ingredients/possible_tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get All Possible Tags
+         * @description Return all possible ingredient tags ordered by name.
+         */
+        get: operations["get_all_possible_tags_api_ingredients_possible_tags_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ingredients/{ingredient_id}": {
         parameters: {
             query?: never;
@@ -56,26 +76,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ingredients/possible_tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get All Possible Tags
-         * @description Return all possible ingredient tags ordered by name.
-         */
-        get: operations["get_all_possible_tags_api_ingredients_possible_tags_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/meals/": {
         parameters: {
             query?: never;
@@ -94,6 +94,26 @@ export interface paths {
          * @description Create a new meal.
          */
         post: operations["add_meal_api_meals__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meals/possible_tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Possible Meal Tags
+         * @description Return all possible meal tags ordered by name.
+         */
+        get: operations["get_possible_meal_tags_api_meals_possible_tags_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -128,26 +148,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/meals/possible_tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Possible Meal Tags
-         * @description Return all possible meal tags ordered by name.
-         */
-        get: operations["get_possible_meal_tags_api_meals_possible_tags_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -158,24 +158,169 @@ export interface components {
             detail?: components["schemas"]["ValidationError"][];
         };
         /**
-         * Ingredient
-         * @description Core ingredient information.
+         * IngredientCreate
+         * @description Schema for creating an ingredient.
          */
-        Ingredient: {
-            /** Id */
-            id?: number | null;
+        IngredientCreate: {
             /** Name */
             name: string;
+            nutrition?: components["schemas"]["NutritionCreate"] | null;
+            /** Units */
+            units?: components["schemas"]["IngredientUnitCreate"][];
+            /** Tags */
+            tags?: components["schemas"]["TagRef"][];
         };
         /**
-         * Meal
-         * @description Meal with associated ingredients and tags.
+         * IngredientRead
+         * @description Schema for reading ingredient data.
          */
-        Meal: {
+        IngredientRead: {
             /** Id */
-            id?: number | null;
+            id: number;
             /** Name */
             name: string;
+            nutrition?: components["schemas"]["Nutrition"] | null;
+            /** Units */
+            units?: components["schemas"]["IngredientUnit"][];
+            /** Tags */
+            tags?: components["schemas"]["PossibleIngredientTag"][];
+        };
+        /**
+         * IngredientUnit
+         * @description Measurement unit for an ingredient.
+         */
+        IngredientUnit: {
+            /** Id */
+            id?: number | null;
+            /** Ingredient Id */
+            ingredient_id?: number | null;
+            /** Name */
+            name: string;
+            /** Grams */
+            grams: number;
+        };
+        /**
+         * IngredientUnitCreate
+         * @description Schema for creating ingredient unit data.
+         */
+        IngredientUnitCreate: {
+            /** Name */
+            name: string;
+            /** Grams */
+            grams: number;
+        };
+        /**
+         * IngredientUpdate
+         * @description Schema for updating an ingredient.
+         */
+        IngredientUpdate: {
+            /** Name */
+            name: string;
+            nutrition?: components["schemas"]["NutritionCreate"] | null;
+            /** Units */
+            units?: components["schemas"]["IngredientUnitCreate"][];
+            /** Tags */
+            tags?: components["schemas"]["TagRef"][];
+        };
+        /**
+         * MealCreate
+         * @description Schema for creating a meal.
+         */
+        MealCreate: {
+            /** Name */
+            name: string;
+            /** Ingredients */
+            ingredients?: components["schemas"]["MealIngredientCreate"][];
+            /** Tags */
+            tags?: components["schemas"]["TagRef"][];
+        };
+        /**
+         * MealIngredient
+         * @description Link between a meal and an ingredient with quantity information.
+         */
+        MealIngredient: {
+            /** Ingredient Id */
+            ingredient_id?: number | null;
+            /** Meal Id */
+            meal_id?: number | null;
+            /** Unit Id */
+            unit_id?: number | null;
+            /** Unit Quantity */
+            unit_quantity?: number | null;
+        };
+        /**
+         * MealIngredientCreate
+         * @description Schema for creating meal ingredient linkage.
+         */
+        MealIngredientCreate: {
+            /** Ingredient Id */
+            ingredient_id: number;
+            /** Unit Id */
+            unit_id?: number | null;
+            /** Unit Quantity */
+            unit_quantity?: number | null;
+        };
+        /**
+         * MealRead
+         * @description Schema for reading meal data.
+         */
+        MealRead: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Ingredients */
+            ingredients?: components["schemas"]["MealIngredient"][];
+            /** Tags */
+            tags?: components["schemas"]["PossibleMealTag"][];
+        };
+        /**
+         * MealUpdate
+         * @description Schema for updating a meal.
+         */
+        MealUpdate: {
+            /** Name */
+            name: string;
+            /** Ingredients */
+            ingredients?: components["schemas"]["MealIngredientCreate"][];
+            /** Tags */
+            tags?: components["schemas"]["TagRef"][];
+        };
+        /**
+         * Nutrition
+         * @description Nutritional information for a single ingredient.
+         */
+        Nutrition: {
+            /** Id */
+            id?: number | null;
+            /** Ingredient Id */
+            ingredient_id?: number | null;
+            /** Calories */
+            calories: number;
+            /** Fat */
+            fat: number;
+            /** Carbohydrates */
+            carbohydrates: number;
+            /** Protein */
+            protein: number;
+            /** Fiber */
+            fiber: number;
+        };
+        /**
+         * NutritionCreate
+         * @description Schema for creating nutrition data.
+         */
+        NutritionCreate: {
+            /** Calories */
+            calories: number;
+            /** Fat */
+            fat: number;
+            /** Carbohydrates */
+            carbohydrates: number;
+            /** Protein */
+            protein: number;
+            /** Fiber */
+            fiber: number;
         };
         /**
          * PossibleIngredientTag
@@ -196,6 +341,14 @@ export interface components {
             id?: number | null;
             /** Name */
             name: string;
+        };
+        /**
+         * TagRef
+         * @description Reference to an existing tag by ID.
+         */
+        TagRef: {
+            /** Id */
+            id: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -230,7 +383,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Ingredient"][];
+                    "application/json": components["schemas"]["IngredientRead"][];
                 };
             };
         };
@@ -244,7 +397,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Ingredient"];
+                "application/json": components["schemas"]["IngredientCreate"];
             };
         };
         responses: {
@@ -254,7 +407,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Ingredient"];
+                    "application/json": components["schemas"]["IngredientRead"];
                 };
             };
             /** @description Validation Error */
@@ -264,6 +417,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_all_possible_tags_api_ingredients_possible_tags_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PossibleIngredientTag"][];
                 };
             };
         };
@@ -285,7 +458,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Ingredient"];
+                    "application/json": components["schemas"]["IngredientRead"];
                 };
             };
             /** @description Validation Error */
@@ -310,7 +483,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Ingredient"];
+                "application/json": components["schemas"]["IngredientUpdate"];
             };
         };
         responses: {
@@ -320,7 +493,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Ingredient"];
+                    "application/json": components["schemas"]["IngredientRead"];
                 };
             };
             /** @description Validation Error */
@@ -367,26 +540,6 @@ export interface operations {
             };
         };
     };
-    get_all_possible_tags_api_ingredients_possible_tags_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PossibleIngredientTag"][];
-                };
-            };
-        };
-    };
     get_all_meals_api_meals__get: {
         parameters: {
             query?: never;
@@ -402,7 +555,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Meal"][];
+                    "application/json": components["schemas"]["MealRead"][];
                 };
             };
         };
@@ -416,7 +569,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Meal"];
+                "application/json": components["schemas"]["MealCreate"];
             };
         };
         responses: {
@@ -426,7 +579,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Meal"];
+                    "application/json": components["schemas"]["MealRead"];
                 };
             };
             /** @description Validation Error */
@@ -436,6 +589,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_possible_meal_tags_api_meals_possible_tags_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PossibleMealTag"][];
                 };
             };
         };
@@ -457,7 +630,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Meal"];
+                    "application/json": components["schemas"]["MealRead"];
                 };
             };
             /** @description Validation Error */
@@ -482,7 +655,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Meal"];
+                "application/json": components["schemas"]["MealUpdate"];
             };
         };
         responses: {
@@ -492,7 +665,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Meal"];
+                    "application/json": components["schemas"]["MealRead"];
                 };
             };
             /** @description Validation Error */
@@ -535,26 +708,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_possible_meal_tags_api_meals_possible_tags_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PossibleMealTag"][];
                 };
             };
         };
