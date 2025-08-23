@@ -65,6 +65,11 @@ The server will be available at <http://localhost:8000> by default.
 
 ## 🛠️ Running Migrations
 
+> **Note:** SQLModel models are the source of truth. Database migrations and the OpenAPI
+> schema are generated from these models. After modifying models, run `alembic revision --autogenerate`
+> and `scripts/update-api-schema.sh`, then commit the new migration, `Backend/openapi.json`, and
+> `Frontend/nutrition-frontend/src/api-types.ts`.
+
 The backend uses [Alembic](https://alembic.sqlalchemy.org/) for schema changes.
 Run these commands from the repository root:
 
