@@ -38,8 +38,14 @@ jobs:
       - name: Install frontend dependencies
         working-directory: Frontend/nutrition-frontend
         run: npm ci
+      - name: Frontend lint
+        working-directory: Frontend/nutrition-frontend
+        run: npm run lint
       - name: Frontend tests
         working-directory: Frontend/nutrition-frontend
         env:
           CI: true
         run: npm test -- --watchAll=false
+      - name: Production build
+        working-directory: Frontend/nutrition-frontend
+        run: npm run build
