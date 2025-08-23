@@ -83,12 +83,16 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # --- Seed data depending on mode ---
-if ($production) {
-  Write-Host "Importing production data..."
-  & python Database/import_from_csv.py --production
-} elseif ($test) {
-  Write-Host "Importing test data..."
-  & python Database/import_from_csv.py --test
+if ($production -or $test) {
+  & "$PSScriptRoot/activate-venv.ps1"
+
+  if ($production) {
+    Write-Host "Importing production data..."
+    & python Database/import_from_csv.py --production
+  } else {
+    Write-Host "Importing test data..."
+    & python Database/import_from_csv.py --test
+  }
 }
 
 if ($LASTEXITCODE -ne 0) {
