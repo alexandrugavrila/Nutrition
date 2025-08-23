@@ -3,8 +3,8 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
-from db import get_db
-from models import Meal, PossibleMealTag
+from ..db import get_db
+from ..models import Meal, PossibleMealTag
 
 router = APIRouter(prefix="/meals", tags=["meals"])
 

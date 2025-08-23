@@ -4,22 +4,19 @@ from typing import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, create_engine
-from alembic import command
-from alembic.config import Config
+from sqlmodel import Session, SQLModel, create_engine
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from backend import app
-from db import get_db
-import models  # ensure models are imported for SQLModel metadata
+from Backend.backend import app
+from Backend.db import get_db
+from Backend import models  # ensure models are imported for SQLModel metadata
 
 
 @pytest.fixture(name="client")
 def client_fixture() -> Iterator[TestClient]:
     engine = create_engine(os.environ["DATABASE_URL"])
-    config = Config("alembic.ini")
-    command.upgrade(config, "head")
+    SQLModel.metadata.create_all(engine)
 
     def override_get_db() -> Iterator[Session]:
         with Session(engine) as session:
@@ -29,7 +26,7 @@ def client_fixture() -> Iterator[TestClient]:
     with TestClient(app) as client:
         yield client
 
-    command.downgrade(config, "base")
+    SQLModel.metadata.drop_all(engine)
     app.dependency_overrides.clear()
 
 
