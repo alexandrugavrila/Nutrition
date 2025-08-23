@@ -36,7 +36,8 @@ Set-Location $repoRoot
 #############################
 
 $logFile = [System.IO.Path]::GetTempFileName()
-& bash "$PSScriptRoot/update-api-schema.sh" *> $logFile 2>&1
+# Using a relative path ensures compatibility with Windows paths when invoking bash
+& bash "./scripts/update-api-schema.sh" *> $logFile 2>&1
 if ($LASTEXITCODE -ne 0) {
     Get-Content $logFile
     Write-Error "Failed to update API schema"
