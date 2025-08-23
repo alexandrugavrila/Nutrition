@@ -1,5 +1,8 @@
 from typing import Iterator
 
+import os
+import sys
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
