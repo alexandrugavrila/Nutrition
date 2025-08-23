@@ -66,9 +66,9 @@ The server will be available at <http://localhost:8000> by default.
 ## 🛠️ Running Migrations
 
 > **Note:** SQLModel models are the source of truth. Database migrations and the OpenAPI
-> schema are generated from these models. After modifying models, run `alembic revision --autogenerate`
-> and `scripts/update-api-schema.sh`, then commit the new migration, `Backend/openapi.json`, and
-> `Frontend/nutrition-frontend/src/api-types.ts`.
+> schema are generated from these models. After modifying models, run `scripts/sync-api-and-migrations.sh` to
+> verify both are up to date. Commit any generated migration, `Backend/openapi.json`, and
+> `Frontend/src/api-types.ts`.
 
 The backend uses [Alembic](https://alembic.sqlalchemy.org/) for schema changes.
 Run these commands from the repository root:
@@ -104,12 +104,12 @@ up a temporary FastAPI server, fetches `/openapi.json`, and runs
 port with `BACKEND_PORT` (defaults to `8000`) and run:
 
 ```bash
-npm --prefix Frontend/nutrition-frontend install   # run once
+npm --prefix Frontend install   # run once
 export BACKEND_PORT=8000  # optional
 scripts/update-api-schema.sh
 ```
 
-Run this script whenever API models change and commit the generated files.
+Run this script whenever API models change and commit the generated files. You can also run `scripts/sync-api-and-migrations.sh` to update both the API schema and database migrations in a single step.
 
 ### Advanced: Manual workflow
 
