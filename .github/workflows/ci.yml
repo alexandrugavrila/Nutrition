@@ -30,6 +30,9 @@ jobs:
         id: setup-python
         with:
           python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
       - name: Cache backend dependencies
         uses: actions/cache@v4
         with:
@@ -43,10 +46,20 @@ jobs:
         run: |
           source scripts/activate-venv.sh
           pip install pytest
+      - name: Install frontend dependencies for API schema
+        working-directory: Frontend/nutrition-frontend
+        run: npm ci
       - name: Run Alembic migrations
         run: |
           source scripts/activate-venv.sh
           alembic upgrade head
+      - name: Update API schema
+        run: |
+          source scripts/activate-venv.sh
+          scripts/update-api-schema.sh
+      - name: Ensure API schema is up to date
+        run: |
+          git diff --exit-code Backend/openapi.json Frontend/nutrition-frontend/src/api-types.ts
       - name: Backend tests
         run: |
           source scripts/activate-venv.sh
