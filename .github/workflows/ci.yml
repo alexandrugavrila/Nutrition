@@ -46,6 +46,11 @@ jobs:
         run: |
           source scripts/activate-venv.sh
           pip install pytest
+      - name: Check migration drift
+        run: |
+          source scripts/activate-venv.sh
+          scripts/check-migration-drift.sh
+          git diff --exit-code Backend/migrations/versions
       - name: Install frontend dependencies for API schema
         working-directory: Frontend
         run: npm ci
