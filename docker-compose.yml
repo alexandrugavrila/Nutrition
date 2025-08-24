@@ -25,7 +25,6 @@ services:
       dockerfile: Backend/Dockerfile
     environment:
       DATABASE_URL: postgresql://nutrition_user:nutrition_pass@db:5432/nutrition
-      DB_AUTO_CREATE: "true"
     depends_on:
       db:
         condition: service_healthy
