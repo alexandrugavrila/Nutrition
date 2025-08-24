@@ -20,6 +20,10 @@ This repository contains a full-stack nutrition planning and tracking applicatio
 - **JavaScript/TypeScript:** Use `eslint` and `prettier` with the configurations in the project. Prefer functional components and hooks in React code.
 - Write descriptive commit messages and keep functions small and focused.
 
+## Script parity checks
+- Scripts in the `scripts/` directory have both PowerShell (`.ps1`) and Bash (`.sh`) variants.
+- When modifying or adding a script, update and verify both versions to keep them in sync.
+
 ## Testing instructions
 - Ensure both backend and frontend tests pass before committing:
   - `pytest`
