@@ -117,10 +117,18 @@ fi
 # directory and add both locations via --version-path and --version-paths so the
 # check remains compatible across Alembic versions.
 tmpdir="$(mktemp -d Backend/migrations/versions/tmp.XXXXXX)"
-if ! alembic revision --autogenerate -m "tmp" --version-path "$tmpdir" --version-paths Backend/migrations/versions:"$tmpdir" >/dev/null; then
-  rm -r "$tmpdir"
-  echo "Failed to check for migration changes" >&2
-  exit 1
+pathsep="$(python - <<'PY'
+import os
+print(os.pathsep)
+PY
+)"
+version_paths="Backend/migrations/versions${pathsep}${tmpdir}"
+if ! alembic revision --autogenerate -m "tmp" --version-path "$tmpdir" --version-paths "$version_paths" >/dev/null 2>&1; then
+  if ! alembic revision --autogenerate -m "tmp" --version-path "$tmpdir" >/dev/null 2>&1; then
+    rm -r "$tmpdir"
+    echo "Failed to check for migration changes" >&2
+    exit 1
+  fi
 fi
 tmpfile="$(find "$tmpdir" -type f | head -n 1)"
 if [[ -f "$tmpfile" && $(grep -E "op\\." "$tmpfile") ]]; then
