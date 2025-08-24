@@ -90,6 +90,12 @@ else
   export DATABASE_URL="$new_url"
 fi
 
+# Extract DB credentials from DATABASE_URL for container setup
+db_user="$(printf '%s' "$DATABASE_URL" | sed -n 's|.*://\([^:]*\):.*@.*|\1|p')"
+db_pass="$(printf '%s' "$DATABASE_URL" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')"
+db_user="${db_user:-nutrition_user}"
+db_pass="${db_pass:-nutrition_pass}"
+
 # --- PRE-RUN CLEANUP: remove any stale drift-check temp files -----------------
 drift_glob="*_driftchecktmp*.py"
 find "$migration_root" -maxdepth 1 -type f -name "$drift_glob" -print0 2>/dev/null | xargs -0r rm -f || true
@@ -107,8 +113,8 @@ start_temp_db() {
   log "Starting temporary database container $container_name on port $DB_PORT..."
   docker pull postgres:16 >/dev/null
   docker run -d --name "$container_name" \
-    -e POSTGRES_USER=nutrition_user \
-    -e POSTGRES_PASSWORD=nutrition_pass \
+    -e POSTGRES_USER="$db_user" \
+    -e POSTGRES_PASSWORD="$db_pass" \
     -e POSTGRES_DB=nutrition \
     -p "${DB_PORT}:5432" \
     postgres:16 >/dev/null
@@ -116,7 +122,7 @@ start_temp_db() {
 
   log "Waiting for database to be ready (timeout 2 minutes)..."
   end=$((SECONDS+120))
-  until docker exec "$container_name" pg_isready -U nutrition_user -d nutrition >/dev/null 2>&1; do
+  until docker exec "$container_name" pg_isready -U "$db_user" -d nutrition >/dev/null 2>&1; do
     if (( SECONDS > end )); then
       error "Postgres did not become ready in 2 minutes"
       return 1

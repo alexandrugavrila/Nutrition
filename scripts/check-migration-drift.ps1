@@ -93,6 +93,17 @@ if (-not $env:DATABASE_URL) {
     }
 }
 
+# Extract DB credentials from DATABASE_URL for container setup
+try {
+    $uri = [System.Uri]$env:DATABASE_URL
+    $userInfo = $uri.UserInfo.Split(':')
+    $dbUser = if ($userInfo[0]) { $userInfo[0] } else { 'nutrition_user' }
+    $dbPass = if ($userInfo.Length -gt 1 -and $userInfo[1]) { $userInfo[1] } else { 'nutrition_pass' }
+} catch {
+    $dbUser = 'nutrition_user'
+    $dbPass = 'nutrition_pass'
+}
+
 # --- PRE-RUN CLEANUP: remove any stale drift-check temp files -----------------
 $driftGlob = "*_driftchecktmp*.py"
 Get-ChildItem -Path $migrationRoot -Filter $driftGlob -File -ErrorAction SilentlyContinue | ForEach-Object {
@@ -117,8 +128,8 @@ function Start-TempDb {
     docker pull postgres:16 | Out-Null
     $runArgs = @(
         'run','-d','--name', $containerName,
-        '-e','POSTGRES_USER=nutrition_user',
-        '-e','POSTGRES_PASSWORD=nutrition_pass',
+        '-e',"POSTGRES_USER=$dbUser",
+        '-e',"POSTGRES_PASSWORD=$dbPass",
         '-e','POSTGRES_DB=nutrition',
         '-p',"$($env:DB_PORT):5432",
         'postgres:16'
@@ -131,7 +142,7 @@ function Start-TempDb {
     $deadline = (Get-Date).AddMinutes(2)
     do {
         Start-Sleep -Seconds 1
-        $null = docker exec $containerName pg_isready -U nutrition_user -d nutrition
+        $null = docker exec $containerName pg_isready -U $dbUser -d nutrition
         if ((Get-Date) -gt $deadline) { throw "Postgres did not become ready in 2 minutes" }
     } until ($LASTEXITCODE -eq 0)
     Out-Ok "Database is ready."
