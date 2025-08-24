@@ -1,46 +1,7 @@
-from typing import Iterator
-
-import os
-import sys
-
-import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.pool import StaticPool
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import Session
 
-# Add repository root to ``sys.path`` so ``Backend`` package is importable
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
-from Backend.backend import app
-from Backend.db import get_db
-from Backend import models  # ensure models are imported for SQLModel metadata
 from Backend.models import PossibleIngredientTag, PossibleMealTag
-
-
-@pytest.fixture(name="engine")
-def engine_fixture() -> Iterator[Session]:
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
-    try:
-        yield engine
-    finally:
-        SQLModel.metadata.drop_all(engine)
-
-
-@pytest.fixture(name="client")
-def client_fixture(engine) -> Iterator[TestClient]:
-    def override_get_db() -> Iterator[Session]:
-        with Session(engine) as session:
-            yield session
-
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as client:
-        yield client
-    app.dependency_overrides.clear()
 
 
 def test_get_possible_ingredient_tags(client: TestClient, engine) -> None:
