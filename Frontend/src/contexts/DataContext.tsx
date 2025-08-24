@@ -115,7 +115,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       const { data } = await apiClient
         .path("/api/ingredients/")
         .method("get")
-        .create()();
+        .create()({});
       const processed = data.map((ingredient) => {
         const unitsWithFloatGrams =
           ingredient.units?.map((unit) => ({
@@ -147,7 +147,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       const { data } = await apiClient
         .path("/api/ingredients/possible_tags")
         .method("get")
-        .create()();
+        .create()({});
       setPossibleIngredientTags(data);
     } catch (error) {
       console.error("Error fetching tags", error);
@@ -162,7 +162,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       const { data } = await apiClient
         .path("/api/meals/")
         .method("get")
-        .create()();
+        .create()({});
       const processed = data.map((meal) => ({
         ...meal,
         ingredients:
@@ -188,7 +188,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       const { data } = await apiClient
         .path("/api/meals/possible_tags")
         .method("get")
-        .create()();
+        .create()({});
       setPossibleMealTags(data);
     } catch (error) {
       console.error("Error fetching tags", error);
