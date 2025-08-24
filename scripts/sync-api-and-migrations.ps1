@@ -66,6 +66,24 @@ if (-not $env:DB_PORT) { $env:DB_PORT = Get-FreeTcpPort }
 
 if (-not $env:DATABASE_URL) {
     $env:DATABASE_URL = "postgresql://nutrition_user:nutrition_pass@localhost:$($env:DB_PORT)/nutrition"
+} else {
+    try {
+        $builder = [System.UriBuilder]$env:DATABASE_URL
+        if ($builder.Port -ne [int]$env:DB_PORT) {
+            $builder.Port = [int]$env:DB_PORT
+            $newUrl = $builder.Uri.AbsoluteUri.TrimEnd('/')
+            if ($env:DATABASE_URL -ne $newUrl) {
+                $env:DATABASE_URL = $newUrl
+                Write-Host "Updated DATABASE_URL to $newUrl"
+            }
+        }
+    } catch {
+        $newUrl = $env:DATABASE_URL -replace '(:)\d+(?=/)', "`$1$($env:DB_PORT)"
+        if ($env:DATABASE_URL -ne $newUrl) {
+            $env:DATABASE_URL = $newUrl
+            Write-Host "Updated DATABASE_URL to $newUrl"
+        }
+    }
 }
 
 # Start a temporary database container so the script can run outside the compose stack.
