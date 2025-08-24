@@ -9,19 +9,23 @@ from sqlmodel import Session, SQLModel, create_engine
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+from Backend import models  # ensure models are imported for SQLModel metadata
 from Backend.backend import app
 from Backend.db import get_db
-from Backend import models  # ensure models are imported for SQLModel metadata
 
 
 @pytest.fixture(name="client")
 def client_fixture() -> Iterator[TestClient]:
     database_url = os.environ.get("DATABASE_URL", "sqlite://")
-    engine = create_engine(
-        database_url,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+
+    engine_kwargs = {}
+    if database_url.startswith("sqlite"):
+        engine_kwargs = {
+            "connect_args": {"check_same_thread": False},
+            "poolclass": StaticPool,
+        }
+
+    engine = create_engine(database_url, **engine_kwargs)
     SQLModel.metadata.create_all(engine)
 
     def override_get_db() -> Iterator[Session]:
