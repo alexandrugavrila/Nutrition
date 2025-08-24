@@ -19,7 +19,8 @@
     "react-virtuoso": "^4.7.1",
     "react-window": "^1.8.10",
     "styled-components": "^6.1.8",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "openapi-typescript-fetch": "^2.2.1"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -49,6 +50,7 @@
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.0",
     "eslint": "^8.57.1",
-    "openapi-typescript": "^6.7.6"
+    "openapi-typescript": "^6.7.6",
+    "typescript": "^4.9.5"
   }
 }
