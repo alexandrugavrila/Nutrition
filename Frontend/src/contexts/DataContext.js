@@ -29,20 +29,34 @@ export const DataProvider = ({ children }) => {
     setActiveRequests((prev) => Math.max(prev - 1, 0));
   }, []);
 
-  const ingredientProcessingTagNames = ["Whole Food", "Lightly Processed", "Highly Processed"];
-  const ingredientGroupTagNames = ["Vegetable", "Fruit", "Meat", "Dairy", "Grain"];
+  const ingredientProcessingTagNames = [
+    "Whole Food",
+    "Lightly Processed",
+    "Highly Processed",
+  ];
+  const ingredientGroupTagNames = [
+    "Vegetable",
+    "Fruit",
+    "Meat",
+    "Dairy",
+    "Grain",
+  ];
 
   const ingredientProcessingTags = possibleIngredientTags
-    ? possibleIngredientTags.filter(({ name }) => ingredientProcessingTagNames.includes(name))
+    ? possibleIngredientTags.filter(({ name }) =>
+        ingredientProcessingTagNames.includes(name),
+      )
     : [];
   const ingredientGroupTags = possibleIngredientTags
-    ? possibleIngredientTags.filter(({ name }) => ingredientGroupTagNames.includes(name))
+    ? possibleIngredientTags.filter(({ name }) =>
+        ingredientGroupTagNames.includes(name),
+      )
     : [];
   const ingredientOtherTags = possibleIngredientTags
     ? possibleIngredientTags.filter(
         ({ name }) =>
           !ingredientProcessingTagNames.includes(name) &&
-          !ingredientGroupTagNames.includes(name)
+          !ingredientGroupTagNames.includes(name),
       )
     : [];
 
@@ -58,8 +72,7 @@ export const DataProvider = ({ children }) => {
   const mealOtherTags = possibleMealTags
     ? possibleMealTags.filter(
         ({ name }) =>
-          !mealDietTagNames.includes(name) &&
-          !mealTypeTagNames.includes(name)
+          !mealDietTagNames.includes(name) && !mealTypeTagNames.includes(name),
       )
     : [];
 
@@ -81,33 +94,41 @@ export const DataProvider = ({ children }) => {
         endRequest();
       }
     },
-    [startRequest, endRequest]
+    [startRequest, endRequest],
   );
 
   const fetchIngredients = useCallback(() => {
     const url = "/api/ingredients";
-
-    const add1gUnit = (data) => {
-      return data.map((ingredient) => {
-        const ingredientsWithFloatGrams = ingredient.units.map((unit) => ({
+    const processData = (data) =>
+      data.map((ingredient) => {
+        const unitsWithFloatGrams = ingredient.units.map((unit) => ({
           ...unit,
           grams: parseFloat(unit.grams),
         }));
-        // Add a default 1g unit to the ingredient
+        const defaultUnit =
+          unitsWithFloatGrams.find((unit) => unit.name === "1g") ||
+          unitsWithFloatGrams.find((unit) => unit.grams === 1) ||
+          unitsWithFloatGrams[0];
         return {
           ...ingredient,
-          units: [...ingredientsWithFloatGrams, { id: 0, ingredient_id: ingredient.id, name: "1g", grams: 1 }],
-          selectedUnitId: 0,
+          units: unitsWithFloatGrams,
+          selectedUnitId: defaultUnit ? defaultUnit.id : null,
         };
       });
-    };
 
-    fetchData(url, setIngredients, () => setIngredientsNeedsRefetch(true), add1gUnit);
+    fetchData(
+      url,
+      setIngredients,
+      () => setIngredientsNeedsRefetch(true),
+      processData,
+    );
   }, [fetchData]);
 
   const fetchPossibleIngredientTags = useCallback(() => {
     const url = "/api/ingredients/possible_tags";
-    fetchData(url, setPossibleIngredientTags, () => console.error("Error fetching tags"));
+    fetchData(url, setPossibleIngredientTags, () =>
+      console.error("Error fetching tags"),
+    );
   }, [fetchData]);
 
   const fetchMeals = useCallback(() => {
@@ -130,7 +151,9 @@ export const DataProvider = ({ children }) => {
 
   const fetchPossibleMealTags = useCallback(() => {
     const url = "/api/meals/possible_tags";
-    fetchData(url, setPossibleMealTags, () => console.error("Error fetching tags"));
+    fetchData(url, setPossibleMealTags, () =>
+      console.error("Error fetching tags"),
+    );
   }, [fetchData]);
 
   //#region Effects
