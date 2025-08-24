@@ -66,6 +66,13 @@ done
 # Ensure the backend connects to the local container
 export DATABASE_URL="${DATABASE_URL:-postgresql://nutrition_user:nutrition_pass@localhost:5432/nutrition}"
 
+echo "Applying database migrations..."
+if ! alembic upgrade head >/tmp/db-upgrade.log 2>&1; then
+  cat /tmp/db-upgrade.log
+  echo "Failed to apply database migrations" >&2
+  exit 1
+fi
+
 #############################
 # Check OpenAPI / Frontend
 #############################
