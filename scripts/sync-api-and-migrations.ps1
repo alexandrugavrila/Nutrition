@@ -31,6 +31,15 @@ $autoMode = $Auto.IsPresent -or $env:CI -eq "true"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
+$composeProject = "nutrition-sync"
+
+# Clean up any leftover sync database container from previous runs.
+$existing = docker compose -p $composeProject ps -q db 2>$null
+if ($LASTEXITCODE -eq 0 -and $existing) {
+    Write-Host "Stopping previous sync database container..."
+    docker compose -p $composeProject down -v | Out-Null
+}
+
 $activationLog = [System.IO.Path]::GetTempFileName()
 if (-not $env:VIRTUAL_ENV -or -not (Get-Command uvicorn -ErrorAction SilentlyContinue)) {
     Write-Host "Activating virtual environment..."
@@ -54,14 +63,14 @@ if (-not (Get-Command uvicorn -ErrorAction SilentlyContinue)) {
 $dbStarted = $false
 try {
     Write-Host "Starting database container..."
-    docker compose up -d db | Out-Null
+    docker compose -p $composeProject up -d db | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "failed to start database container" }
     $dbStarted = $true
 
     Write-Host "Waiting for database to be ready..."
     do {
         Start-Sleep -Seconds 1
-        docker compose exec -T db pg_isready -U nutrition_user -d nutrition | Out-Null
+        docker compose -p $composeProject exec -T db pg_isready -U nutrition_user -d nutrition | Out-Null
     } until ($LASTEXITCODE -eq 0)
 
     if (-not $env:DATABASE_URL) {
@@ -74,12 +83,12 @@ try {
 }
 catch {
     Write-Error "$_"
-    if ($dbStarted) { docker compose rm -sf db | Out-Null }
+    if ($dbStarted) { docker compose -p $composeProject down -v | Out-Null }
     exit 1
 }
 finally {
     if ($dbStarted) {
-        Register-EngineEvent PowerShell.Exiting -Action { docker compose rm -sf db | Out-Null } | Out-Null
+        Register-EngineEvent PowerShell.Exiting -Action { docker compose -p nutrition-sync down -v | Out-Null } | Out-Null
     }
 }
 

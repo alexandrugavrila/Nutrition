@@ -40,18 +40,27 @@ if ! command -v uvicorn >/dev/null 2>&1; then
   exit 1
 fi
 
+# Use a dedicated compose project for the temporary database container.
+SYNC_PROJECT="nutrition-sync"
+
+# Clean up any leftover sync database container from previous runs.
+if docker compose -p "$SYNC_PROJECT" ps -q db >/dev/null 2>&1; then
+  echo "Stopping previous sync database container..."
+  docker compose -p "$SYNC_PROJECT" down -v >/tmp/db-old-stop.log 2>&1 || true
+fi
+
 # Start a temporary database container if one isn't already running.
 # This allows the script to be executed on a host machine without the rest of
 # the docker-compose stack. The container is removed when the script exits.
 cleanup() {
   if [[ -n "${DB_STARTED:-}" ]]; then
-    docker compose rm -sf db >/tmp/db-stop.log 2>&1 || true
+    docker compose -p "$SYNC_PROJECT" down -v >/tmp/db-stop.log 2>&1 || true
   fi
 }
 trap cleanup EXIT
 
 echo "Starting database container..."
-if ! docker compose up -d db >/tmp/db-start.log 2>&1; then
+if ! docker compose -p "$SYNC_PROJECT" up -d db >/tmp/db-start.log 2>&1; then
   cat /tmp/db-start.log
   echo "Failed to start database container" >&2
   exit 1
@@ -59,7 +68,7 @@ fi
 DB_STARTED=1
 
 echo "Waiting for database to be ready..."
-until docker compose exec -T db pg_isready -U nutrition_user -d nutrition >/tmp/db-ready.log 2>&1; do
+until docker compose -p "$SYNC_PROJECT" exec -T db pg_isready -U nutrition_user -d nutrition >/tmp/db-ready.log 2>&1; do
   sleep 1
 done
 
