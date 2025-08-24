@@ -85,14 +85,15 @@ if ($apiDiff) {
 # Check database migrations
 #############################
 
-$tmpfile = [System.IO.Path]::GetTempFileName()
-alembic revision --autogenerate -m "tmp" --stdout | Out-File -FilePath $tmpfile -Encoding utf8
+$tmpdir = New-Item -ItemType Directory -Path ([System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName()))
+alembic revision --autogenerate -m "tmp" --version-path $tmpdir.FullName | Out-Null
 if ($LASTEXITCODE -ne 0) {
-    Remove-Item $tmpfile
+    Remove-Item $tmpdir -Recurse -Force
     Write-Error "Failed to check for migration changes"
     exit 1
 }
-$needsMigration = Select-String -Path $tmpfile -Pattern 'op\.' -Quiet
+$tmpfile = Get-ChildItem $tmpdir | Select-Object -First 1
+$needsMigration = $tmpfile -and (Select-String -Path $tmpfile.FullName -Pattern 'op\.' -Quiet)
 if ($needsMigration) {
     Write-Host "Model changes detected that are not captured in migrations."
     if ($autoMode) {
@@ -111,4 +112,4 @@ if ($needsMigration) {
 } else {
     Write-Host "Database migrations are up to date."
 }
-Remove-Item $tmpfile
+Remove-Item $tmpdir -Recurse -Force
