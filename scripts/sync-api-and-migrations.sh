@@ -70,9 +70,14 @@ fi
 # Check database migrations
 #############################
 
-tmpfile="$(mktemp)"
-alembic revision --autogenerate -m "tmp" --stdout > "$tmpfile"
-if grep -q -E "op\." "$tmpfile"; then
+tmpdir="$(mktemp -d)"
+if ! alembic revision --autogenerate -m "tmp" --version-path "$tmpdir" >/dev/null; then
+  rm -r "$tmpdir"
+  echo "Failed to check for migration changes" >&2
+  exit 1
+fi
+tmpfile="$(find "$tmpdir" -type f | head -n 1)"
+if [[ -f "$tmpfile" && $(grep -E "op\\." "$tmpfile") ]]; then
   echo "Model changes detected that are not captured in migrations."
   if [[ $AUTO == yes ]]; then
     msg="auto migration"
@@ -90,5 +95,5 @@ if grep -q -E "op\." "$tmpfile"; then
 else
   echo "Database migrations are up to date."
 fi
-rm "$tmpfile"
+rm -r "$tmpdir"
 
