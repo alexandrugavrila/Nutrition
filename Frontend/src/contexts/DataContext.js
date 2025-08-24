@@ -18,8 +18,16 @@ export const DataProvider = ({ children }) => {
   const [meals, setMeals] = useState([]);
   const [possibleMealTags, setPossibleMealTags] = useState([]);
   const [mealsNeedsRefetch, setMealsNeedsRefetch] = useState(false);
+  const [activeRequests, setActiveRequests] = useState(0);
+  const fetching = activeRequests > 0;
 
-  const [fetching, setFetching] = useState(false);
+  const startRequest = useCallback(() => {
+    setActiveRequests((prev) => prev + 1);
+  }, []);
+
+  const endRequest = useCallback(() => {
+    setActiveRequests((prev) => Math.max(prev - 1, 0));
+  }, []);
 
   const ingredientProcessingTagNames = ["Whole Food", "Lightly Processed", "Highly Processed"];
   const ingredientGroupTagNames = ["Vegetable", "Fruit", "Meat", "Dairy", "Grain"];
@@ -56,8 +64,8 @@ export const DataProvider = ({ children }) => {
     : [];
 
   const fetchData = useCallback(
-    async (url, setData, setLoading, errorHandler, processData) => {
-      setLoading(true);
+    async (url, setData, errorHandler, processData) => {
+      startRequest();
       try {
         const response = await fetch(url);
         if (!response.ok) {
@@ -70,10 +78,10 @@ export const DataProvider = ({ children }) => {
         console.error("Error fetching data:", error);
         errorHandler(error);
       } finally {
-        setLoading(false);
+        endRequest();
       }
     },
-    []
+    [startRequest, endRequest]
   );
 
   const fetchIngredients = useCallback(() => {
@@ -94,23 +102,12 @@ export const DataProvider = ({ children }) => {
       });
     };
 
-    fetchData(
-      url,
-      setIngredients,
-      setFetching,
-      () => setIngredientsNeedsRefetch(true),
-      add1gUnit
-    );
+    fetchData(url, setIngredients, () => setIngredientsNeedsRefetch(true), add1gUnit);
   }, [fetchData]);
 
   const fetchPossibleIngredientTags = useCallback(() => {
     const url = "/api/ingredients/possible_tags";
-    fetchData(
-      url,
-      setPossibleIngredientTags,
-      setFetching,
-      () => console.error("Error fetching tags")
-    );
+    fetchData(url, setPossibleIngredientTags, () => console.error("Error fetching tags"));
   }, [fetchData]);
 
   const fetchMeals = useCallback(() => {
@@ -128,23 +125,12 @@ export const DataProvider = ({ children }) => {
           : [],
       }));
 
-    fetchData(
-      url,
-      setMeals,
-      setFetching,
-      () => setMealsNeedsRefetch(true),
-      processData
-    );
+    fetchData(url, setMeals, () => setMealsNeedsRefetch(true), processData);
   }, [fetchData]);
 
   const fetchPossibleMealTags = useCallback(() => {
     const url = "/api/meals/possible_tags";
-    fetchData(
-      url,
-      setPossibleMealTags,
-      setFetching,
-      () => console.error("Error fetching tags")
-    );
+    fetchData(url, setPossibleMealTags, () => console.error("Error fetching tags"));
   }, [fetchData]);
 
   //#region Effects
@@ -190,7 +176,8 @@ export const DataProvider = ({ children }) => {
     setIngredientsNeedsRefetch,
     setMealsNeedsRefetch,
     fetching,
-    setFetching,
+    startRequest,
+    endRequest,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

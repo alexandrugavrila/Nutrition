@@ -60,7 +60,7 @@ const reducer = (state, action) => {
 
 function IngredientForm({ ingredientToEditData }) {
   //#region State and Dispatch
-  const { setIngredientsNeedsRefetch, setFetching } = useData();
+  const { setIngredientsNeedsRefetch, startRequest, endRequest } = useData();
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const { isOpen, openConfirmationDialog, isEditMode, ingredientToEdit, needsClearForm, needsFillForm } = state;
@@ -105,24 +105,20 @@ function IngredientForm({ ingredientToEditData }) {
       delete toDatabaseIngredient.id;
     }
 
-    if (isEditMode) {
-      const url = `/api/ingredients/${toDatabaseIngredient.id}`;
-      const method = "PUT";
-      const data = /** @type {IngredientRequest} */ (toDatabaseIngredient);
+    const url = isEditMode
+      ? `/api/ingredients/${toDatabaseIngredient.id}`
+      : "/api/ingredients";
+    const method = isEditMode ? "PUT" : "POST";
+    const data = /** @type {IngredientRequest} */ (toDatabaseIngredient);
 
-      handleFetchRequest(url, method, data).then(() => {
+    startRequest();
+    handleFetchRequest(url, method, data)
+      .then(() => {
         setIngredientsNeedsRefetch(true);
-        setFetching(false);
-      });
-    } else {
-      const url = "/api/ingredients";
-      const method = "POST";
-      const data = /** @type {IngredientRequest} */ (toDatabaseIngredient);
+      })
+      .finally(endRequest);
 
-      handleFetchRequest(url, method, data).then(() => {
-        setIngredientsNeedsRefetch(true);
-        setFetching(false);
-      });
+    if (!isEditMode) {
       handleClearForm();
     }
     setIngredientsNeedsRefetch(true);
