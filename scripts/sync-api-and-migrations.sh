@@ -40,6 +40,32 @@ if ! command -v uvicorn >/dev/null 2>&1; then
   exit 1
 fi
 
+# Start a temporary database container if one isn't already running.
+# This allows the script to be executed on a host machine without the rest of
+# the docker-compose stack. The container is removed when the script exits.
+cleanup() {
+  if [[ -n "${DB_STARTED:-}" ]]; then
+    docker compose rm -sf db >/tmp/db-stop.log 2>&1 || true
+  fi
+}
+trap cleanup EXIT
+
+echo "Starting database container..."
+if ! docker compose up -d db >/tmp/db-start.log 2>&1; then
+  cat /tmp/db-start.log
+  echo "Failed to start database container" >&2
+  exit 1
+fi
+DB_STARTED=1
+
+echo "Waiting for database to be ready..."
+until docker compose exec -T db pg_isready -U nutrition_user -d nutrition >/tmp/db-ready.log 2>&1; do
+  sleep 1
+done
+
+# Ensure the backend connects to the local container
+export DATABASE_URL="${DATABASE_URL:-postgresql://nutrition_user:nutrition_pass@localhost:5432/nutrition}"
+
 #############################
 # Check OpenAPI / Frontend
 #############################

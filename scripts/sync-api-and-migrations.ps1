@@ -49,6 +49,36 @@ if (-not (Get-Command uvicorn -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+# Start a temporary database container so the script can run outside the compose stack.
+# The container is removed when the script completes.
+$dbStarted = $false
+try {
+    Write-Host "Starting database container..."
+    docker compose up -d db | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "failed to start database container" }
+    $dbStarted = $true
+
+    Write-Host "Waiting for database to be ready..."
+    do {
+        Start-Sleep -Seconds 1
+        docker compose exec -T db pg_isready -U nutrition_user -d nutrition | Out-Null
+    } until ($LASTEXITCODE -eq 0)
+
+    if (-not $env:DATABASE_URL) {
+        $env:DATABASE_URL = "postgresql://nutrition_user:nutrition_pass@localhost:5432/nutrition"
+    }
+}
+catch {
+    Write-Error "$_"
+    if ($dbStarted) { docker compose rm -sf db | Out-Null }
+    exit 1
+}
+finally {
+    if ($dbStarted) {
+        Register-EngineEvent PowerShell.Exiting -Action { docker compose rm -sf db | Out-Null } | Out-Null
+    }
+}
+
 #############################
 # Check OpenAPI / Frontend
 #############################
