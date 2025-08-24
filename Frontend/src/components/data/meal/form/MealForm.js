@@ -53,7 +53,7 @@ const reducer = (state, action) => {
 
 function MealForm({ mealToEditData }) {
   //#region States
-  const { setMealsNeedsRefetch, setFetching } = useData();
+  const { setMealsNeedsRefetch, startRequest, endRequest } = useData();
   const [state, dispatch] = useReducer(reducer, intitalState);
 
   const { isOpen, openConfirmationDialog, isEditMode, mealToEdit, needsClearForm, needsFillForm } = state;
@@ -74,7 +74,7 @@ function MealForm({ mealToEditData }) {
   }, []);
 
   const handleMealAction = () => {
-    setFetching(true);
+    startRequest();
 
     const toDatabaseMeal = {
       name: mealToEdit.name,
@@ -104,14 +104,12 @@ function MealForm({ mealToEditData }) {
           handleClearForm();
         }
       })
-      .finally(() => {
-        setFetching(false);
-      });
+      .finally(endRequest);
   };
 
   const handleMealDelete = () => {
     if (mealToEdit) {
-      setFetching(true);
+      startRequest();
       fetch(`/api/meals/${mealToEdit.id}`, {
         method: "DELETE",
       })
@@ -128,7 +126,7 @@ function MealForm({ mealToEditData }) {
           console.error("Error:", error);
         })
         .finally(() => {
-          setFetching(false);
+          endRequest();
           handleCloseConfirmationDialog();
         });
     }
