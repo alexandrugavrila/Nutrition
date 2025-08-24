@@ -167,7 +167,7 @@ function MealForm({ mealToEditData }) {
 
   useEffect(() => {
     if (needsFillForm) {
-      dispatch({ type: "SET_Fill_FORM", payload: false });
+      dispatch({ type: "SET_FILL_FORM", payload: false });
     }
   }, [needsFillForm]); // Reset needsFillForm flag after it's been used
   //#endregion Effects
