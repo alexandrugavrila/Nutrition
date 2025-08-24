@@ -1,39 +1,8 @@
 import pytest
-from typing import Iterator
 from fastapi.testclient import TestClient
-from sqlalchemy.pool import StaticPool
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import Session
 
-from Backend.backend import app
-from Backend.db import get_db
-from Backend import models  # ensure models imported
 from Backend.models import PossibleIngredientTag, PossibleMealTag
-
-
-@pytest.fixture(name="engine")
-def engine_fixture() -> Iterator:
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
-    try:
-        yield engine
-    finally:
-        SQLModel.metadata.drop_all(engine)
-
-
-@pytest.fixture(name="client")
-def client_fixture(engine) -> Iterator[TestClient]:
-    def override_get_db() -> Iterator[Session]:
-        with Session(engine) as session:
-            yield session
-
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as client:
-        yield client
-    app.dependency_overrides.clear()
 
 
 def test_full_ingredient_crud(client: TestClient, engine) -> None:
@@ -89,8 +58,18 @@ def test_full_ingredient_crud(client: TestClient, engine) -> None:
             "fiber": 3.0,
         },
         "units": [
-            {"id": unit_ids[0], "ingredient_id": ingredient_id, "name": "gram", "grams": 1.0},
-            {"id": unit_ids[1], "ingredient_id": ingredient_id, "name": "cup", "grams": 128.0},
+            {
+                "id": unit_ids[0],
+                "ingredient_id": ingredient_id,
+                "name": "gram",
+                "grams": 1.0,
+            },
+            {
+                "id": unit_ids[1],
+                "ingredient_id": ingredient_id,
+                "name": "cup",
+                "grams": 128.0,
+            },
         ],
         "tags": [{"id": spicy_id}],
     }
