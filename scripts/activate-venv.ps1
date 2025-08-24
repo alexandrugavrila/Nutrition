@@ -7,6 +7,8 @@ param(
     [string]$FrontendPath = (Join-Path (Resolve-Path "$PSScriptRoot/..") "Frontend")
 )
 
+$ErrorActionPreference = 'Stop'
+
 $venvCreated = $false
 if (-Not (Test-Path $VenvPath)) {
     python -m venv $VenvPath
