@@ -63,6 +63,14 @@ Options:
 * `-PruneImages` → also remove built images
 * Volumes are removed by default for clean isolation
 
+**Restart services:**
+
+```pwsh
+pwsh ./scripts/compose-restart-branch.ps1 -test      # or -production / -empty
+```
+
+Stops and then starts the current branch's containers with the chosen seed mode.
+
 ---
 
 ## ⚙️ Port Mapping
