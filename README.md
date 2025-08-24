@@ -85,6 +85,16 @@ alembic upgrade head
 alembic downgrade base && alembic upgrade head
 ```
 
+To confirm that your models and migrations are in sync without creating new
+files, run the drift check script:
+
+```powershell
+pwsh ./scripts/check-migration-drift.ps1
+```
+
+It applies all migrations, generates a temporary revision, and fails if any
+`op.` operations are detected.
+
 To load sample data from the CSV files in `Database/`, run:
 
 ```bash
