@@ -1,7 +1,16 @@
 // @ts-check
 import React, { useEffect, useCallback, useReducer } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Box } from "@mui/material";
+import {
+  Button,
+  Collapse,
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Box,
+} from "@mui/material";
 
 import { useData } from "../../../../contexts/DataContext";
 
@@ -63,7 +72,14 @@ function IngredientForm({ ingredientToEditData }) {
   const { setIngredientsNeedsRefetch, setFetching } = useData();
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  const { isOpen, openConfirmationDialog, isEditMode, ingredientToEdit, needsClearForm, needsFillForm } = state;
+  const {
+    isOpen,
+    openConfirmationDialog,
+    isEditMode,
+    ingredientToEdit,
+    needsClearForm,
+    needsFillForm,
+  } = state;
 
   const initializeEmptyIngredient = () => ({
     name: "",
@@ -96,7 +112,7 @@ function IngredientForm({ ingredientToEditData }) {
       units: ingredientToEdit.units
         .filter((unit) => unit.name !== "1g") // Remove the 1g unit from ingredientToEdit
         .map(({ id, ...unit }) =>
-          typeof id === "number" ? { id, ...unit } : unit
+          typeof id === "number" ? { id, ...unit } : unit,
         ),
     };
 
@@ -158,11 +174,20 @@ function IngredientForm({ ingredientToEditData }) {
   //#region Effects
   useEffect(() => {
     if (!ingredientToEditData) {
-      dispatch({ type: "SET_INGREDIENT", payload: initializeEmptyIngredient() });
+      dispatch({
+        type: "SET_INGREDIENT",
+        payload: initializeEmptyIngredient(),
+      });
       dispatch({ type: "SET_EDIT_MODE", payload: false });
       dispatch({ type: "OPEN_FORM", payload: false });
     } else {
-      dispatch({ type: "SET_INGREDIENT", payload: { ...ingredientToEditData } });
+      const defaultUnitId =
+        ingredientToEditData.units.find((unit) => unit.grams === 1)?.id ??
+        ingredientToEditData.units[0]?.id;
+      dispatch({
+        type: "SET_INGREDIENT",
+        payload: { ...ingredientToEditData, selectedUnitId: defaultUnitId },
+      });
       dispatch({ type: "SET_EDIT_MODE", payload: true });
       dispatch({ type: "OPEN_FORM", payload: true });
       dispatch({ type: "SET_FILL_FORM", payload: true });
@@ -192,7 +217,11 @@ function IngredientForm({ ingredientToEditData }) {
     <div>
       <Paper>
         <Box sx={{ display: "flex", justifyContent: "center" }}>
-          <Button onClick={() => dispatch({ type: "OPEN_FORM", payload: !isOpen })}>{isOpen ? "Close" : "Add Ingredient"}</Button>
+          <Button
+            onClick={() => dispatch({ type: "OPEN_FORM", payload: !isOpen })}
+          >
+            {isOpen ? "Close" : "Add Ingredient"}
+          </Button>
         </Box>
         <Collapse in={isOpen}>
           <>
@@ -219,15 +248,26 @@ function IngredientForm({ ingredientToEditData }) {
             />
 
             <Button onClick={handleClearForm}>Clear</Button>
-            <Button onClick={handleIngredientAction}>{isEditMode ? "Update" : "Add"}</Button>
-            {isEditMode && <Button onClick={() => dispatch({ type: "SET_CONFIRMATION_DIALOG", payload: true })}>Delete</Button>}
+            <Button onClick={handleIngredientAction}>
+              {isEditMode ? "Update" : "Add"}
+            </Button>
+            {isEditMode && (
+              <Button
+                onClick={() =>
+                  dispatch({ type: "SET_CONFIRMATION_DIALOG", payload: true })
+                }
+              >
+                Delete
+              </Button>
+            )}
           </>
         </Collapse>
       </Paper>
 
       <Dialog
         open={openConfirmationDialog}
-        onClose={handleCloseConfirmationDialog}>
+        onClose={handleCloseConfirmationDialog}
+      >
         <DialogTitle>Delete Ingredient</DialogTitle>
         <DialogContent>
           <div>Are you sure you want to delete this ingredient?</div>

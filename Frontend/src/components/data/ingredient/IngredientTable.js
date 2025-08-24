@@ -1,13 +1,29 @@
 // IngredientTable.js
 
 import React, { useState } from "react";
-import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, MenuItem, Select, TablePagination } from "@mui/material";
+import {
+  Box,
+  TextField,
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Paper,
+  MenuItem,
+  Select,
+  TablePagination,
+} from "@mui/material";
 
 import { useData } from "../../../contexts/DataContext";
 import { formatCellNumber } from "../../../utils/utils";
 import TagFilter from "../../common/TagFilter";
 
-function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlClick = () => {} }) {
+function IngredientTable({
+  onIngredientDoubleClick = () => {},
+  onIngredientCtrlClick = () => {},
+}) {
   //#region States
   const {
     ingredients,
@@ -33,7 +49,7 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
       return true; // Show all ingredients if no tags are selected
     }
     return selectedTags.some((selectedTag) =>
-      ingredient.tags.some(({ name }) => name === selectedTag.name)
+      ingredient.tags.some(({ name }) => name === selectedTag.name),
     );
   };
 
@@ -48,16 +64,13 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
   };
 
   const handleUnitChange = (event, ingredientId) => {
-    const selectedUnitId = event.target.value; // Store only the id of the selected unit
+    const selectedUnitId = event.target.value;
     setIngredients((prevIngredients) =>
       prevIngredients.map((ingredient) =>
         ingredient.id === ingredientId
-          ? {
-              ...ingredient,
-              selectedUnitId,
-            }
-          : ingredient
-      )
+          ? { ...ingredient, selectedUnitId }
+          : ingredient,
+      ),
     );
   };
 
@@ -75,9 +88,14 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const filteredIngredients = ingredients
-    .filter((ingredient) => ingredient.name.toLowerCase().includes(search.toLowerCase()))
+    .filter((ingredient) =>
+      ingredient.name.toLowerCase().includes(search.toLowerCase()),
+    )
     .filter(handleTagFilter);
-  const currentIngredients = filteredIngredients.slice(indexOfFirstItem, indexOfLastItem);
+  const currentIngredients = filteredIngredients.slice(
+    indexOfFirstItem,
+    indexOfLastItem,
+  );
 
   const allIngredientTags = [
     ...ingredientProcessingTags.map((tag) => ({ ...tag, group: "Processing" })),
@@ -119,34 +137,78 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentIngredients.map((ingredient) => (
-              <TableRow
-                key={ingredient.id}
-                onDoubleClick={() => handleIngredientDoubleClick(ingredient)}
-                onClick={(event) => handleIngredientClick(event, ingredient)}>
-                <TableCell>{ingredient.name}</TableCell>
-                <TableCell>
-                  <Select
-                    value={ingredient.selectedUnitId}
-                    size="small"
-                    onChange={(event) => handleUnitChange(event, ingredient.id)}
-                    style={{ minWidth: "120px", display: "inline-block" }}>
-                    {ingredient.units.map((unit) => (
-                      <MenuItem
-                        key={unit.id}
-                        value={unit.id}>
-                        {unit.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </TableCell>
-                <TableCell>{formatCellNumber(ingredient.nutrition.calories * (ingredient.units.find((unit) => unit.id === ingredient.selectedUnitId)?.grams || 1))}</TableCell>
-                <TableCell>{formatCellNumber(ingredient.nutrition.protein * (ingredient.units.find((unit) => unit.id === ingredient.selectedUnitId)?.grams || 1))}</TableCell>
-                <TableCell>{formatCellNumber(ingredient.nutrition.carbohydrates * (ingredient.units.find((unit) => unit.id === ingredient.selectedUnitId)?.grams || 1))}</TableCell>
-                <TableCell>{formatCellNumber(ingredient.nutrition.fat * (ingredient.units.find((unit) => unit.id === ingredient.selectedUnitId)?.grams || 1))}</TableCell>
-                <TableCell>{formatCellNumber(ingredient.nutrition.fiber * (ingredient.units.find((unit) => unit.id === ingredient.selectedUnitId)?.grams || 1))}</TableCell>
-              </TableRow>
-            ))}
+            {currentIngredients.map((ingredient) => {
+              const defaultUnitId =
+                ingredient.units.find((unit) => unit.grams === 1)?.id ??
+                ingredient.units[0]?.id;
+              const selectedUnitId = ingredient.selectedUnitId ?? defaultUnitId;
+
+              return (
+                <TableRow
+                  key={ingredient.id}
+                  onDoubleClick={() => handleIngredientDoubleClick(ingredient)}
+                  onClick={(event) => handleIngredientClick(event, ingredient)}
+                >
+                  <TableCell>{ingredient.name}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={selectedUnitId}
+                      size="small"
+                      onChange={(event) =>
+                        handleUnitChange(event, ingredient.id)
+                      }
+                      style={{ minWidth: "120px", display: "inline-block" }}
+                    >
+                      {ingredient.units.map((unit) => (
+                        <MenuItem key={unit.id} value={unit.id}>
+                          {unit.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    {formatCellNumber(
+                      ingredient.nutrition.calories *
+                        (ingredient.units.find(
+                          (unit) => unit.id === selectedUnitId,
+                        )?.grams || 1),
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {formatCellNumber(
+                      ingredient.nutrition.protein *
+                        (ingredient.units.find(
+                          (unit) => unit.id === selectedUnitId,
+                        )?.grams || 1),
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {formatCellNumber(
+                      ingredient.nutrition.carbohydrates *
+                        (ingredient.units.find(
+                          (unit) => unit.id === selectedUnitId,
+                        )?.grams || 1),
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {formatCellNumber(
+                      ingredient.nutrition.fat *
+                        (ingredient.units.find(
+                          (unit) => unit.id === selectedUnitId,
+                        )?.grams || 1),
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {formatCellNumber(
+                      ingredient.nutrition.fiber *
+                        (ingredient.units.find(
+                          (unit) => unit.id === selectedUnitId,
+                        )?.grams || 1),
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>

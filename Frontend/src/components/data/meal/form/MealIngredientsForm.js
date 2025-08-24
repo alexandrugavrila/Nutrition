@@ -1,5 +1,18 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Button, TextField, Select, MenuItem, Dialog, TableContainer, Table, TableHead, TableRow, TableCell, Paper, TableBody } from "@mui/material";
+import {
+  Button,
+  TextField,
+  Select,
+  MenuItem,
+  Dialog,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  Paper,
+  TableBody,
+} from "@mui/material";
 
 import { useData } from "../../../../contexts/DataContext";
 import IngredientTable from "../../ingredient/IngredientTable";
@@ -30,7 +43,13 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
   };
 
   const handleAddIngredient = (ingredient) => {
-    dispatch({ type: "SET_MEAL", payload: { ...meal, ingredients: [...meal.ingredients, buildMealIngredient(ingredient)] } });
+    dispatch({
+      type: "SET_MEAL",
+      payload: {
+        ...meal,
+        ingredients: [...meal.ingredients, buildMealIngredient(ingredient)],
+      },
+    });
     handleCloseIngredientsDialog();
   };
 
@@ -38,13 +57,19 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
     return {
       ingredient_id: ingredient.id,
       meal_id: meal.id,
-      unit_id: ingredient.selectedUnitId ? ingredient.selectedUnitId : null,
+      unit_id:
+        ingredient.selectedUnitId ??
+        ingredient.units.find((u) => u.grams === 1)?.id ??
+        null,
       unit_quantity: 1,
     };
   };
 
   const handleUnitQuantityChange = (event, index) => {
-    const newUnitQuantities = { ...unitQuantities, [index]: event.target.value };
+    const newUnitQuantities = {
+      ...unitQuantities,
+      [index]: event.target.value,
+    };
     setUnitQuantities(newUnitQuantities);
     handleUpdateIngredientUnitQuantity(index, event.target.value);
   };
@@ -65,7 +90,10 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
     };
     if (!isNaN(updatedIngredients[index].unit_quantity)) {
       // Don't update if the field is empty
-      dispatch({ type: "SET_MEAL", payload: { ...meal, ingredients: updatedIngredients } });
+      dispatch({
+        type: "SET_MEAL",
+        payload: { ...meal, ingredients: updatedIngredients },
+      });
     }
   };
 
@@ -73,20 +101,45 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
     (meal_ingredient) => {
       if (!meal_ingredient) return;
 
-      const dataIngredient = ingredients.find((item) => item.id === meal_ingredient.ingredient_id);
+      const dataIngredient = ingredients.find(
+        (item) => item.id === meal_ingredient.ingredient_id,
+      );
 
-      const unitId = meal_ingredient.unit_id ?? 0; // If meal_ingredient.unit_id is undefined or null, use 0
-      const dataUnit = dataIngredient.units.find((unit) => unit.id === unitId) || dataIngredient.units[0]; // Fallback to the first unit if not found
+      const unitId = meal_ingredient.unit_id;
+      const dataUnit =
+        dataIngredient.units.find((unit) => unit.id === unitId) ||
+        dataIngredient.units.find((unit) => unit.grams === 1) ||
+        dataIngredient.units[0];
 
       return {
-        calories: dataIngredient.nutrition.calories ? dataIngredient.nutrition.calories * dataUnit.grams * meal_ingredient.unit_quantity : 0,
-        protein: dataIngredient.nutrition.protein ? dataIngredient.nutrition.protein * dataUnit.grams * meal_ingredient.unit_quantity : 0,
-        fat: dataIngredient.nutrition.fat ? dataIngredient.nutrition.fat * dataUnit.grams * meal_ingredient.unit_quantity : 0,
-        carbs: dataIngredient.nutrition.carbohydrates ? dataIngredient.nutrition.carbohydrates * dataUnit.grams * meal_ingredient.unit_quantity : 0,
-        fiber: dataIngredient.nutrition.fiber ? dataIngredient.nutrition.fiber * dataUnit.grams * meal_ingredient.unit_quantity : 0,
+        calories: dataIngredient.nutrition.calories
+          ? dataIngredient.nutrition.calories *
+            dataUnit.grams *
+            meal_ingredient.unit_quantity
+          : 0,
+        protein: dataIngredient.nutrition.protein
+          ? dataIngredient.nutrition.protein *
+            dataUnit.grams *
+            meal_ingredient.unit_quantity
+          : 0,
+        fat: dataIngredient.nutrition.fat
+          ? dataIngredient.nutrition.fat *
+            dataUnit.grams *
+            meal_ingredient.unit_quantity
+          : 0,
+        carbs: dataIngredient.nutrition.carbohydrates
+          ? dataIngredient.nutrition.carbohydrates *
+            dataUnit.grams *
+            meal_ingredient.unit_quantity
+          : 0,
+        fiber: dataIngredient.nutrition.fiber
+          ? dataIngredient.nutrition.fiber *
+            dataUnit.grams *
+            meal_ingredient.unit_quantity
+          : 0,
       };
     },
-    [ingredients]
+    [ingredients],
   );
 
   const handleUnitChange = (event, ingredientIndex) => {
@@ -96,7 +149,10 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
       ...updatedIngredients[ingredientIndex],
       unit_id: newUnitId,
     };
-    dispatch({ type: "SET_MEAL", payload: { ...meal, ingredients: updatedIngredients } });
+    dispatch({
+      type: "SET_MEAL",
+      payload: { ...meal, ingredients: updatedIngredients },
+    });
   };
   //#endregion Handles
 
@@ -108,10 +164,13 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
   }, [needsClearForm, dispatch, meal]); // Clear ingredients when needsClearForm is true
 
   useEffect(() => {
-    const initialUnitQuantities = meal.ingredients.reduce((acc, ingredient, index) => {
-      acc[index] = ingredient.unit_quantity.toString();
-      return acc;
-    }, {});
+    const initialUnitQuantities = meal.ingredients.reduce(
+      (acc, ingredient, index) => {
+        acc[index] = ingredient.unit_quantity.toString();
+        return acc;
+      },
+      {},
+    );
     setUnitQuantities(initialUnitQuantities);
   }, [meal]); // Initialize or reset the unit quantities when meal changes, ensuring inputs are up-to-date
 
@@ -126,7 +185,7 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
         acc.fiber += macros.fiber;
         return acc;
       },
-      { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 }
+      { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 },
     );
 
     setTotalMacros(totals);
@@ -162,22 +221,30 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
 
           <TableBody>
             {meal.ingredients.map((ingredient, index) => {
-              const dataIngredient = ingredients.find((item) => item.id === ingredient.ingredient_id);
+              const dataIngredient = ingredients.find(
+                (item) => item.id === ingredient.ingredient_id,
+              );
+              const defaultUnitId =
+                dataIngredient.units.find((unit) => unit.grams === 1)?.id ??
+                dataIngredient.units[0]?.id;
 
               return (
                 <TableRow key={index}>
-                  <TableCell>{dataIngredient ? dataIngredient.name : "Unknown Ingredient"}</TableCell>
+                  <TableCell>
+                    {dataIngredient
+                      ? dataIngredient.name
+                      : "Unknown Ingredient"}
+                  </TableCell>
                   <TableCell>
                     <div>
                       <Select
                         style={{ textAlign: "center" }}
-                        value={ingredient.unit_id || 0}
+                        value={ingredient.unit_id ?? defaultUnitId}
                         onChange={(event) => handleUnitChange(event, index)}
-                        inputProps={{ "aria-label": "Without label" }}>
+                        inputProps={{ "aria-label": "Without label" }}
+                      >
                         {dataIngredient.units.map((unit) => (
-                          <MenuItem
-                            key={unit.id}
-                            value={unit.id}>
+                          <MenuItem key={unit.id} value={unit.id}>
                             {unit.name}
                           </MenuItem>
                         ))}
@@ -188,7 +255,9 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
                     <TextField
                       type="number"
                       value={unitQuantities[index] || ""}
-                      onChange={(event) => handleUnitQuantityChange(event, index)}
+                      onChange={(event) =>
+                        handleUnitQuantityChange(event, index)
+                      }
                       onBlur={() => handleUnitQuantityBlur(index)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter") event.target.blur();
@@ -196,20 +265,38 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
                       InputProps={{ inputProps: { min: 0 } }}
                     />
                   </TableCell>
-                  <TableCell>{formatCellNumber(calculateTotalIngredientMacros(ingredient).calories)}</TableCell>
-                  <TableCell>{formatCellNumber(calculateTotalIngredientMacros(ingredient).protein)}</TableCell>
-                  <TableCell>{formatCellNumber(calculateTotalIngredientMacros(ingredient).fat)}</TableCell>
-                  <TableCell>{formatCellNumber(calculateTotalIngredientMacros(ingredient).carbs)}</TableCell>
-                  <TableCell>{formatCellNumber(calculateTotalIngredientMacros(ingredient).fiber)}</TableCell>
+                  <TableCell>
+                    {formatCellNumber(
+                      calculateTotalIngredientMacros(ingredient).calories,
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {formatCellNumber(
+                      calculateTotalIngredientMacros(ingredient).protein,
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {formatCellNumber(
+                      calculateTotalIngredientMacros(ingredient).fat,
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {formatCellNumber(
+                      calculateTotalIngredientMacros(ingredient).carbs,
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {formatCellNumber(
+                      calculateTotalIngredientMacros(ingredient).fiber,
+                    )}
+                  </TableCell>
                 </TableRow>
               );
             })}
           </TableBody>
         </Table>
       </TableContainer>
-      <Button
-        variant="contained"
-        onClick={handleOpenIngredientsDialog}>
+      <Button variant="contained" onClick={handleOpenIngredientsDialog}>
         Add Ingredients
       </Button>
 
@@ -218,7 +305,8 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
         onClose={handleCloseIngredientsDialog}
         maxWidth="lg"
         scroll="body"
-        fullWidth>
+        fullWidth
+      >
         <IngredientTable onIngredientDoubleClick={handleAddIngredient} />
       </Dialog>
     </div>
