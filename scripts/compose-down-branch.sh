@@ -116,6 +116,7 @@ for proj in "${chosen[@]}"; do
   docker "${args[@]}"
   defaultNet="${proj}_default"
   docker network rm "$defaultNet" >/dev/null 2>&1 || true
-fi
+  docker volume rm "${proj}_node_modules" >/dev/null 2>&1 || true
+  done
 
 echo "Done."

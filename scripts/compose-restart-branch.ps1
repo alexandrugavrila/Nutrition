@@ -18,6 +18,7 @@ $project   = "nutrition-$sanitized"
 Write-Host "Bringing down containers for '$branch'..."
 docker compose -p $project down -v --remove-orphans | Out-Null
 docker network rm "${project}_default" 2>$null | Out-Null
+docker volume rm "${project}_node_modules" 2>$null | Out-Null
 
 Write-Host "Bringing up containers..."
 & "$PSScriptRoot/compose-up-branch.ps1" @PSBoundParameters

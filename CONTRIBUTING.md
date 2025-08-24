@@ -61,7 +61,7 @@ Options:
 
 * `-Force` → skip confirmation
 * `-PruneImages` → also remove built images
-* Volumes are removed by default for clean isolation
+* Volumes (including branch-specific `node_modules` cache) are removed by default for clean isolation
 
 **Restart services:**
 

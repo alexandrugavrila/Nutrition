@@ -113,6 +113,7 @@ foreach ($proj in $chosen) {
   # Best-effort cleanup for the default network (it’s usually removed by `down` already)
   $defaultNet = "${proj}_default"
   docker network rm $defaultNet 2>$null | Out-Null
+  docker volume rm "${proj}_node_modules" 2>$null | Out-Null
 }
 
 Write-Host "Done." -ForegroundColor Green
