@@ -11,7 +11,7 @@ class Nutrition(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     ingredient_id: Optional[int] = Field(
-        default=None, foreign_key="ingredients.id"
+        default=None, foreign_key="ingredients.id", nullable=False
     )
     calories: float = Field(sa_column=Column(Numeric(10, 4, asdecimal=False), nullable=False))
     fat: float = Field(sa_column=Column(Numeric(10, 4, asdecimal=False), nullable=False))
