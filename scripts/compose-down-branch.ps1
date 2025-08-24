@@ -61,7 +61,7 @@ function Select-Projects {
   }
   Write-Host "Select project(s) to delete:" -ForegroundColor Cyan
   for ($i = 0; $i -lt $Projects.Count; $i++) {
-    "{0,2}) {1}" -f ($i+1), $Projects[$i]
+    Write-Host ("{0,2}) {1}" -f ($i+1), $Projects[$i])
   }
 
   $inputIdx = Read-Host "Enter space-separated numbers or 'all'"
