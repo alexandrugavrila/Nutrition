@@ -1,5 +1,16 @@
 # scripts/check-migration-drift.ps1
 # Ensure Alembic migrations reflect models and produce an up-to-date DB.
+#
+# Behavior:
+#   - Runs a temporary Postgres container.
+#   - Applies existing migrations.
+#   - Autogenerates a revision to detect drift.
+#   - If drift found, adopts it as a real migration (renames + updates header), applies it, then verifies clean.
+#
+# Exit codes:
+#   0 = Up to date (already clean, or adopted migration and verified clean)
+#   1 = Script error (infra/tooling failure)
+#   2 = Unexpected continued drift after adoption (investigate)
 
 [CmdletBinding()]
 param()
@@ -7,6 +18,15 @@ param()
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+# --------------------------- Shared Logging Helpers ---------------------------
+function Out-Step   { param([string]$m) Write-Host "» $m" -ForegroundColor Cyan }
+function Out-Info   { param([string]$m) Write-Host "$m" }
+function Out-Ok     { param([string]$m) Write-Host "$m" -ForegroundColor Green }
+function Out-Warn   { param([string]$m) Write-Warning $m }
+function Out-Err    { param([string]$m) Write-Error $m }
+function Out-Result { param([string]$m,[string]$color) Write-Host "[RESULT] $m" -ForegroundColor $color }
+
+# --------------------------- Helpers -----------------------------------------
 function Get-FreeTcpPort {
     $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
     $listener.Start()
@@ -43,6 +63,7 @@ function New-TimestampSlug { Get-Date -Format "yyyyMMdd_HHmmss" }
 $activationLog = [System.IO.Path]::GetTempFileName()
 $needActivate = (-not $env:VIRTUAL_ENV) -or (-not (Get-Command alembic -ErrorAction SilentlyContinue))
 if ($needActivate) {
+    Out-Step "Activating virtual environment..."
     & "$PSScriptRoot/activate-venv.ps1" *> $activationLog 2>&1
     if ($LASTEXITCODE -ne 0) {
         Get-Content $activationLog
@@ -90,9 +111,9 @@ $adoptionPerformed = $false
 $verifyHadOps = $false
 $firstHadOps = $false
 
-# --- Functions for core steps (renamed with approved verbs) -------------------
+# --- Functions for core steps -------------------------------------------------
 function Start-TempDb {
-    Write-Host "Starting temporary database container $containerName on port $($env:DB_PORT)..."
+    Out-Step "Starting temporary database container $containerName on port $($env:DB_PORT)..."
     docker pull postgres:16 | Out-Null
     $runArgs = @(
         'run','-d','--name', $containerName,
@@ -106,13 +127,14 @@ function Start-TempDb {
     if ($LASTEXITCODE -ne 0) { throw "failed to start database container" }
     $script:dbStarted = $true
 
-    Write-Host "Waiting for database to be ready (timeout 2 minutes)..."
+    Out-Step "Waiting for database to be ready (timeout 2 minutes)..."
     $deadline = (Get-Date).AddMinutes(2)
     do {
         Start-Sleep -Seconds 1
         $null = docker exec $containerName pg_isready -U nutrition_user -d nutrition
         if ((Get-Date) -gt $deadline) { throw "Postgres did not become ready in 2 minutes" }
     } until ($LASTEXITCODE -eq 0)
+    Out-Ok "Database is ready."
 }
 
 function New-TempRevision {
@@ -147,7 +169,7 @@ function Convert-DriftFileToMigration {
 
     $content = Get-Content -Raw -Path $path
 
-    # Replace ONLY the first line that starts the docstring (opening triple quotes line)
+    # Replace ONLY the first docstring line
     $regex = [System.Text.RegularExpressions.Regex]::new('(?m)^""".*')
     $content = $regex.Replace($content, '"""' + $slug, 1, 0)
 
@@ -162,24 +184,28 @@ function Clear-TempDriftFiles {
     }
 }
 
+# --------------------------- Main --------------------------------------------
 try {
     Start-TempDb
 
-    # Apply existing migrations
+    Out-Step "Applying existing migrations..."
     Invoke-Alembic @('upgrade','head')
+    Out-Ok "Migrations applied."
 
-    # First autogenerate: detect drift
+    Out-Step "Autogenerating revision to detect drift..."
     $firstGenerated      = New-TempRevision -message 'driftchecktmp'
     $firstGeneratedPath  = $firstGenerated.FullName
     $firstHadOps         = Test-RevisionHasOps -path $firstGeneratedPath
 
     if ($firstHadOps) {
-        Write-Host "Drift detected, adopting migration..." -ForegroundColor Yellow
+        Out-Warn "Drift detected — adopting migration..."
         $adoptedPath        = Convert-DriftFileToMigration -path $firstGeneratedPath
         $adoptionPerformed  = $true
 
+        Out-Step "Applying adopted migration..."
         Invoke-Alembic @('upgrade','head')
 
+        Out-Step "Verifying clean state with a second autogenerate..."
         $verifyGenerated     = New-TempRevision -message 'driftchecktmp_verify'
         $verifyGeneratedPath = $verifyGenerated.FullName
         $verifyHadOps        = Test-RevisionHasOps -path $verifyGeneratedPath
@@ -187,10 +213,14 @@ try {
         if (-not $verifyHadOps) {
             Remove-Item $verifyGeneratedPath -Force -ErrorAction SilentlyContinue
             $verifyGeneratedPath = $null
+            Out-Ok "Verification clean."
+        } else {
+            Out-Warn "Verification still shows drift."
         }
     } else {
         Remove-Item $firstGeneratedPath -Force -ErrorAction SilentlyContinue
         $firstGeneratedPath = $null
+        Out-Ok "No drift in first autogenerate."
     }
 }
 catch {
@@ -198,10 +228,9 @@ catch {
 }
 finally {
     if ($dbStarted) {
-        Write-Host "Removing temporary database container $containerName..."
+        Out-Step "Removing temporary database container $containerName..."
         docker rm -f $containerName | Out-Null
     }
-
     if ($firstGeneratedPath -and (-not $adoptionPerformed)) {
         try { Remove-Item $firstGeneratedPath -Force -ErrorAction SilentlyContinue } catch {}
         $firstGeneratedPath = $null
@@ -210,31 +239,30 @@ finally {
         try { Remove-Item $verifyGeneratedPath -Force -ErrorAction SilentlyContinue } catch {}
         $verifyGeneratedPath = $null
     }
-
     Clear-TempDriftFiles
 }
 
 # --------------------------- Summary & Exit Codes -----------------------------
 if ($fatalError) {
-    Write-Error "Script failed: $fatalError"
-    Write-Host "[RESULT] Script error" -ForegroundColor Red
+    Out-Err  "Script failed: $fatalError"
+    Out-Result "Script error" "Red"
     exit 1
 }
 
 if ($adoptionPerformed) {
     if ($verifyHadOps) {
-        Write-Warning "Adopted $adoptedPath, but a verification autogenerate still found differences."
-        Write-Host "Investigate your models/env.py autogenerate settings. A noisy config can cause perpetual diffs." -ForegroundColor Yellow
-        Write-Host "[RESULT] Continued drift after adoption" -ForegroundColor Yellow
+        Out-Warn "Adopted $adoptedPath, but verification still shows differences."
+        Out-Info "Investigate models or env.py autogenerate settings; noisy configs can cause perpetual diffs."
+        Out-Result "Continued drift after adoption" "Yellow"
         exit 2
     } else {
-        Write-Host "Adopted migration: $adoptedPath" -ForegroundColor Green
-        Write-Host "Verification clean: migrations now reproduce the model schema." -ForegroundColor Green
-        Write-Host "[RESULT] Up to date (after adoption)" -ForegroundColor Green
+        Out-Ok "Adopted migration: $adoptedPath"
+        Out-Ok "Migrations now reproduce the model schema."
+        Out-Result "Up to date (after adoption)" "Green"
         exit 0
     }
 } else {
-    Write-Host "No migration drift detected." -ForegroundColor Green
-    Write-Host "[RESULT] Up to date (no drift)" -ForegroundColor Green
+    Out-Ok "No migration drift detected."
+    Out-Result "Up to date (no drift)" "Green"
     exit 0
 }
