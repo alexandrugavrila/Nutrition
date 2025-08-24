@@ -135,11 +135,15 @@ if ($apiDiff) {
 # ensuring the directory is cleaned up afterwards.
 $migrationRoot = Join-Path $repoRoot "Backend/migrations/versions"
 $tmpdir = New-Item -ItemType Directory -Path (Join-Path $migrationRoot ([System.IO.Path]::GetRandomFileName()))
-alembic revision --autogenerate -m "tmp" --version-path $tmpdir.FullName --version-paths $migrationRoot | Out-Null
+$versionPaths = "$migrationRoot$([IO.Path]::PathSeparator)$($tmpdir.FullName)"
+alembic revision --autogenerate -m "tmp" --version-path $tmpdir.FullName --version-paths $versionPaths | Out-Null
 if ($LASTEXITCODE -ne 0) {
-    Remove-Item $tmpdir -Recurse -Force
-    Write-Error "Failed to check for migration changes"
-    exit 1
+    alembic revision --autogenerate -m "tmp" --version-path $tmpdir.FullName | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Remove-Item $tmpdir -Recurse -Force
+        Write-Error "Failed to check for migration changes"
+        exit 1
+    }
 }
 $tmpfile = Get-ChildItem $tmpdir | Select-Object -First 1
 $needsMigration = $tmpfile -and (Select-String -Path $tmpfile.FullName -Pattern 'op\.' -Quiet)
