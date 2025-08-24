@@ -36,7 +36,7 @@ def test_full_ingredient_crud(client: TestClient, engine) -> None:
     ingredient = response.json()
     ingredient_id = ingredient["id"]
     assert ingredient["nutrition"]["calories"] == pytest.approx(41.0)
-    assert len(ingredient["units"]) == 2
+    assert len(ingredient["units"]) == 3
     assert {t["name"] for t in ingredient["tags"]} == {"Spicy", "Sweet"}
 
     response = client.get(f"/api/ingredients/{ingredient_id}")

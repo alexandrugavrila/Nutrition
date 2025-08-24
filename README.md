@@ -2,21 +2,23 @@
 
 A full-stack nutrition planning and tracking app built with:
 
-* 🖥️ **React** frontend (Material UI + Context API)
-* 🐍 **FastAPI** backend (SQLModel)
-* 🐘 **PostgreSQL** database (seeded with food and nutrition data)
-* 🐳 **Docker** for development and deployment
+- 🖥️ **React** frontend (Material UI + Context API)
+- 🐍 **FastAPI** backend (SQLModel)
+- 🐘 **PostgreSQL** database (seeded with food and nutrition data)
+- 🐳 **Docker** for development and deployment
 
 ---
 
 ## 🚀 Quick Start
 
 ### 1. Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop)  
-- [PowerShell 7+](https://learn.microsoft.com/powershell/) (Windows/macOS/Linux)  
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [PowerShell 7+](https://learn.microsoft.com/powershell/) (Windows/macOS/Linux)
 - [DBeaver](https://dbeaver.io/download/) (optional, DB GUI)
 
 ### 2. Clone & Launch
+
 ```pwsh
 git clone https://github.com/alexandrugavrila/Nutrition
 cd Nutrition
@@ -24,16 +26,16 @@ cd Nutrition
 # Start stack for this branch
 # Choose ONE: -production | -test | -empty
 pwsh ./scripts/compose-up-branch.ps1 -test
-````
+```
 
 👉 The script prints the branch-specific ports for frontend, backend, and database.
 Multiple branches can run in parallel without conflicts.
 
 ### 3. Access Services
 
-* Frontend → `http://localhost:<FRONTEND_PORT>`
-* Backend API → `http://localhost:<BACKEND_PORT>`
-* PostgreSQL → `localhost:<DB_PORT>`
+- Frontend → `http://localhost:<FRONTEND_PORT>`
+- Backend API → `http://localhost:<BACKEND_PORT>`
+- PostgreSQL → `localhost:<DB_PORT>`
 
 ---
 
@@ -52,25 +54,33 @@ Nutrition/
 
 ## 🧠 Core Concepts
 
-* **Backend** → API routes in `Backend/routes/`, models in `Backend/models/`
-* **Frontend** → React app in `Frontend/`, global `DataContext.js` for state
-* **Database** → Schema managed with Alembic migrations, optional CSV seed data
+- **Backend** → API routes in `Backend/routes/`, models in `Backend/models/`
+- **Frontend** → React app in `Frontend/`, global `DataContext.js` for state
+- **Database** → Schema managed with Alembic migrations, optional CSV seed data
 
 ---
 
-## ✅ API Endpoints (Highlights)
+## ✅ API Endpoints
 
 **Ingredients**
 
-* `GET /ingredients` – list all
-* `POST /ingredients` – add new
-* `PUT /ingredients/<id>` – update
-* `DELETE /ingredients/<id>` – remove
+- `GET /ingredients` – list all
+- `GET /ingredients/{id}` – single ingredient
+- `GET /ingredients/possible_tags` – list tags
+- `POST /ingredients` – add new
+- `PUT /ingredients/{id}` – update
+- `DELETE /ingredients/{id}` – remove
+
+Every ingredient response automatically includes a synthetic `1g` unit for convenience.
 
 **Meals**
 
-* `GET /meals` – list all
-* `GET /meals/<id>` – single meal
+- `GET /meals` – list all
+- `GET /meals/{id}` – single meal
+- `GET /meals/possible_tags` – list tags
+- `POST /meals` – add new
+- `PUT /meals/{id}` – update
+- `DELETE /meals/{id}` – remove
 
 ---
 

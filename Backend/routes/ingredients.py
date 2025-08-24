@@ -1,26 +1,31 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
+from sqlmodel import Session, select
 
 from ..db import get_db
-from ..models import (
-    Ingredient,
-    PossibleIngredientTag,
-    IngredientUnit,
-    Nutrition,
-)
+from ..models import Ingredient, IngredientUnit, Nutrition, PossibleIngredientTag
 from ..models.schemas import IngredientCreate, IngredientRead, IngredientUpdate
 
 router = APIRouter(prefix="/ingredients", tags=["ingredients"])
+
+
+def ingredient_to_read(ingredient: Ingredient) -> IngredientRead:
+    """Convert an Ingredient to IngredientRead ensuring a 1 g unit exists."""
+    ingredient_read = IngredientRead.model_validate(ingredient)
+    if not any(unit.name == "1g" for unit in ingredient_read.units):
+        ingredient_read.units.append(
+            IngredientUnit(id=0, ingredient_id=ingredient.id, name="1g", grams=1)
+        )
+    return ingredient_read
 
 
 @router.get("/", response_model=List[IngredientRead])
 def get_all_ingredients(db: Session = Depends(get_db)) -> List[IngredientRead]:
     """Return all ingredients."""
     ingredients = db.exec(select(Ingredient)).all()
-    return [IngredientRead.model_validate(ing) for ing in ingredients]
+    return [ingredient_to_read(ing) for ing in ingredients]
 
 
 @router.get("/possible_tags", response_model=List[PossibleIngredientTag])
@@ -38,7 +43,7 @@ def get_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> Ingredi
     ingredient = db.get(Ingredient, ingredient_id)
     if not ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
-    return IngredientRead.model_validate(ingredient)
+    return ingredient_to_read(ingredient)
 
 
 @router.post("/", response_model=IngredientRead, status_code=201)
@@ -64,7 +69,7 @@ def add_ingredient(
         .where(Ingredient.id == ingredient_obj.id)
     )
     ingredient_obj = db.exec(statement).one()
-    return IngredientRead.model_validate(ingredient_obj)
+    return ingredient_to_read(ingredient_obj)
 
 
 @router.put("/{ingredient_id}", response_model=IngredientRead)
@@ -94,7 +99,9 @@ def update_ingredient(
     with db.no_autoflush:
         if ingredient_data.tags:
             ingredient.tags = [
-                db.get(PossibleIngredientTag, t.id) for t in ingredient_data.tags if t.id
+                db.get(PossibleIngredientTag, t.id)
+                for t in ingredient_data.tags
+                if t.id
             ]
         else:
             ingredient.tags = []
@@ -112,7 +119,7 @@ def update_ingredient(
         .where(Ingredient.id == ingredient.id)
     )
     ingredient = db.exec(statement).one()
-    return IngredientRead.model_validate(ingredient)
+    return ingredient_to_read(ingredient)
 
 
 @router.delete("/{ingredient_id}")
@@ -127,4 +134,3 @@ def delete_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> dict
 
 
 __all__ = ["router"]
-
