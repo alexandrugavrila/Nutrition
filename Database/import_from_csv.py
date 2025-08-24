@@ -1,23 +1,28 @@
 """Import CSV data into the database using the application's models."""
 
-import os
 import argparse
 import csv
+import os
+import sys
 from collections import defaultdict, deque
+from pathlib import Path
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+# Ensure repository root is on sys.path for module imports
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
 from Backend.models import (
     Ingredient,
+    IngredientTagLink,
     IngredientUnit,
-    Nutrition,
     Meal,
     MealIngredient,
+    MealTagLink,
+    Nutrition,
     PossibleIngredientTag,
     PossibleMealTag,
-    IngredientTagLink,
-    MealTagLink,
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -123,11 +128,17 @@ def import_csv(session, folder, ordered_tables):
 def main():
     parser = argparse.ArgumentParser(description="Import CSVs into PostgreSQL.")
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--production", action="store_true", help="Use production CSV files")
-    group.add_argument("--test", action="store_true", help="Use test CSV files (e.g., table_test.csv)")
+    group.add_argument(
+        "--production", action="store_true", help="Use production CSV files"
+    )
+    group.add_argument(
+        "--test", action="store_true", help="Use test CSV files (e.g., table_test.csv)"
+    )
     args = parser.parse_args()
 
-    data_dir = os.path.join(BASE_DIR, "production_data" if args.production else "test_data")
+    data_dir = os.path.join(
+        BASE_DIR, "production_data" if args.production else "test_data"
+    )
 
     mode = "PRODUCTION" if args.production else "TEST"
     print(f"Running in {mode} mode — reading from: {data_dir}")
