@@ -152,22 +152,16 @@ try {
     # Alembic 1.13+ requires that generated revision files live within one of the
     # configured version locations. Create the temporary directory inside the
     # project's versions folder and specify both locations via --version-path and
-    # --version-paths for cross-version compatibility.
+    # --version-paths.
     $migrationRoot = Join-Path $repoRoot "Backend/migrations/versions"
     if (-not (Test-Path $migrationRoot)) { throw "Alembic versions directory not found: $migrationRoot" }
     $tmpdir = New-Item -ItemType Directory -Path (Join-Path $migrationRoot ([System.IO.Path]::GetRandomFileName()))
-    $versionPaths = "$migrationRoot$([IO.Path]::PathSeparator)$($tmpdir.FullName)"
 
-    # First attempt: new flag set
-    alembic revision --autogenerate -m "tmp" --version-path $tmpdir.FullName --version-paths $versionPaths | Out-Null
+    & "$env:VIRTUAL_ENV\Scripts\python.exe" -m alembic --version-paths "$migrationRoot;$($tmpdir.FullName)" revision --autogenerate -m "tmp" --version-path $tmpdir.FullName | Out-Null
     if ($LASTEXITCODE -ne 0) {
-        # Fallback for older Alembic
-        alembic revision --autogenerate -m "tmp" --version-path $tmpdir.FullName | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            Remove-Item $tmpdir -Recurse -Force
-            Write-Error "Failed to check for migration changes"
-            exit 1
-        }
+        Remove-Item $tmpdir -Recurse -Force
+        Write-Error "Failed to check for migration changes"
+        exit 1
     }
 
     $generated = @(Get-ChildItem $tmpdir -Filter "*.py")
