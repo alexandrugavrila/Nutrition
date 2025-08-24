@@ -11,137 +11,29 @@ A full-stack nutrition planning and tracking app built with:
 
 ## 🚀 Quick Start
 
-### 1. Install prerequisites
+### 1. Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)  
+- [PowerShell 7+](https://learn.microsoft.com/powershell/) (Windows/macOS/Linux)  
+- [DBeaver](https://dbeaver.io/download/) (optional, DB GUI)
 
-* [Docker Desktop](https://www.docker.com/products/docker-desktop) (✅ check “Add to PATH” during install)
-* [DBeaver Community](https://dbeaver.io/download/) (for exploring the database, optional)
-* [PowerShell 7+](https://learn.microsoft.com/powershell/) (Windows/macOS/Linux)
-
-### 2. Clone & launch
-
+### 2. Clone & Launch
 ```pwsh
-# Clone the repository
 git clone https://github.com/alexandrugavrila/Nutrition
 cd Nutrition
 
-# Start all services for the current branch
-# Pick ONE: -production | -test | -empty
+# Start stack for this branch
+# Choose ONE: -production | -test | -empty
 pwsh ./scripts/compose-up-branch.ps1 -test
-```
+````
 
-👉 On startup, the script prints the **branch-specific ports** for the frontend, backend, and database.
-Multiple branches can run in parallel without conflict.
+👉 The script prints the branch-specific ports for frontend, backend, and database.
+Multiple branches can run in parallel without conflicts.
 
-### 3. Access services
+### 3. Access Services
 
-* Frontend: `http://localhost:<FRONTEND_PORT>` (e.g., `http://localhost:3000` on `main`)
-* Backend API: `http://localhost:<BACKEND_PORT>` (e.g., `http://localhost:8000` on `main`)
-* PostgreSQL: `localhost:<DB_PORT>` (e.g., `localhost:5432` on `main`)
-
-## 🐍 Virtual Environment
-
-All development should be run from inside the project's Python virtual environment. Use the helper script to create and activate it:
-
-```powershell
-pwsh ./scripts/activate-venv.ps1
-```
-
-The script creates the `.venv` directory if needed and installs or updates
-dependencies. It caches hashes of `Backend/requirements.txt` and
-`Frontend/package-lock.json` inside the virtual environment and automatically
-reruns `pip install` and `npm install` whenever those files change.
-
-## ▶️ Run the Backend
-
-Start the FastAPI application locally with [uvicorn](https://www.uvicorn.org/):
-
-```bash
-uvicorn Backend.backend:app --reload
-```
-
-The server will be available at <http://localhost:8000> by default.
-
----
-
-
-## 🛠️ Running Migrations
-
-> **Note:** SQLModel models are the source of truth. Database migrations and the OpenAPI
-> schema are generated from these models. After modifying models, run `scripts/sync-api-and-migrations.sh` to
-> verify both are up to date. Commit any generated migration, `Backend/openapi.json`, and
-> `Frontend/src/api-types.ts`.
-
-The backend uses [Alembic](https://alembic.sqlalchemy.org/) for schema changes.
-Run these commands from the repository root:
-
-```bash
-# create a new migration after updating models
-alembic revision --autogenerate -m "describe your change"
-
-# apply all pending migrations
-alembic upgrade head
-
-# reset the database (drops all tables and reapplies migrations)
-alembic downgrade base && alembic upgrade head
-```
-
-To confirm that your models and migrations are in sync without creating new
-files, run the drift check script:
-
-```powershell
-pwsh ./scripts/check-migration-drift.ps1
-```
-
-It applies all migrations, generates a temporary revision, and fails if any
-`op.` operations are detected.
-
-To load sample data from the CSV files in `Database/`, run:
-
-```bash
-python Database/import_from_csv.py --test   # or --production
-```
-
-### Troubleshooting
-* "No changes detected" – ensure new models are imported in `alembic/env.py`.
-* Migration fails to apply – verify the database URL matches your running service.
-* Stuck in a bad state – reset with `alembic downgrade base && alembic upgrade head`.
-
-## 📚 Generating OpenAPI
-
-Use `scripts/update-api-schema.sh` as the single source of truth for generating
-`Backend/openapi.json` and syncing frontend TypeScript types. The script spins
-up a temporary FastAPI server, fetches `/openapi.json`, and runs
-[`openapi-typescript`](https://github.com/drwpow/openapi-typescript). Set the
-port with `BACKEND_PORT` (defaults to `8000`) and run:
-
-```bash
-npm --prefix Frontend install   # run once
-export BACKEND_PORT=8000  # optional
-scripts/update-api-schema.sh
-```
-
-Run this script whenever API models change and commit the generated files. You can also run `scripts/sync-api-and-migrations.sh` to update both the API schema and database migrations in a single step.
-
-### Advanced: Manual workflow
-
-If you need to generate the schema manually:
-
-```bash
-uvicorn Backend.backend:app --port 8000 &
-curl http://localhost:8000/openapi.json -o Backend/openapi.json
-kill %1
-```
-
-### Troubleshooting
-* `openapi-typescript` not found – ensure frontend dev dependencies are installed.
-* Generated types missing endpoints – ensure migrations were applied and rerun the script.
-* 404 on `/openapi.json` – confirm the backend server started and you're hitting the correct port.
-
-## 🚦 CI/CD Expectations
-
-* PRs that modify backend models must include an Alembic migration.
-* API changes require an updated `Backend/openapi.json` and synced frontend types.
-* All tests (`pytest` and `npm test`) should pass before merging.
+* Frontend → `http://localhost:<FRONTEND_PORT>`
+* Backend API → `http://localhost:<BACKEND_PORT>`
+* PostgreSQL → `localhost:<DB_PORT>`
 
 ---
 
@@ -149,79 +41,36 @@ kill %1
 
 ```
 Nutrition/
-├── Backend/                     # FastAPI app
-│   ├── models/                 # SQLModel models
-│   ├── routes/                 # Ingredient and meal routes
-│   ├── backend.py              # FastAPI entrypoint
-│   ├── db.py                   # SQLModel setup
-│   └── Dockerfile              # Backend build config
-│
-├── Frontend/                   # React app
-│   ├── src/                    # App components, context, etc.
-│   ├── Dockerfile              # Frontend build config
-│   └── nginx.conf              # Nginx static serving config
-│
-├── Database/                   # CSV data + import utilities
-│   ├── production_data/
-│   ├── test_data/
-│   └── import_from_csv.py
-│
-├── docker-compose.yml          # Orchestration config
-└── scripts/
-    ├── compose-up-branch.ps1   # Start stack with branch-specific ports
-    ├── compose-down-branch.ps1
-    ├── import-from-csv.sh
-    └── activate-venv.ps1       # Create and activate the venv
+├── Backend/        # FastAPI app (models, routes, db)
+├── Frontend/       # React app
+├── Database/       # CSV seed data + import utils
+├── docker-compose.yml
+└── scripts/        # Helper scripts (compose up/down, venv, tooling)
 ```
 
 ---
 
 ## 🧠 Core Concepts
 
-* **Backend**
-
-  * API routes in `Backend/routes/`
-  * SQLModel models in `Backend/models/`
-
-* **Frontend**
-
-  * Built in `Frontend/`
-  * Uses global `DataContext.js` to fetch and manage meals, ingredients, and tags
-
-* **Database**
-
-  * Schema managed via Alembic migrations
-  * Optional CSV seed data in `Database/` (use `import_from_csv.py`)
-
----
-
-## 📖 More for Contributors
-
-* Branch naming conventions
-* Port offset system (per-branch)
-* Database reset/import scripts
-* Local (non-Docker) dev setup
-
-👉 See [CONTRIBUTING.md](CONTRIBUTING.md) for full developer setup and workflows.
+* **Backend** → API routes in `Backend/routes/`, models in `Backend/models/`
+* **Frontend** → React app in `Frontend/`, global `DataContext.js` for state
+* **Database** → Schema managed with Alembic migrations, optional CSV seed data
 
 ---
 
 ## ✅ API Endpoints (Highlights)
 
-### Ingredients
+**Ingredients**
 
-* `GET /ingredients` – all ingredients
-* `POST /ingredients` – add ingredient
-* `PUT /ingredients/<id>` – update ingredient
-* `DELETE /ingredients/<id>` – delete ingredient
-* `GET /ingredients/possible_tags` – list possible ingredient tags
+* `GET /ingredients` – list all
+* `POST /ingredients` – add new
+* `PUT /ingredients/<id>` – update
+* `DELETE /ingredients/<id>` – remove
 
-### Meals
+**Meals**
 
-* `GET /meals` – all meals
+* `GET /meals` – list all
 * `GET /meals/<id>` – single meal
-* `GET /meals/possible_tags` – list possible meal tags
-  ⚠️ Meal `POST/PUT/DELETE` endpoints are currently commented out
 
 ---
 
@@ -259,6 +108,5 @@ classDiagram
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full developer setup, scripts, and workflows.
-
----
+For **developer setup, migrations, OpenAPI generation, commit checklist, and CI/CD details**, see
+👉 [CONTRIBUTING.md](CONTRIBUTING.md)

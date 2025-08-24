@@ -7,6 +7,8 @@ This repository contains a full-stack nutrition planning and tracking applicatio
 - **Database:** PostgreSQL, seeded via scripts in `Database/`.
 - **Containerization:** Docker and docker-compose for running services.
 
+---
+
 ## Build and test commands
 - Install backend dependencies: `pip install -r Backend/requirements.txt`
 - Install frontend dependencies: `npm --prefix Frontend install`
@@ -15,20 +17,67 @@ This repository contains a full-stack nutrition planning and tracking applicatio
 - Run backend tests: `pytest`
 - Run frontend tests: `npm --prefix Frontend test`
 
+---
+
 ## Code style guidelines
 - **Python:** Follow [PEP 8](https://peps.python.org/pep-0008/). Format code with `black` and organize imports with `isort`.
 - **JavaScript/TypeScript:** Use `eslint` and `prettier` with the configurations in the project. Prefer functional components and hooks in React code.
 - Write descriptive commit messages and keep functions small and focused.
 
+---
+
+## Documentation maintenance
+
+We use a **split-responsibility model** between `README.md` and `CONTRIBUTING.md`:
+
+- **README.md**
+  - Audience: new developers, evaluators, or visitors to the repo.
+  - Should contain:
+    - Project overview (what the app is, technologies used)
+    - Quick start (clone → start services → access frontend/backend)
+    - Project structure
+    - Core concepts
+    - API highlights
+    - Diagrams
+    - A short link to CONTRIBUTING for deeper details
+  - **Avoid duplication** of migration, OpenAPI, or CI/CD workflows — link to CONTRIBUTING instead.
+
+- **CONTRIBUTING.md**
+  - Audience: active contributors.
+  - Should contain:
+    - Virtual environment setup
+    - Branching conventions
+    - Docker workflows and port mapping
+    - API & migrations handling (via `sync-api-and-migrations.ps1` as the canonical workflow)
+    - Manual fallback commands (Alembic, update-api-schema, drift check)
+    - Tools (DBeaver, etc.)
+    - Typical commit checklist
+    - CI/CD workflow explanation
+    - Troubleshooting
+  - Keep this as the **single source of truth** for contributor workflows.
+
+**Maintenance rules:**
+- If a section in README starts to grow too detailed, **move it to CONTRIBUTING**.
+- If both files mention the same topic, README should stay **high-level** and point to CONTRIBUTING for details.
+- After modifying scripts or workflows, always:
+  1. Update `CONTRIBUTING.md` with details.  
+  2. Update `README.md` only if the **developer-facing experience changes** (e.g., new quick-start steps).
+
+---
+
 ## Script parity checks
 - Scripts in the `scripts/` directory have both PowerShell (`.ps1`) and Bash (`.sh`) variants.
 - When modifying or adding a script, update and verify both versions to keep them in sync.
+
+---
 
 ## Testing instructions
 - Ensure both backend and frontend tests pass before committing:
   - `pytest`
   - `CI=true npm --prefix Frontend test`
 - Add tests for any new features or bug fixes.
+
+---
 
 ## Security considerations
 - Never commit secrets or credentials. Use environment variables for sensitive data.
