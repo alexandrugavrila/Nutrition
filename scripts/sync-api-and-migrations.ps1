@@ -119,7 +119,12 @@ if ($apiDiff) {
 # Check database migrations
 #############################
 
-$tmpdir = New-Item -ItemType Directory -Path ([System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName()))
+# Alembic 1.13+ requires that generated revision files live within one of the
+# configured version locations. Creating the temporary directory inside the
+# project's migrations path keeps the check compatible across Alembic versions
+# while ensuring the directory is cleaned up afterwards.
+$migrationRoot = Join-Path $repoRoot "Backend/migrations"
+$tmpdir = New-Item -ItemType Directory -Path (Join-Path $migrationRoot ([System.IO.Path]::GetRandomFileName()))
 alembic revision --autogenerate -m "tmp" --version-path $tmpdir.FullName | Out-Null
 if ($LASTEXITCODE -ne 0) {
     Remove-Item $tmpdir -Recurse -Force

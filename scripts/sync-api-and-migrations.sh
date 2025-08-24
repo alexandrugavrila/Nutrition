@@ -103,7 +103,10 @@ fi
 # Check database migrations
 #############################
 
-tmpdir="$(mktemp -d)"
+# Alembic 1.13+ only permits revision generation within configured version
+# locations. Use a temporary directory inside the project's migrations folder so
+# the check remains compatible across Alembic versions.
+tmpdir="$(mktemp -d Backend/migrations/tmp.XXXXXX)"
 if ! alembic revision --autogenerate -m "tmp" --version-path "$tmpdir" >/dev/null; then
   rm -r "$tmpdir"
   echo "Failed to check for migration changes" >&2
