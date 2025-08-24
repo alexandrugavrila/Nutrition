@@ -67,6 +67,10 @@ try {
     if (-not $env:DATABASE_URL) {
         $env:DATABASE_URL = "postgresql://nutrition_user:nutrition_pass@localhost:5432/nutrition"
     }
+
+    Write-Host "Applying database migrations..."
+    alembic upgrade head | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "failed to apply database migrations" }
 }
 catch {
     Write-Error "$_"
