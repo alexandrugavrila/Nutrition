@@ -19,8 +19,8 @@
     "react-window": "^1.8.10",
     "styled-components": "^6.1.8",
     "web-vitals": "^2.1.4",
-    "http-proxy-middleware": "^2.0.6",
-    "openapi-typescript-fetch": "^2.2.1"
+    "openapi-typescript-fetch": "^2.2.1",
+    "http-proxy-middleware": "^3.0.5"
   },
   "scripts": {
     "start": "WDS_SOCKET_PORT=0 react-scripts start",
