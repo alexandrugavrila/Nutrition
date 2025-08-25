@@ -104,6 +104,9 @@ function MealForm({ mealToEditData }) {
           handleClearForm();
         }
       })
+      .catch((error) => {
+        console.error("Error:", error);
+      })
       .finally(endRequest);
   };
 
