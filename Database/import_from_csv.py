@@ -46,7 +46,7 @@ def get_table_order(session):
     """
         )
     )
-    tables = [r[0] for r in result]
+    tables = [r[0] for r in result if r[0] != "alembic_version"]
 
     result = session.execute(
         text(
@@ -92,6 +92,7 @@ def wipe_data(session, ordered_tables):
             f"TRUNCATE TABLE {', '.join(reversed(ordered_tables))} RESTART IDENTITY CASCADE;"
         )
     )
+    session.commit()
 
 
 MODEL_MAP = {
