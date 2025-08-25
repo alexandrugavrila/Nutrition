@@ -295,6 +295,8 @@ The repo includes a **two‑job CI**: `backend` and `frontend`.
   Verify `DATABASE_URL` points to the running service (local or CI).
 * **Stuck DB state**
   `alembic downgrade base && alembic upgrade head` to reset schema.
+* **Frontend can't reach backend**
+  Ensure `BACKEND_PORT` or `BACKEND_URL` is set so the dev proxy knows where to forward API calls.
 * **`/openapi.json` 404**
   Confirm the backend server is running and you’re using the correct `BACKEND_PORT`.
 * **CI drift/schema gates failing**
