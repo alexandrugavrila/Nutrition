@@ -17,26 +17,21 @@ export const formatCellNumber = (number) => {
  * @param {unknown} data Request payload typed against the schema.
  * @returns {Promise<void>}
  */
-export const handleFetchRequest = (url, method, data) => {
-  return new Promise((resolve, reject) => {
-    fetch(url, {
+export const handleFetchRequest = async (url, method, data) => {
+  try {
+    const response = await fetch(url, {
       method: method,
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
-    })
-      .then((response) => {
-        if (response.ok) {
-          resolve();
-        } else {
-          console.error("Failed to make request");
-          reject();
-        }
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-        reject();
-      });
-  });
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to make request");
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
 };

@@ -116,6 +116,9 @@ function IngredientForm({ ingredientToEditData }) {
       .then(() => {
         setIngredientsNeedsRefetch(true);
       })
+      .catch((error) => {
+        console.error("Error:", error);
+      })
       .finally(endRequest);
 
     if (!isEditMode) {
