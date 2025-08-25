@@ -10,16 +10,19 @@ export const formatCellNumber = (number) => {
   return parseFloat(parseFloat(number).toPrecision(3));
 };
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "";
+
 /**
  * Minimal fetch wrapper with OpenAPI-generated types.
- * @param {keyof import("../api-types").paths} url The API endpoint.
+ * @param {keyof import("../api-types").paths | string} url The API endpoint.
  * @param {string} method HTTP method.
  * @param {unknown} data Request payload typed against the schema.
  * @returns {Promise<void>}
  */
 export const handleFetchRequest = async (url, method, data) => {
   try {
-    const response = await fetch(url, {
+    const endpoint = url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
+    const response = await fetch(endpoint, {
       method: method,
       headers: {
         "Content-Type": "application/json",
