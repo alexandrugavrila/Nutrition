@@ -14,19 +14,20 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.2",
-    "react-scripts": "^5.0.1",
     "react-virtuoso": "^4.7.1",
     "react-window": "^1.8.10",
     "styled-components": "^6.1.8",
     "web-vitals": "^2.1.4",
     "openapi-typescript-fetch": "^2.2.1",
-    "http-proxy-middleware": "^3.0.5"
+    "http-proxy-middleware": "^3.0.5",
+    "@vitejs/plugin-react": "^5.0.1",
+    "vite": "^7.1.3"
   },
   "scripts": {
-    "start": "WDS_SOCKET_PORT=0 react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "echo \"No tests configured\"",
     "lint": "eslint . --ext js,jsx,ts,tsx"
   },
   "eslintConfig": {
