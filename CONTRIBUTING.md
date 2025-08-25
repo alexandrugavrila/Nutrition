@@ -49,6 +49,7 @@ Ensures:
 
 * Correct **per-branch project name**
 * Correct **branch-specific ports**
+* Sets `DATABASE_URL` for local utilities to match the branch's DB port
 * Optional CSV import (based on mode)
 
 **Stop services:**
