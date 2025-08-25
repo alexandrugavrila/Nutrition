@@ -43,6 +43,7 @@ $offset              = [math]::Abs($branch.GetHashCode()) % 100
 $env:DB_PORT        = 5432 + $offset
 $env:BACKEND_PORT   = 8000 + $offset
 $env:FRONTEND_PORT  = 3000 + $offset
+$env:DATABASE_URL   = "postgresql://nutrition_user:nutrition_pass@localhost:$env:DB_PORT/nutrition"
 
 Write-Host "Starting '$branch' with ports:`n  DB: $env:DB_PORT`n  Backend: $env:BACKEND_PORT`n  Frontend: $env:FRONTEND_PORT"
 

@@ -50,6 +50,7 @@ offset=$((0x$offset_hex % 100))
 export DB_PORT=$((5432 + offset))
 export BACKEND_PORT=$((8000 + offset))
 export FRONTEND_PORT=$((3000 + offset))
+export DATABASE_URL="postgresql://nutrition_user:nutrition_pass@localhost:$DB_PORT/nutrition"
 
 echo "Starting '$branch' with ports:"
 echo "  DB: $DB_PORT"
