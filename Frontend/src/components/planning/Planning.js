@@ -5,6 +5,7 @@ import {
   MenuItem,
   Paper,
   Table,
+  TableContainer,
   TableBody,
   TableCell,
   TableHead,
@@ -321,7 +322,8 @@ function Planning() {
         </Button>
       </Box>
 
-      <Table component={Paper} sx={{ mb: 3 }}>
+      <TableContainer component={Paper} sx={{ mb: 3 }}>
+        <Table>
         <TableHead>
           <TableRow>
             <TableCell></TableCell>
@@ -482,11 +484,13 @@ function Planning() {
             }
           })}
         </TableBody>
-      </Table>
+        </Table>
+      </TableContainer>
 
       <Box>
         <h2>Summary</h2>
-        <Table component={Paper}>
+        <TableContainer component={Paper}>
+          <Table>
           <TableHead>
             <TableRow>
               <TableCell></TableCell>
@@ -523,7 +527,8 @@ function Planning() {
               <TableCell>{targetMacros.fiber}</TableCell>
             </TableRow>
           </TableBody>
-        </Table>
+          </Table>
+        </TableContainer>
       </Box>
     </Box>
   );
