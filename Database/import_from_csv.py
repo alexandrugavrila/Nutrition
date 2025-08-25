@@ -121,6 +121,11 @@ def import_csv(session, folder, ordered_tables):
                 rows = list(reader)
                 objects = [model(**row) for row in rows]
                 session.add_all(objects)
+                try:
+                    session.commit()
+                except Exception as e:
+                    session.rollback()
+                    raise RuntimeError(f"Failed importing {table}: {e}") from e
         else:
             print(f"No CSV found for {table}")
 
