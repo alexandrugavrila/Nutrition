@@ -9,6 +9,14 @@ This repository contains a full-stack nutrition planning and tracking applicatio
 
 ---
 
+## Docker environment
+- Develop inside branch-specific Docker Compose stacks.
+- Launch with `./scripts/compose-up-branch.sh -test` (or `.ps1`); stop with `compose-down-branch`.
+- Containers and ports are isolated per branch, enabling parallel stacks.
+- Port offsets per branch (N from branch hash): DB 5432+N, Backend 8000+N, Frontend 3000+N.
+
+---
+
 ## Build and test commands
 - Install backend dependencies: `pip install -r Backend/requirements.txt`
 - Install frontend dependencies: `npm --prefix Frontend install`
