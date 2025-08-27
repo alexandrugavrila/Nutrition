@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import MealTable from "../components/data/meal/MealTable";
@@ -66,10 +66,12 @@ describe("MealTable tag filtering", () => {
     renderWithData();
     await userEvent.click(screen.getByLabelText(/Filter tags/i));
     await userEvent.click(screen.getByRole("option", { name: "Dinner" }));
-    expect(screen.getByText("Chicken Dinner")).toBeInTheDocument();
-    expect(screen.queryByText("Veg Breakfast")).not.toBeInTheDocument();
-    expect(screen.queryByText("Snack")).not.toBeInTheDocument();
-    expect(screen.queryByText("Mystery Meal")).not.toBeInTheDocument();
+    expect(await screen.findByText("Chicken Dinner")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Veg Breakfast")).not.toBeInTheDocument();
+      expect(screen.queryByText("Snack")).not.toBeInTheDocument();
+      expect(screen.queryByText("Mystery Meal")).not.toBeInTheDocument();
+    });
   });
 
   test("filters meals when multiple tags are selected", async () => {
@@ -78,9 +80,11 @@ describe("MealTable tag filtering", () => {
     await userEvent.click(screen.getByRole("option", { name: "Breakfast" }));
     await userEvent.click(screen.getByLabelText(/Filter tags/i));
     await userEvent.click(screen.getByRole("option", { name: "Dinner" }));
-    expect(screen.getByText("Veg Breakfast")).toBeInTheDocument();
-    expect(screen.getByText("Chicken Dinner")).toBeInTheDocument();
-    expect(screen.queryByText("Snack")).not.toBeInTheDocument();
+    expect(await screen.findByText("Veg Breakfast")).toBeInTheDocument();
+    expect(await screen.findByText("Chicken Dinner")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Snack")).not.toBeInTheDocument();
+    });
   });
 
   test("combines search and tag filters", async () => {
@@ -88,8 +92,10 @@ describe("MealTable tag filtering", () => {
     await userEvent.click(screen.getByLabelText(/Filter tags/i));
     await userEvent.click(screen.getByRole("option", { name: "Dinner" }));
     await userEvent.type(screen.getByLabelText(/Search by name/i), "Chicken");
-    expect(screen.getByText("Chicken Dinner")).toBeInTheDocument();
-    expect(screen.queryByText("Veg Breakfast")).not.toBeInTheDocument();
+    expect(await screen.findByText("Chicken Dinner")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Veg Breakfast")).not.toBeInTheDocument();
+    });
   });
 });
 
