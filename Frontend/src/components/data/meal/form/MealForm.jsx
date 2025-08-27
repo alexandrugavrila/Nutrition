@@ -42,10 +42,11 @@ const reducer = (state, action) => {
       return { ...state, needsFillForm: action.payload };
     case "SET_CONFIRMATION_DIALOG":
       return { ...state, openConfirmationDialog: action.payload };
-    case "UPDATE_UNIT_QUANTITY":
+    case "UPDATE_UNIT_QUANTITY": {
       const updatedIngredients = [...state.mealToEdit.ingredients];
       updatedIngredients[action.payload.index].unit_quantity = action.payload.unit_quantity;
       return { ...state, mealToEdit: { ...state.mealToEdit, ingredients: updatedIngredients } };
+    }
     default:
       return state;
   }
