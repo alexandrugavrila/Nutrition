@@ -21,7 +21,7 @@ This repository contains a full-stack nutrition planning and tracking applicatio
 - Install backend dependencies: `pip install -r Backend/requirements.txt`
 - Install frontend dependencies: `npm --prefix Frontend install`
 - Run backend development server: `uvicorn Backend.backend:app --reload`
-- Start frontend development server: `npm --prefix Frontend start`
+- Start frontend development server: `npm --prefix Frontend run dev`
 - Run backend tests: `pytest`
 - Run frontend tests: `npm --prefix Frontend test`
 
