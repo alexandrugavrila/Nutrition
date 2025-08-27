@@ -110,7 +110,7 @@ jobs:
         working-directory: Frontend
         env:
           CI: true
-        run: npm test -- --watchAll=false
+        run: npm test
       - name: Production build
         working-directory: Frontend
         run: npm run build
