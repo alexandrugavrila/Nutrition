@@ -32,7 +32,10 @@ services:
     volumes:
       - ./Backend:/app/Backend
       - ./alembic.ini:/app/alembic.ini:ro
-    command: python -m uvicorn Backend.backend:app --host 0.0.0.0 --port 8000 --reload
+    command: >
+      bash -c "set -eux; python -m pip install -v -r Backend/requirements.txt;
+      python -m pip show uvicorn;
+      exec python -m uvicorn Backend.backend:app --host 0.0.0.0 --port 8000 --reload"
     networks:
       - nutrition-net
     ports:
