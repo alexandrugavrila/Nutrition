@@ -41,6 +41,18 @@ Multiple branches can run in parallel without conflicts.
 
 The frontend dev server proxies `/api` requests to the backend. By default it targets the branch-specific port printed above. Set `BACKEND_URL` to point at a different backend host.
 
+### 5. Frontend Commands
+
+Run the React app directly without Docker:
+
+```bash
+npm --prefix Frontend run dev     # start dev server
+npm --prefix Frontend run build   # production build
+npm --prefix Frontend run preview # preview build
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full contributor workflow details.
+
 ---
 
 ## 🗂️ Project Structure
