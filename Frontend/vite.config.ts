@@ -31,5 +31,8 @@ export default defineConfig({
       web: [/\.[jt]sx?$/],
     },
     globals: true,
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
   },
 });
