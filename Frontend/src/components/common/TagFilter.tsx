@@ -22,7 +22,7 @@ function TagFilter({ tags = [], selectedTags = [], onChange = () => {}, label = 
       isOptionEqualToValue={(option, value) => option.id === value.id}
       renderTags={(value, getTagProps) =>
         value.map((option, index) => (
-          <Chip label={option.name} {...getTagProps({ index })} />
+          <Chip key={option.id} label={option.name} {...getTagProps({ index })} />
         ))
       }
       renderInput={(params) => (
