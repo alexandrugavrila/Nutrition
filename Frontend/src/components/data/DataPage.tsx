@@ -3,8 +3,8 @@ import Box from "@mui/material/Box";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 
-import MealData from "./meal/MealData";
-import IngredientData from "./ingredient/IngredientData";
+import MealData from "@/components/data/meal/MealData";
+import IngredientData from "@/components/data/ingredient/IngredientData";
 
 function DataPage() {
   const [dataTab, setDataTab] = useState(0);

@@ -3,14 +3,14 @@ import React, { useEffect, useCallback, useReducer } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Box } from "@mui/material";
 
-import { useData } from "../../../../contexts/DataContext";
+import { useData } from "@/contexts/DataContext";
 
 import NameEdit from "./NameEdit";
 import UnitEdit from "./UnitEdit";
 import NutritionEdit from "./NutritionEdit";
 import TagEdit from "./TagEdit";
 
-import { handleFetchRequest } from "../../../../utils/utils";
+import { handleFetchRequest } from "@/utils/utils";
 
 /**
  * @typedef {import("../../../../api-types").operations["add_ingredient_api_ingredients__post"]["requestBody"]["content"]["application/json"]} IngredientRequest

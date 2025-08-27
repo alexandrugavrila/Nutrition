@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Button, TextField, Select, MenuItem, Dialog, TableContainer, Table, TableHead, TableRow, TableCell, Paper, TableBody } from "@mui/material";
 
-import { useData } from "../../../../contexts/DataContext";
-import IngredientTable from "../../ingredient/IngredientTable";
+import { useData } from "@/contexts/DataContext";
+import IngredientTable from "@/components/data/ingredient/IngredientTable";
 
-import { formatCellNumber } from "../../../../utils/utils";
+import { formatCellNumber } from "@/utils/utils";
 
 function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
   //#region States

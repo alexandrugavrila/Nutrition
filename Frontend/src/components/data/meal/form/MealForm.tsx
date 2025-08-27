@@ -3,8 +3,8 @@ import React, { useEffect, useCallback, useReducer } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 
-import { useData } from "../../../../contexts/DataContext";
-import { handleFetchRequest } from "../../../../utils/utils";
+import { useData } from "@/contexts/DataContext";
+import { handleFetchRequest } from "@/utils/utils";
 
 import MealNameForm from "./MealNameForm";
 import MealIngredientsForm from "./MealIngredientsForm";

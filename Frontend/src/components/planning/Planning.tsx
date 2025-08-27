@@ -16,8 +16,8 @@ import {
 } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowRight } from "@mui/icons-material";
 
-import { useData } from "../../contexts/DataContext";
-import { formatCellNumber } from "../../utils/utils";
+import { useData } from "@/contexts/DataContext";
+import { formatCellNumber } from "@/utils/utils";
 
 function Planning() {
   const { meals, ingredients } = useData();

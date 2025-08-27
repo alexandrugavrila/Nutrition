@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 
-import TagFilter from "../../../common/TagFilter";
-import { useData } from "../../../../contexts/DataContext";
+import TagFilter from "@/components/common/TagFilter";
+import { useData } from "@/contexts/DataContext";
 
 function TagEdit({ ingredient, dispatch, needsClearForm }) {
   const {

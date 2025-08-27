@@ -1,15 +1,15 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
-import { DataProvider } from "./contexts/DataContext";
-import MainLayout from "./components/layout/MainLayout";
-import DataPage from "./components/data/DataPage";
-import Planning from "./components/planning/Planning";
-import Shopping from "./components/shopping/Shopping";
-import Cooking from "./components/cooking/Cooking";
-import Logging from "./components/logging/Logging";
+import { DataProvider } from "@/contexts/DataContext";
+import MainLayout from "@/components/layout/MainLayout";
+import DataPage from "@/components/data/DataPage";
+import Planning from "@/components/planning/Planning";
+import Shopping from "@/components/shopping/Shopping";
+import Cooking from "@/components/cooking/Cooking";
+import Logging from "@/components/logging/Logging";
 
-import "./styles/App.css";
+import "@/styles/App.css";
 
 function App() {
   return (

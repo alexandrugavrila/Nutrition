@@ -4,9 +4,9 @@ import React, { useState } from "react";
 import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, Collapse, Typography, TablePagination } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowRight } from "@mui/icons-material";
 
-import { useData } from "../../../contexts/DataContext";
-import { formatCellNumber } from "../../../utils/utils";
-import TagFilter from "../../common/TagFilter";
+import { useData } from "@/contexts/DataContext";
+import { formatCellNumber } from "@/utils/utils";
+import TagFilter from "@/components/common/TagFilter";
 
 function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} }) {
   //#region States
