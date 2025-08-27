@@ -17,10 +17,13 @@ RUN apt-get update && apt-get install -y \
 COPY Backend/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
+# Ensure local binaries from pip (like uvicorn) are on PATH
+ENV PATH="/root/.local/bin:$PATH"
+
 # Copy backend source preserving package structure
 COPY Backend/ /app/Backend
 
 # Copy Alembic configuration for database migrations
 COPY alembic.ini /app/alembic.ini
 
-CMD ["uvicorn", "Backend.backend:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["python", "-m", "uvicorn", "Backend.backend:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
