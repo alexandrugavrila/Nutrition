@@ -13,12 +13,9 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Install dependencies system-wide to ensure modules are available
 COPY Backend/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
-
-# Ensure local binaries from pip (like uvicorn) are on PATH
-ENV PATH="/root/.local/bin:$PATH"
+RUN pip install --no-cache-dir --break-system-packages -r /tmp/requirements.txt
 
 # Copy backend source preserving package structure
 COPY Backend/ /app/Backend
