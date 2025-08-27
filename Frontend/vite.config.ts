@@ -10,4 +10,11 @@ export default defineConfig({
   server: {
     port,
   },
+  test: {
+    environment: 'jsdom',
+    setupFiles: './src/tests/setupTests.js',
+    transformMode: {
+      web: [/\.[jt]sx?$/],
+    },
+  },
 });

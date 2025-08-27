@@ -1,27 +1,27 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import "@testing-library/jest-dom";
+import { vi } from "vitest";
 import App from "../App";
 
 var mockIngredientData;
 var mockMealData;
 
-jest.mock("../components/data/ingredient/IngredientData", () => ({
+vi.mock("../components/data/ingredient/IngredientData", () => ({
   __esModule: true,
   default: (...args) => mockIngredientData(...args),
 }));
 
-jest.mock("../components/data/meal/MealData", () => ({
+vi.mock("../components/data/meal/MealData", () => ({
   __esModule: true,
   default: (...args) => mockMealData(...args),
 }));
 
-mockIngredientData = jest.fn(() => <div>IngredientDataComponent</div>);
-mockMealData = jest.fn(() => <div>MealDataComponent</div>);
+mockIngredientData = vi.fn(() => <div>IngredientDataComponent</div>);
+mockMealData = vi.fn(() => <div>MealDataComponent</div>);
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 });
 
 test("renders tabs and switches between Meals and Ingredients views", async () => {

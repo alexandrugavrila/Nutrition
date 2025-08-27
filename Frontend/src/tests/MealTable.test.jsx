@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import "@testing-library/jest-dom";
+import { vi } from "vitest";
 import MealTable from "../components/data/meal/MealTable";
 import { useData } from "../contexts/DataContext";
 
-jest.mock("../contexts/DataContext");
+vi.mock("../contexts/DataContext");
 
 const mockMeals = [
   {
@@ -51,7 +51,7 @@ const renderWithData = () => {
 
 describe("MealTable tag filtering", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("shows all meals when no tags are selected", () => {
