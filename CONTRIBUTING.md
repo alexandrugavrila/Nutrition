@@ -284,7 +284,7 @@ The repo includes a **two‑job CI**: `backend` and `frontend`.
 * Caches npm modules (`~/.npm`) keyed by `Frontend/package-lock.json`
 * `npm ci` installs exact deps
 * `npm --prefix Frontend run lint` enforces code quality
-* `npm --prefix Frontend test -- --watchAll=false` runs unit tests in CI mode
+* `CI=true npm --prefix Frontend test` runs unit tests in CI mode
 * `npm --prefix Frontend run build` ensures the app builds for production
 
 **Benefits:**
