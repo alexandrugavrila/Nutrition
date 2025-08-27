@@ -88,6 +88,13 @@ Printed on startup and visible in Docker Desktop as `HOST:CONTAINER`.
 
 ---
 
+## 🌐 Environment Variables
+
+- `BACKEND_PORT` → backend service port (defaults to `8000`; compose scripts set this automatically)
+- `BACKEND_URL` → full URL for the backend API. The frontend dev server proxies `/api` to this value. If unset, it falls back to `http://localhost:${BACKEND_PORT}`.
+
+---
+
 ## 🖥️ Local Development (Non‑Docker)
 
 **Backend (FastAPI):**
