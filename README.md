@@ -37,6 +37,10 @@ Multiple branches can run in parallel without conflicts.
 - Backend API → `http://localhost:<BACKEND_PORT>`
 - PostgreSQL → `localhost:<DB_PORT>`
 
+### 4. Environment Variables
+
+The frontend dev server proxies `/api` requests to the backend. By default it targets the branch-specific port printed above. Set `BACKEND_URL` to point at a different backend host.
+
 ---
 
 ## 🗂️ Project Structure
