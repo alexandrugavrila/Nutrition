@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import path from 'path';
 
 const backendPort = parseInt(process.env.BACKEND_PORT || '8000', 10);
 const branchOffset = backendPort - 8000;
@@ -9,6 +10,11 @@ const backendUrl = process.env.BACKEND_URL || `http://localhost:${backendPort}`;
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   server: {
     port,
     proxy: {
@@ -17,5 +23,13 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: './src/tests/setupTests.js',
+    transformMode: {
+      web: [/\.[jt]sx?$/],
+    },
+    globals: true,
   },
 });
