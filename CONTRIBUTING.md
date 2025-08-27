@@ -107,8 +107,9 @@ uvicorn Backend.backend:app --reload
 **Frontend (React):**
 
 ```bash
-cd Frontend
-npm start
+npm --prefix Frontend run dev     # start dev server
+npm --prefix Frontend run build   # production build
+npm --prefix Frontend run preview # preview build
 ```
 
 ---
@@ -209,9 +210,9 @@ Before opening a PR:
 * [ ] **Migrations apply cleanly?**
   `alembic upgrade head` (or rely on the sync/drift script outcome)
 * [ ] **Tests pass?**
-  `pytest` (backend) and `npm test` (frontend)
+  `pytest` (backend) and `CI=true npm --prefix Frontend test` (frontend)
 * [ ] **Lint/build ok?**
-  `npm run lint` and `npm run build` (frontend)
+  `npm --prefix Frontend run lint` and `npm --prefix Frontend run build`
 
 ---
 
@@ -282,9 +283,9 @@ The repo includes a **two‑job CI**: `backend` and `frontend`.
 * Checks out repo and sets up Node 20
 * Caches npm modules (`~/.npm`) keyed by `Frontend/package-lock.json`
 * `npm ci` installs exact deps
-* `npm run lint` enforces code quality
-* `npm test -- --watchAll=false` runs unit tests in CI mode
-* `npm run build` ensures the app builds for production
+* `npm --prefix Frontend run lint` enforces code quality
+* `npm --prefix Frontend test -- --watchAll=false` runs unit tests in CI mode
+* `npm --prefix Frontend run build` ensures the app builds for production
 
 **Benefits:**
 

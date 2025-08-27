@@ -4,7 +4,7 @@ WORKDIR /app
 COPY Frontend/package*.json ./
 RUN npm install
 COPY Frontend/ .
-CMD ["npm", "start"]
+CMD ["npm", "run", "dev"]
 
 # Build stage
 FROM node:23-slim AS build
@@ -13,7 +13,7 @@ WORKDIR /app
 COPY Frontend/package*.json ./
 RUN npm install
 COPY Frontend/ .
-RUN npx vite build
+RUN npm run build
 
 # Serve with nginx
 FROM nginx:stable-alpine
