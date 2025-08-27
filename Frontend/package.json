@@ -34,7 +34,7 @@
       "browser": true,
       "es2021": true,
       "node": true,
-      "jest": true
+      "vitest-globals/env": true
     },
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
@@ -44,13 +44,15 @@
     "plugins": [
       "react",
       "react-hooks",
-      "@typescript-eslint"
+      "@typescript-eslint",
+      "vitest"
     ],
     "extends": [
       "eslint:recommended",
       "plugin:react/recommended",
       "plugin:react-hooks/recommended",
-      "plugin:@typescript-eslint/recommended"
+      "plugin:@typescript-eslint/recommended",
+      "plugin:vitest-globals/recommended"
     ],
     "settings": {
       "react": {
@@ -85,6 +87,8 @@
     "jsdom": "^26.1.0",
     "openapi-typescript": "^6.7.6",
     "typescript": "^5.4.5",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "eslint-plugin-vitest": "^0.5.4",
+    "eslint-plugin-vitest-globals": "^1.5.0"
   }
 }
