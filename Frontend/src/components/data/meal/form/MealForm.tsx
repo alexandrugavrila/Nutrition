@@ -1,6 +1,5 @@
 // @ts-check
 import React, { useEffect, useCallback, useReducer } from "react";
-import { v4 as uuidv4 } from "uuid";
 import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 
 import { useData } from "@/contexts/DataContext";
@@ -20,7 +19,7 @@ const intitalState = {
   isEditMode: false,
   mealToEdit: {
     name: "",
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     ingredients: [],
     tags: [],
   },
@@ -61,7 +60,7 @@ function MealForm({ mealToEditData }) {
 
   const initializeEmptyMeal = () => ({
     name: "",
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     ingredients: [],
     tags: [],
   });

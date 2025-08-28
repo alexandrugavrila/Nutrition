@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { v4 as uuidv4 } from "uuid";
 import { Button, Select, MenuItem, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 
 function AddUnitDialog({ open, onClose, onAddUnit }) {
@@ -71,7 +70,7 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }) {
 
   const handleAddUnit = useCallback(
     (name, grams) => {
-      const tempId = uuidv4();
+      const tempId = crypto.randomUUID();
       const newUnit = {
         id: tempId,
         ingredient_id: ingredient.id,
