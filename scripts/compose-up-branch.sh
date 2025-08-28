@@ -77,8 +77,19 @@ until docker compose -p "$project" exec -T db pg_isready -U nutrition_user -d nu
   sleep 1
 done
 
+echo "Waiting for backend dependencies (alembic) to be ready..."
+deadline=$((SECONDS + 180))
+until docker compose -p "$project" exec -T backend sh -lc 'python -m pip show alembic >/dev/null 2>&1'; do
+  if (( SECONDS >= deadline )); then
+    echo "Backend did not finish installing dependencies (alembic not available) within timeout." >&2
+    exit 1
+  fi
+  sleep 1
+done
+
 echo "Applying database migrations..."
-docker compose -p "$project" exec -T backend alembic upgrade head
+# Use python -m to avoid PATH inconsistencies for console scripts
+docker compose -p "$project" exec -T backend python -m alembic upgrade head
 
 if $production || $test; then
   ./scripts/activate-venv.sh

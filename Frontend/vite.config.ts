@@ -1,11 +1,8 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
 const backendPort = parseInt(process.env.BACKEND_PORT || '8000', 10);
-const branchOffset = backendPort - 8000;
-const port = 3000 + branchOffset;
-
 const backendUrl = process.env.BACKEND_URL || `http://localhost:${backendPort}`;
 
 export default defineConfig({
@@ -16,7 +13,10 @@ export default defineConfig({
     },
   },
   server: {
-    port,
+    // Must match container port mapping in docker-compose (container: 3000)
+    port: 3000,
+    host: true,
+    strictPort: true,
     proxy: {
       '/api': {
         target: backendUrl,
@@ -31,8 +31,5 @@ export default defineConfig({
       web: [/\.[jt]sx?$/],
     },
     globals: true,
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
   },
 });

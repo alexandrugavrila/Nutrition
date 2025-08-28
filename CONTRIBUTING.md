@@ -52,6 +52,13 @@ Ensures:
 * Sets `DATABASE_URL` for local utilities to match the branch's DB port
 * Optional CSV import (based on mode)
 
+Compose-up behavior:
+
+- Waits for the Postgres service to become healthy.
+- Waits for the backend container to finish installing deps (verifies `alembic` is present).
+- Runs Alembic migrations inside the backend container: `python -m alembic upgrade head`.
+- Seeds data when `-production` or `-test` is provided.
+
 **Stop services:**
 
 ```pwsh
@@ -85,6 +92,10 @@ Each branch gets unique host ports: **base + branch offset (hash of branch name)
 | DB       | 5432 | 5438                  |
 
 Printed on startup and visible in Docker Desktop as `HOST:CONTAINER`.
+
+Notes:
+
+- The frontend dev server binds to `0.0.0.0` and uses a strict port. Use the printed host port (e.g., `http://localhost:<FRONTEND_PORT>`).
 
 ---
 

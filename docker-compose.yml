@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:13
@@ -33,7 +31,7 @@ services:
       - ./Backend:/app/Backend
       - ./alembic.ini:/app/alembic.ini:ro
     command: >
-      bash -c "set -eux; python -m pip install -v -r Backend/requirements.txt;
+      bash -c "set -eux; python -m pip install --break-system-packages -v -r Backend/requirements.txt;
       python -m pip show uvicorn;
       exec python -m uvicorn Backend.backend:app --host 0.0.0.0 --port 8000 --reload"
     networks:

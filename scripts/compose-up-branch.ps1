@@ -75,9 +75,23 @@ if ($LASTEXITCODE -ne 0) {
   exit 1
 }
 
+# --- Ensure backend deps are ready (Alembic) ---
+Write-Host "Waiting for backend dependencies (alembic) to be ready..."
+$deadline = (Get-Date).AddMinutes(3)
+do {
+  Start-Sleep -Seconds 1
+  docker compose -p $project exec -T backend sh -lc "python -m pip show alembic >/dev/null 2>&1"
+} until ($LASTEXITCODE -eq 0 -or (Get-Date) -ge $deadline)
+
+if ($LASTEXITCODE -ne 0) {
+  Write-Error "Backend did not finish installing dependencies (alembic not available) within timeout."
+  exit 1
+}
+
 # --- Run database migrations ---
 Write-Host "Applying database migrations..."
-docker compose -p $project exec -T backend alembic upgrade head
+# Use python -m to avoid PATH issues with console scripts
+docker compose -p $project exec -T backend python -m alembic upgrade head
 if ($LASTEXITCODE -ne 0) {
   Write-Error "Database migration failed with exit code $LASTEXITCODE."
   exit $LASTEXITCODE
