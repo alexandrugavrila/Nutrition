@@ -1,6 +1,5 @@
 // @ts-check
 import React, { useEffect, useCallback, useReducer } from "react";
-import { v4 as uuidv4 } from "uuid";
 import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Box } from "@mui/material";
 
 import { useData } from "@/contexts/DataContext";
@@ -23,8 +22,8 @@ const initialState = {
   isEditMode: false,
   ingredientToEdit: {
     name: "",
-    id: uuidv4(),
-    units: [{ id: "0", ingredient_id: uuidv4(), name: "1g", grams: "1" }],
+    id: crypto.randomUUID(),
+    units: [{ id: "0", ingredient_id: crypto.randomUUID(), name: "1g", grams: "1" }],
     nutrition: {
       calories: 0,
       protein: 0,
@@ -67,8 +66,8 @@ function IngredientForm({ ingredientToEditData }) {
 
   const initializeEmptyIngredient = () => ({
     name: "",
-    id: uuidv4(),
-    units: [{ id: "0", ingredient_id: uuidv4(), name: "1g", grams: "1" }],
+    id: crypto.randomUUID(),
+    units: [{ id: "0", ingredient_id: crypto.randomUUID(), name: "1g", grams: "1" }],
     nutrition: {
       calories: 0,
       protein: 0,
