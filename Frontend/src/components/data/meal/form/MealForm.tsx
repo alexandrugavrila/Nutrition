@@ -94,7 +94,7 @@ function MealForm({ mealToEditData }) {
         .map((tag) => ({ id: tag.id })),
     };
 
-    const url = isEditMode ? `/api/meals/${mealToEdit.id}` : "/api/meals";
+    const url = isEditMode ? `/api/meals/${mealToEdit.id}` : "/api/meals/";
     const method = isEditMode ? "PUT" : "POST";
 
     handleFetchRequest(url, method, /** @type {MealRequest} */ (toDatabaseMeal))

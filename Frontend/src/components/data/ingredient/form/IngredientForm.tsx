@@ -106,7 +106,7 @@ function IngredientForm({ ingredientToEditData }) {
 
     const url = isEditMode
       ? `/api/ingredients/${toDatabaseIngredient.id}`
-      : "/api/ingredients";
+      : "/api/ingredients/";
     const method = isEditMode ? "PUT" : "POST";
     const data = /** @type {IngredientRequest} */ (toDatabaseIngredient);
 
