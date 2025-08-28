@@ -10,10 +10,10 @@ export const formatCellNumber = (number) => {
   return parseFloat(parseFloat(number).toPrecision(3));
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
-
 /**
  * Minimal fetch wrapper with OpenAPI-generated types.
+ * Requests use relative URLs so the Vite dev server proxy can forward
+ * `/api` calls to the backend defined by `BACKEND_URL`.
  * @param {keyof import("../api-types").paths | string} url The API endpoint.
  * @param {string} method HTTP method.
  * @param {unknown} data Request payload typed against the schema.
@@ -21,8 +21,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
  */
 export const handleFetchRequest = async (url, method, data) => {
   try {
-    const endpoint = url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
-    const response = await fetch(endpoint, {
+    const response = await fetch(url, {
       method: method,
       headers: {
         "Content-Type": "application/json",
