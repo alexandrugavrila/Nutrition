@@ -11,29 +11,65 @@
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "@vitejs/plugin-react": "^5.0.1",
+    "openapi-typescript-fetch": "^2.2.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.2",
-    "react-scripts": "^5.0.1",
     "react-virtuoso": "^4.7.1",
     "react-window": "^1.8.10",
     "styled-components": "^6.1.8",
-    "web-vitals": "^2.1.4",
-    "openapi-typescript-fetch": "^2.2.1",
-    "http-proxy-middleware": "^3.0.5"
+    "vite": "^7.1.3"
   },
   "scripts": {
-    "start": "WDS_SOCKET_PORT=0 react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
     "lint": "eslint . --ext js,jsx,ts,tsx"
   },
   "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es2021": true,
+      "node": true,
+      "vitest-globals/env": true
+    },
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "ecmaVersion": "latest",
+      "sourceType": "module"
+    },
+    "plugins": [
+      "react",
+      "react-hooks",
+      "@typescript-eslint",
+      "vitest"
+    ],
     "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+      "eslint:recommended",
+      "plugin:react/recommended",
+      "plugin:react-hooks/recommended",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:vitest-globals/recommended"
+    ],
+    "settings": {
+      "react": {
+        "version": "detect"
+      }
+    },
+    "rules": {
+      "react/react-in-jsx-scope": "off",
+      "react/prop-types": "off",
+      "@typescript-eslint/no-unused-expressions": [
+        "error",
+        {
+          "allowShortCircuit": true,
+          "allowTernary": true,
+          "allowTaggedTemplates": true
+        }
+      ]
+    }
   },
   "browserslist": {
     "production": [
@@ -48,9 +84,17 @@
     ]
   },
   "devDependencies": {
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.0",
+    "@typescript-eslint/eslint-plugin": "^8.9.0",
+    "@typescript-eslint/parser": "^8.9.0",
+    "@vitest/ui": "^3.2.4",
     "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.35.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-vitest": "^0.5.4",
+    "eslint-plugin-vitest-globals": "^1.5.0",
+    "jsdom": "^26.1.0",
     "openapi-typescript": "^6.7.6",
-    "typescript": "^4.9.5"
+    "typescript": "^5.4.5",
+    "vitest": "^3.2.4"
   }
 }

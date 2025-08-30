@@ -24,8 +24,35 @@ class ApiClient {
                 : undefined,
               body: body ? JSON.stringify(body) : undefined,
             });
-            const data = await response.json();
-            return { data };
+
+            // Try to parse JSON only when present; fall back to text
+            const contentType = response.headers.get("content-type") || "";
+            let parsed: unknown = null;
+            try {
+              if (contentType.includes("application/json")) {
+                parsed = await response.json();
+              } else {
+                const text = await response.text();
+                parsed = text.length ? text : null;
+              }
+            } catch (e) {
+              // Ignore JSON parse errors for empty/error responses
+              parsed = null;
+            }
+
+            if (!response.ok) {
+              const statusText = response.statusText || "Request failed";
+              const detail =
+                typeof parsed === "object" && parsed && "detail" in (parsed as any)
+                  ? (parsed as any).detail
+                  : parsed;
+              const error = new Error(
+                `${response.status} ${statusText}${detail ? `: ${detail}` : ""}`,
+              );
+              throw error;
+            }
+
+            return { data: parsed } as { data: any };
           },
       }),
     };
