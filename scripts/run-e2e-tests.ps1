@@ -18,7 +18,7 @@ function Show-Usage {
   Write-Host "  - If BACKEND_PORT is unset or backend is unreachable, starts the stack via" \
              "./scripts/compose-up-branch.ps1 -test"
   Write-Host "  - Waits for the backend to become healthy"
-  Write-Host "  - Runs: pytest -m e2e Backend/tests/test_e2e_api.py [pytest-args]"
+  Write-Host "  - Runs: pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py [pytest-args]"
   Write-Host ""
   Write-Host "Examples:" -ForegroundColor Yellow
   Write-Host "  pwsh ./scripts/run-e2e-tests.ps1 -q"
@@ -66,6 +66,5 @@ while (-not (Test-BackendHealthy -Port $env:BACKEND_PORT)) {
 }
 
 Write-Host "Running e2e tests against http://localhost:$env:BACKEND_PORT/api"
-& pytest -m e2e Backend/tests/test_e2e_api.py @PytestArgs
+& pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py @PytestArgs
 exit $LASTEXITCODE
-

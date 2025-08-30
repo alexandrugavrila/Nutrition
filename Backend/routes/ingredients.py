@@ -1,6 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
@@ -57,7 +58,23 @@ def add_ingredient(
             db.get(PossibleIngredientTag, t.id) for t in ingredient.tags if t.id
         ]
     db.add(ingredient_obj)
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError:
+        # Likely a unique constraint violation on name; return the existing record
+        db.rollback()
+        statement = (
+            select(Ingredient)
+            .options(
+                selectinload(Ingredient.nutrition),
+                selectinload(Ingredient.units),
+                selectinload(Ingredient.tags),
+            )
+            .where(Ingredient.name == ingredient_obj.name)
+        )
+        existing = db.exec(statement).one()
+        return ingredient_to_read(existing)
 
     statement = (
         select(Ingredient)

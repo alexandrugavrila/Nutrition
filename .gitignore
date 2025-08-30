@@ -23,6 +23,9 @@ coverage/
 htmlcov/
 venv/
 .venv/
+.venv*
+.venv
+.venvci
 
 # === Node / React ===
 **/node_modules/

@@ -140,7 +140,8 @@ npm --prefix Frontend run preview # preview build
     - `pwsh ./scripts/run-e2e-tests.ps1 -q -k ingredient`
 
 Notes:
-- The helper script starts the branch-specific stack in `-test` mode if it’s not already healthy, waits for readiness, and then runs `pytest -m e2e Backend/tests/test_e2e_api.py`.
+- The helper script starts the branch-specific stack in `-test` mode if it’s not already healthy, waits for readiness, and then runs `pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py` by default for clearer output. The e2e suite emits explicit `[E2E PASS] ...` step messages; `-s` ensures they are shown.
+- You can still pass your own pytest flags to tailor verbosity (e.g., `-q`, `-k`, etc.).
 - The script leaves containers running; use `compose-down-branch` scripts to stop them when done.
 
 ---
