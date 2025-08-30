@@ -28,6 +28,15 @@ fi
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Ensure the virtual environment is active
+if [[ -z "${VIRTUAL_ENV:-}" ]]; then
+  if ! source ./scripts/activate-venv.sh >/tmp/venv.log 2>&1; then
+    cat /tmp/venv.log
+    echo "Failed to activate virtual environment" >&2
+    exit 1
+  fi
+fi
+
 is_backend_healthy() {
   local port="$1"
   # Use a lightweight endpoint; follow redirects if trailing slash differs

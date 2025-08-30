@@ -20,6 +20,19 @@ $flag = if ($production) { "--production" } else { "--test" }
 $envInfo = Set-BranchEnv
 Set-Location $envInfo.RepoRoot
 
+# Ensure virtual environment is active
+$activationLog = [System.IO.Path]::GetTempFileName()
+if (-not $env:VIRTUAL_ENV) {
+  & "$PSScriptRoot/activate-venv.ps1" *> $activationLog 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    Get-Content $activationLog
+    Remove-Item $activationLog -ErrorAction SilentlyContinue
+    Write-Error "Failed to activate virtual environment"
+    exit 1
+  }
+}
+Remove-Item $activationLog -ErrorAction SilentlyContinue
+
 # Ensure containers are running for this branch
 $containers = docker compose -p $envInfo.Project ps -q 2>$null
 if (-not $containers) {

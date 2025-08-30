@@ -21,6 +21,10 @@ pwsh ./scripts/activate-venv.ps1
 source ./scripts/activate-venv.sh
 ```
 
+Many helper scripts (e.g., `run-e2e-tests` and `import-from-csv`) automatically
+activate the virtual environment when `VIRTUAL_ENV` is unset, so they can be run
+directly.
+
 ---
 
 ## 🔀 Branching
@@ -78,6 +82,18 @@ pwsh ./scripts/compose.ps1 restart -test      # or -production / -empty
 ```
 
 Stops and then starts the current branch's containers with the chosen seed mode.
+
+### Import data from CSV
+
+Re-import seed data into the running branch database:
+
+```bash
+./scripts/import-from-csv.sh -production   # or -test
+pwsh ./scripts/import-from-csv.ps1 -production   # or -test
+```
+
+These helpers require the branch's containers to be running and automatically
+activate the virtual environment if needed.
 
 ---
 
@@ -138,6 +154,7 @@ npm --prefix Frontend run preview # preview build
   - Pass extra pytest args as needed:
     - `./scripts/run-e2e-tests.sh -q -k ingredient`
     - `pwsh ./scripts/run-e2e-tests.ps1 -q -k ingredient`
+  - These helpers automatically activate the virtual environment if required.
 
 Notes:
 - The helper script starts the branch-specific stack in `-test` mode if it’s not already healthy, waits for readiness, and then runs `pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py` by default for clearer output. The e2e suite emits explicit `[E2E PASS] ...` step messages; `-s` ensures they are shown.

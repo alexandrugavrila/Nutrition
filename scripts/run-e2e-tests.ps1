@@ -34,6 +34,19 @@ if ($PSBoundParameters.ContainsKey('help') -or $args -contains '-h' -or $args -c
 $repoRoot = Resolve-Path "$PSScriptRoot/.."
 Set-Location $repoRoot
 
+# Ensure virtual environment is active
+$activationLog = [System.IO.Path]::GetTempFileName()
+if (-not $env:VIRTUAL_ENV) {
+  & "$PSScriptRoot/activate-venv.ps1" *> $activationLog 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    Get-Content $activationLog
+    Remove-Item $activationLog -ErrorAction SilentlyContinue
+    Write-Error "Failed to activate virtual environment"
+    exit 1
+  }
+}
+Remove-Item $activationLog -ErrorAction SilentlyContinue
+
 function Test-BackendHealthy([int]$Port) {
   try {
     # Use a lightweight endpoint; follow redirects if needed by calling ingredients without trailing slash
