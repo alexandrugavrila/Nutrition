@@ -30,9 +30,9 @@ $envInfo = Set-BranchEnv
 # If COMPOSE_ENV_FILE is set, write resolved ports for downstream scripts
 if ($env:COMPOSE_ENV_FILE) {
   @(
-    "DB_PORT=$env:DB_PORT",
-    "BACKEND_PORT=$env:BACKEND_PORT",
-    "FRONTEND_PORT=$env:FRONTEND_PORT",
+    "DEV_DB_PORT=$env:DEV_DB_PORT",
+    "DEV_BACKEND_PORT=$env:DEV_BACKEND_PORT",
+    "DEV_FRONTEND_PORT=$env:DEV_FRONTEND_PORT",
     "TEST_DB_PORT=$env:TEST_DB_PORT",
     "TEST_BACKEND_PORT=$env:TEST_BACKEND_PORT",
     "TEST_FRONTEND_PORT=$env:TEST_FRONTEND_PORT"
@@ -48,7 +48,7 @@ function Invoke-Up {
     exit 1
   }
 
-  Write-Host "Starting '$($envInfo.Branch)' with ports:`n  DB: $env:DB_PORT`n  Backend: $env:BACKEND_PORT`n  Frontend: $env:FRONTEND_PORT"
+  Write-Host "Starting '$($envInfo.Branch)' with ports:`n  DB: $env:DEV_DB_PORT`n  Backend: $env:DEV_BACKEND_PORT`n  Frontend: $env:DEV_FRONTEND_PORT"
 
   try {
     docker compose -p $envInfo.Project up -d @Services

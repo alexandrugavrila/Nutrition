@@ -20,9 +20,9 @@ branch_env_load
 # If a path is provided, export resolved ports for downstream scripts.
 if [[ -n "${COMPOSE_ENV_FILE:-}" ]]; then
   cat >"$COMPOSE_ENV_FILE" <<EOF
-DB_PORT=$DB_PORT
-BACKEND_PORT=$BACKEND_PORT
-FRONTEND_PORT=$FRONTEND_PORT
+DEV_DB_PORT=$DEV_DB_PORT
+DEV_BACKEND_PORT=$DEV_BACKEND_PORT
+DEV_FRONTEND_PORT=$DEV_FRONTEND_PORT
 TEST_DB_PORT=$TEST_DB_PORT
 TEST_BACKEND_PORT=$TEST_BACKEND_PORT
 TEST_FRONTEND_PORT=$TEST_FRONTEND_PORT
@@ -55,9 +55,9 @@ compose_up() {
   fi
 
   echo "Starting '$BRANCH_NAME' with ports:"
-  echo "  DB: $DB_PORT"
-  echo "  Backend: $BACKEND_PORT"
-  echo "  Frontend: $FRONTEND_PORT"
+  echo "  DB: $DEV_DB_PORT"
+  echo "  Backend: $DEV_BACKEND_PORT"
+  echo "  Frontend: $DEV_FRONTEND_PORT"
 
   if ! docker compose -p "$COMPOSE_PROJECT" up -d "${services[@]}"; then
     echo "Failed to start services." >&2

@@ -50,31 +50,31 @@ BRANCH_SANITIZED=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a
 COMPOSE_PROJECT="nutrition-$BRANCH_SANITIZED"
 
 # Attempt to read existing backend port
-BACKEND_PORT=$(docker compose -p "$COMPOSE_PROJECT" port backend 8000 2>/dev/null | awk -F: '{print $2}' || true)
+DEV_BACKEND_PORT=$(docker compose -p "$COMPOSE_PROJECT" port backend 8000 2>/dev/null | awk -F: '{print $2}' || true)
 
-if [[ -z "$BACKEND_PORT" ]] || ! is_backend_healthy "$BACKEND_PORT"; then
+if [[ -z "$DEV_BACKEND_PORT" ]] || ! is_backend_healthy "$DEV_BACKEND_PORT"; then
   ENV_FILE=$(mktemp)
   trap 'rm -f "$ENV_FILE"' EXIT
   COMPOSE_ENV_FILE="$ENV_FILE" ./scripts/docker/compose.sh up -test
   # shellcheck disable=SC1090
   source "$ENV_FILE"
   rm -f "$ENV_FILE"
-  BACKEND_PORT="$BACKEND_PORT"
+  DEV_BACKEND_PORT="$DEV_BACKEND_PORT"
 fi
 
 # Wait for backend to become healthy (up to 120s)
-echo "Checking backend health on port ${BACKEND_PORT}..."
+echo "Checking backend health on port ${DEV_BACKEND_PORT}..."
 deadline=$((SECONDS + 120))
-until is_backend_healthy "$BACKEND_PORT"; do
+until is_backend_healthy "$DEV_BACKEND_PORT"; do
   if (( SECONDS >= deadline )); then
-    echo "Backend did not become healthy on port ${BACKEND_PORT} within timeout." >&2
+    echo "Backend did not become healthy on port ${DEV_BACKEND_PORT} within timeout." >&2
     exit 1
   fi
   sleep 1
 done
 
-echo "Running e2e tests against http://localhost:${BACKEND_PORT}/api"
-pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py "$@"
+echo "Running e2e tests against http://localhost:${DEV_BACKEND_PORT}/api"
+DEV_BACKEND_PORT="$DEV_BACKEND_PORT" pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py "$@"
 
 # Note: intentionally leave the stack running. Use scripts/docker/compose.sh down when done.
 exit $?

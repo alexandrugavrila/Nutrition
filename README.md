@@ -33,9 +33,9 @@ Multiple branches can run in parallel without conflicts.
 
 ### 3. Access Services
 
-- Frontend → `http://localhost:<FRONTEND_PORT>`
-- Backend API → `http://localhost:<BACKEND_PORT>`
-- PostgreSQL → `localhost:<DB_PORT>`
+- Frontend → `http://localhost:<DEV_FRONTEND_PORT>`
+- Backend API → `http://localhost:<DEV_BACKEND_PORT>`
+- PostgreSQL → `localhost:<DEV_DB_PORT>`
 
 ### 4. Environment Variables
 

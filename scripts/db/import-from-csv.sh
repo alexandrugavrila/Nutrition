@@ -43,5 +43,5 @@ if [[ -z $(docker compose -p "$COMPOSE_PROJECT" ps -q 2>/dev/null) ]]; then
   exit 1
 fi
 
-export DB_PORT
+export DEV_DB_PORT
 python Database/import_from_csv.py "$flag"

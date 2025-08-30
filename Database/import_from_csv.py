@@ -27,10 +27,10 @@ from Backend.models import (
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DB_PORT = int(os.environ.get("DB_PORT", 5432))
+DEV_DB_PORT = int(os.environ.get("DEV_DB_PORT", 5432))
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    f"postgresql://nutrition_user:nutrition_pass@localhost:{DB_PORT}/nutrition",
+    f"postgresql://nutrition_user:nutrition_pass@localhost:{DEV_DB_PORT}/nutrition",
 )
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)

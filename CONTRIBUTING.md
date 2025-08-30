@@ -129,14 +129,14 @@ Examples:
 
 Notes:
 
-- The frontend dev server binds to `0.0.0.0` and uses a strict port. Use the printed host port (e.g., `http://localhost:<FRONTEND_PORT>`).
+- The frontend dev server binds to `0.0.0.0` and uses a strict port. Use the printed host port (e.g., `http://localhost:<DEV_FRONTEND_PORT>`).
 
 ---
 
 ## 🌐 Environment Variables
 
-- `BACKEND_PORT` → backend service port (defaults to `8000`; compose scripts set this automatically)
-- `BACKEND_URL` → full URL for the backend API. The frontend dev server proxies `/api` to this value. If unset, it falls back to `http://localhost:${BACKEND_PORT}`.
+- `DEV_BACKEND_PORT` → backend service port (defaults to `8000`; compose scripts set this automatically)
+- `BACKEND_URL` → full URL for the backend API. The frontend dev server proxies `/api` to this value. If unset, it falls back to `http://localhost:${DEV_BACKEND_PORT}`.
 
 ---
 
@@ -165,7 +165,7 @@ npm --prefix Frontend run preview # preview build
   - `pytest -m "not e2e"`
 
 - End-to-end API tests (require Docker stack):
-  - Auto-skip: The e2e module skips itself when `BACKEND_PORT` is missing or the backend is unreachable.
+  - Auto-skip: The e2e module skips itself when `DEV_BACKEND_PORT` is missing or the backend is unreachable.
   - Run via helper script (brings stack up if needed):
     - Bash: `./scripts/tests/run-e2e-tests.sh`
     - PowerShell: `pwsh ./scripts/tests/run-e2e-tests.ps1`
@@ -258,7 +258,7 @@ kill %1
 ### DBeaver (optional)
 
 * **Host:** `localhost`
-* **Port:** `<DB_PORT>` (printed at startup)
+* **Port:** `<DEV_DB_PORT>` (printed at startup)
 * **DB:** `nutrition`
 * **User:** `nutrition_user`
 * **Pass:** `nutrition_pass`
@@ -320,7 +320,7 @@ The repo includes a **two‑job CI**: `backend` and `frontend`.
 
   ```bash
   source scripts/env/activate-venv.sh
-  export BACKEND_PORT=8000
+  export DEV_BACKEND_PORT=8000
   scripts/db/update-api-schema.sh
   ```
 
@@ -371,9 +371,9 @@ The repo includes a **two‑job CI**: `backend` and `frontend`.
 * **Stuck DB state**
   `alembic downgrade base && alembic upgrade head` to reset schema.
 * **Frontend can't reach backend**
-  Ensure `BACKEND_PORT` or `BACKEND_URL` is set so the dev proxy knows where to forward API calls.
+  Ensure `DEV_BACKEND_PORT` or `BACKEND_URL` is set so the dev proxy knows where to forward API calls.
 * **`/openapi.json` 404**
-  Confirm the backend server is running and you’re using the correct `BACKEND_PORT`.
+  Confirm the backend server is running and you’re using the correct `DEV_BACKEND_PORT`.
 * **CI drift/schema gates failing**
   Run the **sync script** locally, review diffs, and **commit generated files**.
 

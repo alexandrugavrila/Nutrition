@@ -68,10 +68,10 @@ cleanup() {
 trap cleanup EXIT
 
 # Bind the temporary DB to the branch's testing port to avoid colliding with the dev stack.
-export DB_PORT="${TEST_DB_PORT:-${DB_PORT:-5432}}"
-export DATABASE_URL="postgresql://nutrition_user:nutrition_pass@localhost:${DB_PORT}/nutrition"
+export DEV_DB_PORT="${TEST_DB_PORT:-${DEV_DB_PORT:-5432}}"
+export DATABASE_URL="postgresql://nutrition_user:nutrition_pass@localhost:${DEV_DB_PORT}/nutrition"
 
-echo "Starting database container on test port ${DB_PORT}..."
+echo "Starting database container on test port ${DEV_DB_PORT}..."
 if ! docker compose -p "$SYNC_PROJECT" up -d db >/tmp/db-start.log 2>&1; then
   cat /tmp/db-start.log
   echo "Failed to start database container" >&2

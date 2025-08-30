@@ -55,7 +55,7 @@ function Wait-ForBackend {
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $repoRoot
 
-$backendPort = if ($env:BACKEND_PORT) { $env:BACKEND_PORT } else { 8000 }
+$backendPort = if ($env:DEV_BACKEND_PORT) { $env:DEV_BACKEND_PORT } else { 8000 }
 
 # Ensure venv is active
 $activationLog = [System.IO.Path]::GetTempFileName()

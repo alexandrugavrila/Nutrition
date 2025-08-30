@@ -84,13 +84,13 @@ if (-not $backendPort -or -not (Test-BackendHealthy -Port $backendPort)) {
     Get-Content $envFile | ForEach-Object {
       if ($_ -match '^([^=]+)=(.+)$') { Set-Item -Path "env:$($matches[1])" -Value $matches[2] }
     }
-    $backendPort = $env:BACKEND_PORT
+    $backendPort = $env:DEV_BACKEND_PORT
   } finally {
     Remove-Item $envFile -ErrorAction SilentlyContinue
     Remove-Item env:COMPOSE_ENV_FILE -ErrorAction SilentlyContinue
   }
 }
-$env:BACKEND_PORT = $backendPort
+$env:DEV_BACKEND_PORT = $backendPort
 
 Write-Host "Checking backend health on port $backendPort..."
 $deadline = (Get-Date).AddSeconds(120)

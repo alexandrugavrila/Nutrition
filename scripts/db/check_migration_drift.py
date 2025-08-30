@@ -111,10 +111,10 @@ if _env_db_url:
     except Exception:  # pragma: no cover - extremely unlikely
         pass
 
-# If caller provided TEST_DB_PORT, we use it. Otherwise, if DB_PORT is set
+# If caller provided TEST_DB_PORT, we use it. Otherwise, if DEV_DB_PORT is set
 # and explicitly intended for testing, it will be honored; if neither is set,
 # we ask Docker to assign a random host port to eliminate bind conflicts.
-_requested_db_port = os.environ.get("TEST_DB_PORT") or os.environ.get("DB_PORT")
+_requested_db_port = os.environ.get("TEST_DB_PORT") or os.environ.get("DEV_DB_PORT")
 _db_port: Optional[str] = _requested_db_port if _requested_db_port else None
 
 
@@ -184,7 +184,7 @@ _db_started = False
 
 def _start_temp_db() -> None:
     global _db_started
-    # Build docker run args. If no DB_PORT was requested, publish to a random
+    # Build docker run args. If no DEV_DB_PORT was requested, publish to a random
     # localhost port and discover it via `docker port`.
     if _db_port:
         port_arg = ["-p", f"{_db_port}:5432"]
@@ -198,28 +198,30 @@ def _start_temp_db() -> None:
         )
     try:
         _run("docker", "pull", "postgres:16")
-        run_cmd = [
-            "docker",
-            "run",
-            "-d",
-            "--name",
-            CONTAINER_NAME,
-            "-e",
-            f"POSTGRES_USER={DB_USER}",
-            "-e",
-            f"POSTGRES_PASSWORD={DB_PASS}",
-            "-e",
-            f"POSTGRES_DB={DB_NAME}",
-        ] + port_arg + [
-            "postgres:16",
-        ]
+        run_cmd = (
+            [
+                "docker",
+                "run",
+                "-d",
+                "--name",
+                CONTAINER_NAME,
+                "-e",
+                f"POSTGRES_USER={DB_USER}",
+                "-e",
+                f"POSTGRES_PASSWORD={DB_PASS}",
+                "-e",
+                f"POSTGRES_DB={DB_NAME}",
+            ]
+            + port_arg
+            + [
+                "postgres:16",
+            ]
+        )
         # Capture output for clearer diagnostics on failure
         subprocess.run(run_cmd, check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as exc:  # pragma: no cover - external failure
         details = (exc.stderr or exc.stdout or "").strip()
-        raise RuntimeError(
-            f"failed to start database container: {details}"
-        ) from exc
+        raise RuntimeError(f"failed to start database container: {details}") from exc
     _db_started = True
 
     # If the host port was random, discover it and update env for downstream tools.
@@ -291,6 +293,8 @@ def _cleanup(
             temp_verify.unlink()
         except OSError:
             pass
+
+
 _clear_temp_drift_files()
 
 
@@ -305,8 +309,8 @@ def _set_database_url_with_port(port: str) -> None:
     """
     url = f"postgresql://{DB_USER}:{DB_PASS}@localhost:{port}/{DB_NAME}"
     os.environ["DATABASE_URL"] = url
-    # Keep both DB_PORT and TEST_DB_PORT in this process for downstream tools
-    os.environ["DB_PORT"] = str(port)
+    # Keep both DEV_DB_PORT and TEST_DB_PORT in this process for downstream tools
+    os.environ["DEV_DB_PORT"] = str(port)
     os.environ["TEST_DB_PORT"] = str(port)
 
 
