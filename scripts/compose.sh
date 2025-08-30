@@ -16,6 +16,16 @@ USAGE
 # Load branch-specific environment variables
 source "$(dirname "${BASH_SOURCE[0]}")/lib/branch-env.sh"
 branch_env_load
+
+# If a path is provided, export resolved ports for downstream scripts.
+if [[ -n "${COMPOSE_ENV_FILE:-}" ]]; then
+  cat >"$COMPOSE_ENV_FILE" <<EOF
+DB_PORT=$DB_PORT
+BACKEND_PORT=$BACKEND_PORT
+FRONTEND_PORT=$FRONTEND_PORT
+EOF
+fi
+
 cd "$REPO_ROOT"
 
 # --- Helper functions shared across subcommands ---

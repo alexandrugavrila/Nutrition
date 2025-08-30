@@ -22,6 +22,16 @@ function Show-Usage {
 
 . "$PSScriptRoot/lib/branch-env.ps1"
 $envInfo = Set-BranchEnv
+
+# If COMPOSE_ENV_FILE is set, write resolved ports for downstream scripts
+if ($env:COMPOSE_ENV_FILE) {
+  @(
+    "DB_PORT=$env:DB_PORT",
+    "BACKEND_PORT=$env:BACKEND_PORT",
+    "FRONTEND_PORT=$env:FRONTEND_PORT"
+  ) | Set-Content -Path $env:COMPOSE_ENV_FILE
+}
+
 Set-Location $envInfo.RepoRoot
 
 function Invoke-Up {

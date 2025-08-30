@@ -9,8 +9,9 @@ show_usage() {
 Usage: ./scripts/run-e2e-tests.sh [pytest-args...]
 
 Behavior:
-  - If BACKEND_PORT is unset or backend is unreachable, starts the stack via
-    ./scripts/compose.sh up -test
+  - Uses docker compose to determine the backend port for the current branch
+  - If the backend is unreachable, starts the stack via ./scripts/compose.sh up -test
+    and reads port information from the generated env file
   - Waits for the backend to become healthy
   - Runs: pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py [pytest-args]
 
@@ -40,17 +41,25 @@ fi
 
 is_backend_healthy() {
   local port="$1"
-  # Use a lightweight endpoint; follow redirects if trailing slash differs
   curl -fsS --max-time 1 "http://localhost:${port}/api/ingredients" >/dev/null 2>&1
 }
 
-STARTED_STACK=false
+# Determine compose project for this branch
+BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD | tr -d '\n')
+BRANCH_SANITIZED=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/^[-]*//;s/[-]*$//')
+COMPOSE_PROJECT="nutrition-$BRANCH_SANITIZED"
 
-if [[ -z "${BACKEND_PORT:-}" ]] || ! is_backend_healthy "$BACKEND_PORT"; then
-  # Bring up the stack to ensure ports are exported and services are running
-  # shellcheck disable=SC1091
-  source ./scripts/compose.sh up -test
-  STARTED_STACK=true
+# Attempt to read existing backend port
+BACKEND_PORT=$(docker compose -p "$COMPOSE_PROJECT" port backend 8000 2>/dev/null | awk -F: '{print $2}' || true)
+
+if [[ -z "$BACKEND_PORT" ]] || ! is_backend_healthy "$BACKEND_PORT"; then
+  ENV_FILE=$(mktemp)
+  trap 'rm -f "$ENV_FILE"' EXIT
+  COMPOSE_ENV_FILE="$ENV_FILE" ./scripts/compose.sh up -test
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  rm -f "$ENV_FILE"
+  BACKEND_PORT="$BACKEND_PORT"
 fi
 
 # Wait for backend to become healthy (up to 120s)

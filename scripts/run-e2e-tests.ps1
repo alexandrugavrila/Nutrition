@@ -15,8 +15,9 @@ function Show-Usage {
   Write-Host "  pwsh ./scripts/run-e2e-tests.ps1  [pytest-args...]"
   Write-Host ""
   Write-Host "Behavior:" -ForegroundColor Yellow
-  Write-Host "  - If BACKEND_PORT is unset or backend is unreachable, starts the stack via" \
-             "./scripts/compose.ps1 up -test"
+  Write-Host "  - Uses docker compose to determine the backend port for the current branch"
+  Write-Host "  - If the backend is unreachable, starts the stack via ./scripts/compose.ps1 up -test" \
+             "and reads port information from the generated env file"
   Write-Host "  - Waits for the backend to become healthy"
   Write-Host "  - Runs: pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py [pytest-args]"
   Write-Host ""
@@ -60,25 +61,47 @@ function Test-BackendHealthy([int]$Port) {
   }
 }
 
-$startedStack = $false
+# Determine compose project for this branch
+$branch = (git rev-parse --abbrev-ref HEAD).Trim()
+$sanitized = ($branch.ToLower() -replace '[^a-z0-9]', '-').Trim('-')
+$project = "nutrition-$sanitized"
 
-if (-not $env:BACKEND_PORT -or -not (Test-BackendHealthy -Port $env:BACKEND_PORT)) {
-  # Bring up the stack; this sets BACKEND_PORT in the current session
-  & "$PSScriptRoot/compose.ps1" up -test
-  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-  $startedStack = $true
+function Get-BackendPort($proj) {
+  try {
+    $res = docker compose -p $proj port backend 8000 2>$null
+    if ($LASTEXITCODE -eq 0 -and $res) { return ($res -split ':')[-1] }
+  } catch { }
+  return $null
 }
 
-Write-Host "Checking backend health on port $env:BACKEND_PORT..."
+$backendPort = Get-BackendPort $project
+if (-not $backendPort -or -not (Test-BackendHealthy -Port $backendPort)) {
+  $envFile = [System.IO.Path]::GetTempFileName()
+  try {
+    $env:COMPOSE_ENV_FILE = $envFile
+    & "$PSScriptRoot/compose.ps1" up -test
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Get-Content $envFile | ForEach-Object {
+      if ($_ -match '^([^=]+)=(.+)$') { Set-Item -Path "env:$($matches[1])" -Value $matches[2] }
+    }
+    $backendPort = $env:BACKEND_PORT
+  } finally {
+    Remove-Item $envFile -ErrorAction SilentlyContinue
+    Remove-Item env:COMPOSE_ENV_FILE -ErrorAction SilentlyContinue
+  }
+}
+$env:BACKEND_PORT = $backendPort
+
+Write-Host "Checking backend health on port $backendPort..."
 $deadline = (Get-Date).AddSeconds(120)
-while (-not (Test-BackendHealthy -Port $env:BACKEND_PORT)) {
+while (-not (Test-BackendHealthy -Port $backendPort)) {
   if ((Get-Date) -ge $deadline) {
-    Write-Error "Backend did not become healthy on port $env:BACKEND_PORT within timeout."
+    Write-Error "Backend did not become healthy on port $backendPort within timeout."
     exit 1
   }
   Start-Sleep -Seconds 1
 }
 
-Write-Host "Running e2e tests against http://localhost:$env:BACKEND_PORT/api"
+Write-Host "Running e2e tests against http://localhost:$backendPort/api"
 & pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py @PytestArgs
 exit $LASTEXITCODE
