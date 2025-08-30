@@ -32,6 +32,10 @@ function Set-BranchEnv {
   $env:DB_PORT         = 5432 + $offset
   $env:BACKEND_PORT    = 8000 + $offset
   $env:FRONTEND_PORT   = 3000 + $offset
+  # Dedicated testing-only ports for ephemeral containers/scripts
+  $env:TEST_DB_PORT         = 15432 + $offset
+  $env:TEST_BACKEND_PORT    = 18000 + $offset
+  $env:TEST_FRONTEND_PORT   = 13000 + $offset
   $env:DATABASE_URL    = "postgresql://nutrition_user:nutrition_pass@localhost:$($env:DB_PORT)/nutrition"
 
   return @{ RepoRoot=$repoRoot; Branch=$branch; Sanitized=$sanitized; Project=$project; PortOffset=$offset }

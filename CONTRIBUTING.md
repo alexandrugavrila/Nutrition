@@ -112,6 +112,16 @@ Each branch gets unique host ports: **base + branch offset (hash of branch name)
 
 Printed on startup and visible in Docker Desktop as `HOST:CONTAINER`.
 
+### Testing-Only Ports (ephemeral scripts)
+
+In addition to the dev ports above, the branch environment exports a separate set of testing ports that are reserved for scripts which spin up a dedicated container, run work, and then tear it down.
+
+- `TEST_FRONTEND_PORT` base: `13000 + offset`
+- `TEST_BACKEND_PORT` base: `18000 + offset`
+- `TEST_DB_PORT` base: `15432 + offset`
+
+Scripts that manage their own temporary containers (e.g., migration drift checks) will prefer `TEST_*` ports when they’re set to avoid colliding with your running dev stack.
+
 Notes:
 
 - The frontend dev server binds to `0.0.0.0` and uses a strict port. Use the printed host port (e.g., `http://localhost:<FRONTEND_PORT>`).
