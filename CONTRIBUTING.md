@@ -125,6 +125,26 @@ npm --prefix Frontend run preview # preview build
 
 ---
 
+## 🧪 Testing
+
+- Unit tests (backend-only):
+  - `pytest -m "not e2e"`
+
+- End-to-end API tests (require Docker stack):
+  - Auto-skip: The e2e module skips itself when `BACKEND_PORT` is missing or the backend is unreachable.
+  - Run via helper script (brings stack up if needed):
+    - Bash: `./scripts/run-e2e-tests.sh`
+    - PowerShell: `pwsh ./scripts/run-e2e-tests.ps1`
+  - Pass extra pytest args as needed:
+    - `./scripts/run-e2e-tests.sh -q -k ingredient`
+    - `pwsh ./scripts/run-e2e-tests.ps1 -q -k ingredient`
+
+Notes:
+- The helper script starts the branch-specific stack in `-test` mode if it’s not already healthy, waits for readiness, and then runs `pytest -m e2e Backend/tests/test_e2e_api.py`.
+- The script leaves containers running; use `compose-down-branch` scripts to stop them when done.
+
+---
+
 ## 📚 API & Migrations Handling
 
 **Canonical workflow (one script does it all):**

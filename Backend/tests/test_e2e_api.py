@@ -3,7 +3,18 @@ import os
 import httpx
 import pytest
 
-BASE_URL = f"http://localhost:{os.environ['BACKEND_PORT']}/api"
+# Auto-skip if the branch-specific backend is not available
+_port = os.getenv("BACKEND_PORT")
+if not _port:
+    pytest.skip("BACKEND_PORT not set; skipping e2e suite", allow_module_level=True)
+
+BASE_URL = f"http://localhost:{_port}/api"
+
+# Quick health check against a lightweight endpoint
+try:
+    httpx.get(f"{BASE_URL}/ingredients", timeout=1.0, follow_redirects=True)
+except Exception:
+    pytest.skip("Backend not reachable on BACKEND_PORT; skipping e2e suite", allow_module_level=True)
 
 
 @pytest.mark.e2e
