@@ -162,6 +162,15 @@ def main():
         wipe_data(session, ordered_tables)
         import_csv(session, data_dir, ordered_tables)
 
+        for table in ordered_tables:
+            session.execute(
+                text(
+                    "SELECT setval(pg_get_serial_sequence(:tbl, 'id'), "
+                    "(SELECT COALESCE(MAX(id), 0) + 1 FROM " + table + "), false)"
+                ),
+                {"tbl": table},
+            )
+
         session.commit()
         session.close()
         print("All CSVs imported successfully.")
