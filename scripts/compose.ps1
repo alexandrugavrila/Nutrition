@@ -10,6 +10,8 @@ param(
   [switch]$empty,
   [switch]$PruneImages,
   [switch]$Force,
+  [switch]$All,
+  [string]$Project,
   [Parameter(ValueFromRemainingArguments = $true)]
   [string[]]$Services
 )
@@ -17,6 +19,8 @@ param(
 function Show-Usage {
   Write-Host ""; Write-Host "Usage:" -ForegroundColor Yellow
   Write-Host "  pwsh ./scripts/compose.ps1 <up|down|restart> [options]"
+  Write-Host ""
+  Write-Host "  down options: --All | --Project <name> | -PruneImages | -Force"
   Write-Host ""
 }
 
@@ -152,14 +156,20 @@ function Select-Projects([string[]]$Projects) {
 }
 
 function Invoke-Down {
-  $projects = Get-ComposeProjects | Prioritize-CurrentBranch
-  if (-not $projects -or $projects.Count -eq 0) { return }
-  $chosen = Select-Projects -Projects $projects
-  if (-not $chosen -or $chosen.Count -eq 0) {
-    Write-Host "Nothing selected. Exiting."
-    return
+  $chosen = @()
+  if ($All) {
+    $chosen = Get-ComposeProjects | Prioritize-CurrentBranch
+    if (-not $chosen -or $chosen.Count -eq 0) { 
+      Write-Host "No Compose projects found with the expected prefix." -ForegroundColor Yellow
+      return
+    }
+  } elseif ($Project) {
+    $chosen = @($Project)
+  } else {
+    $chosen = @($envInfo.Project)
   }
-  if (-not $Force) {
+
+  if (-not $Force -and $chosen.Count -gt 1) {
     Write-Host "You are about to delete the following Compose project(s):" -ForegroundColor Yellow
     $chosen | ForEach-Object { Write-Host "  - $_" }
     $confirm = Read-Host "Type 'yes' to proceed"
@@ -168,6 +178,7 @@ function Invoke-Down {
       return
     }
   }
+
   foreach ($proj in $chosen) {
     Write-Host "Bringing down '$proj'..." -ForegroundColor Cyan
     $args = @('compose','-p',$proj,'down','-v','--remove-orphans')

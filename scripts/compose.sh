@@ -8,7 +8,7 @@ Usage: ./scripts/compose.sh <subcommand> [options]
 
 Subcommands:
   up [-production|-test|-empty] [service...]
-  down [--prune-images] [--force]
+  down [--prune-images] [--force] [--all|--project <name>]
   restart [-production|-test|-empty] [service...]
 USAGE
 }
@@ -168,27 +168,41 @@ select_projects() {
 }
 
 compose_down() {
-  local prune_images=false force=false
+  local prune_images=false force=false all=false project=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --prune-images) prune_images=true ;;
       --force) force=true ;;
-      *) echo "Usage: ./scripts/compose.sh down [--prune-images] [--force]" >&2; return 1 ;;
+      --all) all=true ;;
+      --project)
+        shift
+        project="${1:-}"
+        if [[ -z "$project" ]]; then
+          echo "Error: --project requires a name" >&2
+          return 1
+        fi
+        ;;
+      *) echo "Usage: ./scripts/compose.sh down [--prune-images] [--force] [--all|--project <name>]" >&2; return 1 ;;
     esac
     shift
   done
 
-  mapfile -t projects < <(get_compose_projects)
-  mapfile -t projects < <(prioritize_current_branch "${projects[@]}")
-  [[ ${#projects[@]} -eq 0 ]] && return 0
-
-  mapfile -t chosen < <(select_projects "${projects[@]}")
-  if [[ ${#chosen[@]} -eq 0 ]]; then
-    echo "Nothing selected. Exiting."
-    return 0
+  local -a chosen=()
+  if $all; then
+    mapfile -t projects < <(get_compose_projects)
+    mapfile -t projects < <(prioritize_current_branch "${projects[@]}")
+    if [[ ${#projects[@]} -eq 0 ]]; then
+      echo "No Compose projects found with the expected prefix." >&2
+      return 0
+    fi
+    chosen=("${projects[@]}")
+  elif [[ -n "$project" ]]; then
+    chosen=("$project")
+  else
+    chosen=("$COMPOSE_PROJECT")
   fi
 
-  if ! $force; then
+  if ! $force && (( ${#chosen[@]} > 1 )); then
     echo "You are about to delete the following Compose project(s):"
     for p in "${chosen[@]}"; do
       echo "  - $p"

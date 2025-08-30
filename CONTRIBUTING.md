@@ -69,9 +69,12 @@ Compose-up behavior:
 pwsh ./scripts/compose.ps1 down
 ```
 
-Options:
+Behavior and options:
 
-* `-Force` → skip confirmation
+* Defaults to the current branch's stack (non-interactive).
+* `-All`  bring down all branch stacks that match the prefix.
+* `-Project <name>`  target a specific compose project by name.
+* `-Force`  skip confirmation when multiple projects are selected.
 * `-PruneImages` → also remove built images
 * Volumes (including branch-specific `node_modules` cache) are removed by default for clean isolation
 
