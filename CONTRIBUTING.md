@@ -120,7 +120,12 @@ In addition to the dev ports above, the branch environment exports a separate se
 - `TEST_BACKEND_PORT` base: `18000 + offset`
 - `TEST_DB_PORT` base: `15432 + offset`
 
-Scripts that manage their own temporary containers (e.g., migration drift checks) will prefer `TEST_*` ports when they’re set to avoid colliding with your running dev stack.
+Scripts that manage their own temporary containers (e.g., migration drift checks) will prefer `TEST_*` ports when they're set to avoid colliding with your running dev stack.
+
+Examples:
+
+- `scripts/check-migration-drift.(ps1|sh)` starts a temporary Postgres and uses `TEST_DB_PORT`.
+- `scripts/sync-api-and-migrations.sh` starts a temporary Postgres compose project (per-branch) bound to `TEST_DB_PORT` and sets `DATABASE_URL` accordingly.
 
 Notes:
 

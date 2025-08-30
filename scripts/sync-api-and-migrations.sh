@@ -25,6 +25,13 @@ fi
 # Ensure we're running from the repository root
 cd "$(dirname "$0")/.."
 
+# Load branch-specific environment so we have dev and test ports available
+if [ -f "scripts/lib/branch-env.sh" ]; then
+  # shellcheck disable=SC1091
+  . "scripts/lib/branch-env.sh"
+  branch_env_load || true
+fi
+
 # Ensure the virtual environment is active and required packages are installed
 if [ -z "${VIRTUAL_ENV:-}" ] || ! command -v uvicorn >/dev/null 2>&1; then
   echo "Activating virtual environment..."
@@ -41,7 +48,8 @@ if ! command -v uvicorn >/dev/null 2>&1; then
 fi
 
 # Use a dedicated compose project for the temporary database container.
-SYNC_PROJECT="nutrition-sync"
+# Include the branch to avoid collisions across branches.
+SYNC_PROJECT="nutrition-sync${BRANCH_SANITIZED:+-$BRANCH_SANITIZED}"
 
 # Clean up any leftover sync database container from previous runs.
 if docker compose -p "$SYNC_PROJECT" ps -q db >/dev/null 2>&1; then
@@ -59,7 +67,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Starting database container..."
+# Bind the temporary DB to the branch's testing port to avoid colliding with the dev stack.
+export DB_PORT="${TEST_DB_PORT:-${DB_PORT:-5432}}"
+export DATABASE_URL="postgresql://nutrition_user:nutrition_pass@localhost:${DB_PORT}/nutrition"
+
+echo "Starting database container on test port ${DB_PORT}..."
 if ! docker compose -p "$SYNC_PROJECT" up -d db >/tmp/db-start.log 2>&1; then
   cat /tmp/db-start.log
   echo "Failed to start database container" >&2
@@ -71,9 +83,6 @@ echo "Waiting for database to be ready..."
 until docker compose -p "$SYNC_PROJECT" exec -T db pg_isready -U nutrition_user -d nutrition >/tmp/db-ready.log 2>&1; do
   sleep 1
 done
-
-# Ensure the backend connects to the local container
-export DATABASE_URL="${DATABASE_URL:-postgresql://nutrition_user:nutrition_pass@localhost:5432/nutrition}"
 
 echo "Applying database migrations..."
 if ! alembic upgrade head >/tmp/db-upgrade.log 2>&1; then
@@ -150,4 +159,3 @@ else
   echo "Database migrations are up to date."
 fi
 rm -r "$tmpdir"
-
