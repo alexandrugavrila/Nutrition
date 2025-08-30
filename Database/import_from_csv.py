@@ -163,14 +163,19 @@ def main():
         import_csv(session, data_dir, ordered_tables)
 
         for table in ordered_tables:
-            session.execute(
-                text(
-                    "SELECT setval(pg_get_serial_sequence(:tbl, 'id'), "
-                    "(SELECT COALESCE(MAX(id), 0) + 1 FROM " + table + "), false)"
-                ),
+            seq = session.execute(
+                text("SELECT pg_get_serial_sequence(:tbl, 'id')"),
                 {"tbl": table},
-            )
-
+            ).scalar()
+            if seq:
+                session.execute(
+                    text(
+                        "SELECT setval(:seq, (SELECT COALESCE(MAX(id), 0) + 1 FROM "
+                        + table
+                        + "), false)"
+                    ),
+                    {"seq": seq},
+                )
         session.commit()
         session.close()
         print("All CSVs imported successfully.")
