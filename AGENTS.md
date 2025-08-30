@@ -11,9 +11,10 @@ This repository contains a full-stack nutrition planning and tracking applicatio
 
 ## Docker environment
 - Develop inside branch-specific Docker Compose stacks.
-- Launch with `./scripts/docker/compose.sh up -test` (or `.ps1`); stop with `docker/compose.sh down`.
+- Launch with `./scripts/docker/compose.sh up data -test` (or `.ps1`); stop with `./scripts/docker/compose.sh down`.
 - Containers and ports are isolated per branch, enabling parallel stacks.
 - Port offsets per branch (N from branch hash): DB 5432+N, Backend 8000+N, Frontend 3000+N.
+- Optional: add `type -test` to run a dedicated test stack on TEST ports (used by e2e scripts). Without `type`, it defaults to dev ports.
 
 ---
 
@@ -22,8 +23,9 @@ This repository contains a full-stack nutrition planning and tracking applicatio
 - Install frontend dependencies: `npm --prefix Frontend install`
 - Run backend development server: `uvicorn Backend.backend:app --reload`
 - Start frontend development server: `npm --prefix Frontend run dev`
-- Run backend tests: `pytest`
+- Run backend unit tests: `pytest` (uses SQLite)
 - Run frontend tests: `npm --prefix Frontend test`
+- Run end-to-end API tests: `pwsh ./scripts/tests/run-e2e-tests.ps1` or `./scripts/tests/run-e2e-tests.sh` (spins up a dedicated test stack and tears it down)
 
 ---
 

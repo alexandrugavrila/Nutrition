@@ -77,6 +77,7 @@ Behavior and options:
 * `-Force`  skip confirmation when multiple projects are selected.
 * `-PruneImages` → also remove built images
 * Volumes (including branch-specific `node_modules` cache) are removed by default for clean isolation
+* Add `type -test` to target the dedicated test stack (if you used it)
 
 **Restart services:**
 

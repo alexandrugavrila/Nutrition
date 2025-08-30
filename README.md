@@ -59,7 +59,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full contributor workflow details.
 pwsh ./scripts/run-tests.ps1  # PowerShell
 ```
 
-Pass `--e2e` to also run the end-to-end API suite. The CI pipeline uses the same command.
+Pass `--e2e` to also run the end-to-end API suite. The e2e runner stands up a dedicated test stack (on TEST ports) and tears it down after tests.
 
 ---
 
