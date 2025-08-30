@@ -16,7 +16,7 @@ function Show-Usage {
   Write-Host ""
   Write-Host "Behavior:" -ForegroundColor Yellow
   Write-Host "  - If BACKEND_PORT is unset or backend is unreachable, starts the stack via" \
-             "./scripts/compose.ps1 up -test"
+             "./scripts/compose-up-branch.ps1 -test"
   Write-Host "  - Waits for the backend to become healthy"
   Write-Host "  - Runs: pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py [pytest-args]"
   Write-Host ""
@@ -50,7 +50,7 @@ $startedStack = $false
 
 if (-not $env:BACKEND_PORT -or -not (Test-BackendHealthy -Port $env:BACKEND_PORT)) {
   # Bring up the stack; this sets BACKEND_PORT in the current session
-  & "$PSScriptRoot/compose.ps1" up -test
+  & "$PSScriptRoot/compose-up-branch.ps1" -test
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   $startedStack = $true
 }

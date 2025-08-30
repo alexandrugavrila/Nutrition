@@ -25,7 +25,7 @@ cd Nutrition
 
 # Start stack for this branch
 # Choose ONE: -production | -test | -empty
-pwsh ./scripts/compose.ps1 up -test
+pwsh ./scripts/compose-up-branch.ps1 -test
 ```
 
 👉 The script prints the branch-specific ports for frontend, backend, and database.
