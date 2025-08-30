@@ -16,9 +16,9 @@ function Show-Usage {
   Write-Host ""
   Write-Host "Behavior:" -ForegroundColor Yellow
   Write-Host "  - Uses docker compose to determine the backend port for the current branch"
-  Write-Host "  - If the backend is unreachable, starts a dedicated test stack via" \
-             "    ./scripts/docker/compose.ps1 up type -test data -test" \
-             "and reads port information from the generated env file"
+  Write-Host "  - If the backend is unreachable, starts a dedicated test stack via"
+  Write-Host "    ./scripts/docker/compose.ps1 up type -test data -test"
+  Write-Host "    and reads port information from the generated env file"
   Write-Host "  - Waits for the backend to become healthy"
   Write-Host "  - Runs: pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py [pytest-args]"
   Write-Host ""
