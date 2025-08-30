@@ -35,19 +35,25 @@ if ($PSBoundParameters.ContainsKey('help') -or $args -contains '-h' -or $args -c
 $repoRoot = Resolve-Path "$PSScriptRoot/../.."
 Set-Location $repoRoot
 
-# Ensure virtual environment is active
-$activationLog = [System.IO.Path]::GetTempFileName()
+# Ensure virtual environment is active (activate only if not already)
 if (-not $env:VIRTUAL_ENV) {
   Write-Host "No virtualenv detected; activating via ./scripts/env/activate-venv.ps1 ..."
-  & "$PSScriptRoot/../env/activate-venv.ps1" *> $activationLog 2>&1
-  if ($LASTEXITCODE -ne 0) {
-    Get-Content $activationLog
+  $activationLog = [System.IO.Path]::GetTempFileName()
+  try {
+    . "$PSScriptRoot/../env/activate-venv.ps1" *> $activationLog 2>&1
+  }
+  catch {
+    if (Test-Path $activationLog) { Get-Content $activationLog | Write-Host }
     Remove-Item $activationLog -ErrorAction SilentlyContinue
-    Write-Error "Failed to activate virtual environment"
+    Write-Error "Failed to activate virtual environment: $($_.Exception.Message)"
     exit 1
   }
+  finally {
+    Remove-Item $activationLog -ErrorAction SilentlyContinue
+  }
+  # Clear any lingering native process exit code from activation steps
+  if ($LASTEXITCODE -ne 0) { $global:LASTEXITCODE = 0 }
 }
-Remove-Item $activationLog -ErrorAction SilentlyContinue
 
 function Test-BackendHealthy([int]$Port) {
   try {

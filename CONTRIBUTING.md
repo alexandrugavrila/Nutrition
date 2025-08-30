@@ -161,10 +161,12 @@ npm --prefix Frontend run preview # preview build
 
 ## 🧪 Testing
 
-- Unit tests (backend-only):
-  - `pytest -m "not e2e"`
+- Run backend and frontend unit tests:
+  - Bash: `./scripts/run-tests.sh`
+  - PowerShell: `pwsh ./scripts/run-tests.ps1`
+  - Add `--e2e` to also run the end-to-end API suite.
 
-- End-to-end API tests (require Docker stack):
+- End-to-end API tests only (require Docker stack):
   - Auto-skip: The e2e module skips itself when `DEV_BACKEND_PORT` is missing or the backend is unreachable.
   - Run via helper script (brings stack up if needed):
     - Bash: `./scripts/tests/run-e2e-tests.sh`
@@ -277,7 +279,7 @@ Before opening a PR:
 * [ ] **Migrations apply cleanly?**
   `alembic upgrade head` (or rely on the sync/drift script outcome)
 * [ ] **Tests pass?**
-  `pytest` (backend) and `CI=true npm --prefix Frontend test` (frontend)
+  `./scripts/run-tests.sh` (or `pwsh ./scripts/run-tests.ps1`)
 * [ ] **Lint/build ok?**
   `npm --prefix Frontend run lint` and `npm --prefix Frontend run build`
 
@@ -334,8 +336,8 @@ The repo includes a **two‑job CI**: `backend` and `frontend`.
 
   Fails if the OpenAPI spec or types are out of date (enforces “generate & commit API artifacts”).
 
-* **Backend tests**
-  `pytest` executes backend unit tests against the live CI DB.
+* **Tests**
+  `./scripts/run-tests.sh` executes backend (pytest) and frontend (npm test) suites.
 
 * **DB teardown (always runs)**
   Drops and recreates the `public` schema to leave the container clean.
@@ -351,7 +353,6 @@ The repo includes a **two‑job CI**: `backend` and `frontend`.
 * Caches npm modules (`~/.npm`) keyed by `Frontend/package-lock.json`
 * `npm ci` installs exact deps
 * `npm --prefix Frontend run lint` enforces code quality
-* `CI=true npm --prefix Frontend test` runs unit tests in CI mode
 * `npm --prefix Frontend run build` ensures the app builds for production
 
 **Benefits:**

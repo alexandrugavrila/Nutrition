@@ -1,0 +1,51 @@
+#!/usr/bin/env pwsh
+<#
+.SYNOPSIS
+    Run backend and frontend tests, optionally including end-to-end tests.
+
+.PARAMETER e2e
+    Also run end-to-end API tests via scripts/tests/run-e2e-tests.ps1
+#>
+[CmdletBinding()]
+param(
+    [switch]$e2e
+)
+
+$ErrorActionPreference = 'Stop'
+
+$RepoRoot = Resolve-Path "$PSScriptRoot/.."
+Set-Location $RepoRoot
+
+# Ensure virtual environment is active (activate only if not already)
+if (-not $env:VIRTUAL_ENV) {
+    Write-Host "No virtualenv detected; activating via ./scripts/env/activate-venv.ps1 ..."
+    try {
+        . "$RepoRoot/scripts/env/activate-venv.ps1"
+    }
+    catch {
+        Write-Error "Failed to activate virtual environment: $($_.Exception.Message)"
+        exit 1
+    }
+    # Clear any lingering native process exit code from activation steps
+    if ($LASTEXITCODE -ne 0) { $global:LASTEXITCODE = 0 }
+} else {
+    Write-Host "Using existing virtualenv: $env:VIRTUAL_ENV"
+}
+
+# Backend tests
+pytest
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# Frontend tests
+$prevCI = $env:CI
+$env:CI = 'true'
+npm --prefix Frontend test
+$npmExit = $LASTEXITCODE
+if ($null -eq $prevCI) { Remove-Item Env:CI -ErrorAction Ignore } else { $env:CI = $prevCI }
+if ($npmExit -ne 0) { exit $npmExit }
+
+# Optional end-to-end tests
+if ($e2e) {
+    & "$RepoRoot/scripts/tests/run-e2e-tests.ps1"
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}

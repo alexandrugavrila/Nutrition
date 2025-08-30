@@ -53,6 +53,15 @@ npm --prefix Frontend run preview # preview build
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full contributor workflow details.
 
+### 6. Run Tests
+
+```bash
+./scripts/run-tests.sh        # Bash
+pwsh ./scripts/run-tests.ps1  # PowerShell
+```
+
+Pass `--e2e` to also run the end-to-end API suite. The CI pipeline uses the same command.
+
 ---
 
 ## 🗂️ Project Structure
