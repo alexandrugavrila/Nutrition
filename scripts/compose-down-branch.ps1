@@ -5,6 +5,9 @@ param(
   [switch]$Force             # Skip confirmation prompt
 )
 
+. "$PSScriptRoot/lib/branch-env.ps1"
+$envInfo = Set-BranchEnv
+
 function Get-ComposeProjects {
   param(
     [string]$Prefix = 'nutrition-'
@@ -38,16 +41,10 @@ function Prioritize-CurrentBranch {
   param(
     [string[]]$Projects
   )
-  try {
-    $branch = (git rev-parse --abbrev-ref HEAD).Trim()
-    if ($branch) {
-      $sanitized = ($branch.ToLower() -replace '[^a-z0-9]', '-').Trim('-')
-      $currentProj = "nutrition-$sanitized"
-      if ($Projects -contains $currentProj) {
-        $Projects = @($currentProj) + ($Projects | Where-Object { $_ -ne $currentProj })
-      }
-    }
-  } catch { }
+  $currentProj = $envInfo.Project
+  if ($currentProj -and $Projects -contains $currentProj) {
+    return @($currentProj) + ($Projects | Where-Object { $_ -ne $currentProj })
+  }
   return $Projects
 }
 
@@ -78,8 +75,7 @@ function Select-Projects {
 }
 
 # --- Main ---
-$repoRoot = Split-Path -Parent $PSScriptRoot
-Set-Location $repoRoot
+Set-Location $envInfo.RepoRoot
 
 $projects = Get-ComposeProjects
 $projects = Prioritize-CurrentBranch -Projects $projects

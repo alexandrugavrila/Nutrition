@@ -8,17 +8,14 @@ param(
   [string[]]$Services
 )
 
-$repoRoot = Split-Path -Parent $PSScriptRoot
-Set-Location $repoRoot
+. "$PSScriptRoot/lib/branch-env.ps1"
+$envInfo = Set-BranchEnv
+Set-Location $envInfo.RepoRoot
 
-$branch    = (git rev-parse --abbrev-ref HEAD).Trim()
-$sanitized = ($branch.ToLower() -replace '[^a-z0-9]', '-').Trim('-')
-$project   = "nutrition-$sanitized"
-
-Write-Host "Bringing down containers for '$branch'..."
-docker compose -p $project down -v --remove-orphans | Out-Null
-docker network rm "${project}_default" 2>$null | Out-Null
-docker volume rm "${project}_node_modules" 2>$null | Out-Null
+Write-Host "Bringing down containers for '$($envInfo.Branch)'..."
+docker compose -p $envInfo.Project down -v --remove-orphans | Out-Null
+docker network rm "${($envInfo.Project)}_default" 2>$null | Out-Null
+docker volume rm "${($envInfo.Project)}_node_modules" 2>$null | Out-Null
 
 Write-Host "Bringing up containers..."
 & "$PSScriptRoot/compose-up-branch.ps1" @PSBoundParameters

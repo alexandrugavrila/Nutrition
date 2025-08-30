@@ -2,17 +2,14 @@
 # scripts/compose-restart-branch.sh
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$repo_root"
+source "$(dirname "${BASH_SOURCE[0]}")/lib/branch-env.sh"
+branch_env_load
+cd "$REPO_ROOT"
 
-branch="$(git rev-parse --abbrev-ref HEAD | tr -d '\n')"
-san="$(echo "$branch" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/^[-]*//;s/[-]*$//')"
-project="nutrition-$san"
-
-echo "Bringing down containers for '$branch'..."
-docker compose -p "$project" down -v --remove-orphans >/dev/null 2>&1 || true
-docker network rm "${project}_default" >/dev/null 2>&1 || true
-docker volume rm "${project}_node_modules" >/dev/null 2>&1 || true
+echo "Bringing down containers for '$BRANCH_NAME'..."
+docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans >/dev/null 2>&1 || true
+docker network rm "${COMPOSE_PROJECT}_default" >/dev/null 2>&1 || true
+docker volume rm "${COMPOSE_PROJECT}_node_modules" >/dev/null 2>&1 || true
 
 echo "Bringing up containers..."
-"$repo_root/scripts/compose-up-branch.sh" "$@"
+"$REPO_ROOT/scripts/compose-up-branch.sh" "$@"

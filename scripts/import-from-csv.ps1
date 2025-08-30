@@ -16,29 +16,15 @@ if (([int]$production + [int]$test) -ne 1) {
 
 $flag = if ($production) { "--production" } else { "--test" }
 
-# Determine repo root
-$repoRoot = Split-Path -Parent $PSScriptRoot
-Set-Location $repoRoot
-
-# Determine branch-specific project name
-$branch = (git rev-parse --abbrev-ref HEAD).Trim()
-$sanitized = ($branch.ToLower() -replace '[^a-z0-9]', '-').Trim('-')
-$project = "nutrition-$sanitized"
+. "$PSScriptRoot/lib/branch-env.ps1"
+$envInfo = Set-BranchEnv
+Set-Location $envInfo.RepoRoot
 
 # Ensure containers are running for this branch
-$containers = docker compose -p $project ps -q 2>$null
+$containers = docker compose -p $envInfo.Project ps -q 2>$null
 if (-not $containers) {
-  Write-Warning "Warning: no containers running for branch '$branch'. Run the compose script first."
+  Write-Warning "Warning: no containers running for branch '$($envInfo.Branch)'. Run the compose script first."
   exit 1
 }
-
-# Get mapped database port
-$portLine = docker compose -p $project port db 5432 2>$null
-if (-not $portLine) {
-  Write-Warning "Warning: unable to determine database port for project '$project'."
-  exit 1
-}
-$DB_PORT = ($portLine -split ':')[-1]
-$env:DB_PORT = $DB_PORT
 
 python Database/import_from_csv.py $flag

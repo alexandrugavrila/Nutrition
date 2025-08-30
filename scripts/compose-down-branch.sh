@@ -42,18 +42,13 @@ PY
 
 prioritize_current_branch() {
   local projects=("$@")
-  local branch sanitized current
-  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
-  if [[ -n "$branch" ]]; then
-    sanitized=$(echo "$branch" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/^[-]*//;s/[-]*$//')
-    current="nutrition-$sanitized"
-    if printf '%s\n' "${projects[@]}" | grep -qx "$current"; then
-      echo "$current"
-      for p in "${projects[@]}"; do
-        [[ "$p" == "$current" ]] || echo "$p"
-      done
-      return
-    fi
+  local current="nutrition-$BRANCH_SANITIZED"
+  if printf '%s\n' "${projects[@]}" | grep -qx "$current"; then
+    echo "$current"
+    for p in "${projects[@]}"; do
+      [[ "$p" == "$current" ]] || echo "$p"
+    done
+    return
   fi
   printf '%s\n' "${projects[@]}"
 }
@@ -83,8 +78,9 @@ select_projects() {
   printf '%s\n' "${selection[@]}" | sort -u
 }
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$repo_root"
+source "$(dirname "${BASH_SOURCE[0]}")/lib/branch-env.sh"
+branch_env_load
+cd "$REPO_ROOT"
 
 mapfile -t projects < <(get_compose_projects)
 mapfile -t projects < <(prioritize_current_branch "${projects[@]}")

@@ -38,26 +38,16 @@ if (( mode_count != 1 )); then
   exit 1
 fi
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$repo_root"
+source "$(dirname "${BASH_SOURCE[0]}")/lib/branch-env.sh"
+branch_env_load
+cd "$REPO_ROOT"
 
-branch="$(git rev-parse --abbrev-ref HEAD | tr -d '\n')"
-san="$(echo "$branch" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/^[-]*//;s/[-]*$//')"
-project="nutrition-$san"
-
-offset_hex="$(printf '%s' "$branch" | sha1sum | head -c 2)"
-offset=$((0x$offset_hex % 100))
-export DB_PORT=$((5432 + offset))
-export BACKEND_PORT=$((8000 + offset))
-export FRONTEND_PORT=$((3000 + offset))
-export DATABASE_URL="postgresql://nutrition_user:nutrition_pass@localhost:$DB_PORT/nutrition"
-
-echo "Starting '$branch' with ports:"
+echo "Starting '$BRANCH_NAME' with ports:"
 echo "  DB: $DB_PORT"
 echo "  Backend: $BACKEND_PORT"
 echo "  Frontend: $FRONTEND_PORT"
 
-if ! docker compose -p "$project" up -d "${services[@]}"; then
+if ! docker compose -p "$COMPOSE_PROJECT" up -d "${services[@]}"; then
   echo "Failed to start services." >&2
   exit 1
 fi
@@ -69,7 +59,7 @@ fi
 
 echo "Waiting for database to be ready..."
 deadline=$((SECONDS + 120))
-until docker compose -p "$project" exec -T db pg_isready -U nutrition_user -d nutrition >/dev/null 2>&1; do
+until docker compose -p "$COMPOSE_PROJECT" exec -T db pg_isready -U nutrition_user -d nutrition >/dev/null 2>&1; do
   if (( SECONDS >= deadline )); then
     echo "Database did not become ready within the timeout." >&2
     exit 1
@@ -79,7 +69,7 @@ done
 
 echo "Waiting for backend dependencies (alembic) to be ready..."
 deadline=$((SECONDS + 180))
-until docker compose -p "$project" exec -T backend sh -lc 'python -m pip show alembic >/dev/null 2>&1'; do
+until docker compose -p "$COMPOSE_PROJECT" exec -T backend sh -lc 'python -m pip show alembic >/dev/null 2>&1'; do
   if (( SECONDS >= deadline )); then
     echo "Backend did not finish installing dependencies (alembic not available) within timeout." >&2
     exit 1
@@ -89,7 +79,7 @@ done
 
 echo "Applying database migrations..."
 # Use python -m to avoid PATH inconsistencies for console scripts
-docker compose -p "$project" exec -T backend python -m alembic upgrade head
+docker compose -p "$COMPOSE_PROJECT" exec -T backend python -m alembic upgrade head
 
 if $production || $test; then
   ./scripts/activate-venv.sh

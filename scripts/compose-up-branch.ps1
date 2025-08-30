@@ -30,26 +30,15 @@ if ($modeCount -ne 1) {
   exit 1
 }
 
-# --- Repo / project naming ---
-$repoRoot = Split-Path -Parent $PSScriptRoot
-Set-Location $repoRoot
+. "$PSScriptRoot/lib/branch-env.ps1"
+$envInfo = Set-BranchEnv
+Set-Location $envInfo.RepoRoot
 
-$branch     = (git rev-parse --abbrev-ref HEAD).Trim()
-$sanitized  = ($branch.ToLower() -replace '[^a-z0-9]', '-').Trim('-')
-$project    = "nutrition-$sanitized"
-
-# Stable, per-branch port offsets (0–99)
-$offset              = [math]::Abs($branch.GetHashCode()) % 100
-$env:DB_PORT        = 5432 + $offset
-$env:BACKEND_PORT   = 8000 + $offset
-$env:FRONTEND_PORT  = 3000 + $offset
-$env:DATABASE_URL   = "postgresql://nutrition_user:nutrition_pass@localhost:$env:DB_PORT/nutrition"
-
-Write-Host "Starting '$branch' with ports:`n  DB: $env:DB_PORT`n  Backend: $env:BACKEND_PORT`n  Frontend: $env:FRONTEND_PORT"
+Write-Host "Starting '$($envInfo.Branch)' with ports:`n  DB: $env:DB_PORT`n  Backend: $env:BACKEND_PORT`n  Frontend: $env:FRONTEND_PORT"
 
 # --- Compose up ---
 try {
-  docker compose -p $project up -d @Services
+  docker compose -p $envInfo.Project up -d @Services
   if ($LASTEXITCODE -ne 0) { throw "docker compose exited with code $LASTEXITCODE" }
 }
 catch {
@@ -67,7 +56,7 @@ Write-Host "Waiting for database to be ready..."
 $deadline = (Get-Date).AddMinutes(2)   # 2 minute timeout
 do {
   Start-Sleep -Seconds 1
-  docker compose -p $project exec -T db pg_isready -U nutrition_user -d nutrition | Out-Null
+  docker compose -p $envInfo.Project exec -T db pg_isready -U nutrition_user -d nutrition | Out-Null
 } until ($LASTEXITCODE -eq 0 -or (Get-Date) -ge $deadline)
 
 if ($LASTEXITCODE -ne 0) {
@@ -80,7 +69,7 @@ Write-Host "Waiting for backend dependencies (alembic) to be ready..."
 $deadline = (Get-Date).AddMinutes(3)
 do {
   Start-Sleep -Seconds 1
-  docker compose -p $project exec -T backend sh -lc "python -m pip show alembic >/dev/null 2>&1"
+  docker compose -p $envInfo.Project exec -T backend sh -lc "python -m pip show alembic >/dev/null 2>&1"
 } until ($LASTEXITCODE -eq 0 -or (Get-Date) -ge $deadline)
 
 if ($LASTEXITCODE -ne 0) {
@@ -91,7 +80,7 @@ if ($LASTEXITCODE -ne 0) {
 # --- Run database migrations ---
 Write-Host "Applying database migrations..."
 # Use python -m to avoid PATH issues with console scripts
-docker compose -p $project exec -T backend python -m alembic upgrade head
+docker compose -p $envInfo.Project exec -T backend python -m alembic upgrade head
 if ($LASTEXITCODE -ne 0) {
   Write-Error "Database migration failed with exit code $LASTEXITCODE."
   exit $LASTEXITCODE
