@@ -10,7 +10,7 @@ Usage: ./scripts/run-e2e-tests.sh [pytest-args...]
 
 Behavior:
   - If BACKEND_PORT is unset or backend is unreachable, starts the stack via
-    ./scripts/compose-up-branch.sh -test
+    ./scripts/compose.sh up -test
   - Waits for the backend to become healthy
   - Runs: pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py [pytest-args]
 
@@ -39,7 +39,7 @@ STARTED_STACK=false
 if [[ -z "${BACKEND_PORT:-}" ]] || ! is_backend_healthy "$BACKEND_PORT"; then
   # Bring up the stack to ensure ports are exported and services are running
   # shellcheck disable=SC1091
-  source ./scripts/compose-up-branch.sh -test
+  source ./scripts/compose.sh up -test
   STARTED_STACK=true
 fi
 
@@ -57,5 +57,5 @@ done
 echo "Running e2e tests against http://localhost:${BACKEND_PORT}/api"
 pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py "$@"
 
-# Note: intentionally leave the stack running. Use compose-down-branch when done.
+# Note: intentionally leave the stack running. Use compose.sh down when done.
 exit $?
