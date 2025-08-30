@@ -162,12 +162,37 @@ def main():
         wipe_data(session, ordered_tables)
         import_csv(session, data_dir, ordered_tables)
 
+        # Reset sequences only for tables that actually have an `id` column
         for table in ordered_tables:
-            seq = session.execute(
-                text("SELECT pg_get_serial_sequence(:tbl, 'id')"),
-                {"tbl": table},
-            ).scalar()
-            if seq:
+            try:
+                has_id = session.execute(
+                    text(
+                        """
+                        SELECT EXISTS (
+                            SELECT 1
+                            FROM information_schema.columns
+                            WHERE table_schema = 'public'
+                              AND table_name = :tbl
+                              AND column_name = 'id'
+                        )
+                        """
+                    ),
+                    {"tbl": table},
+                ).scalar()
+
+                if not has_id:
+                    # Skip join tables or any table without an `id` column
+                    continue
+
+                seq = session.execute(
+                    text("SELECT pg_get_serial_sequence(:tbl, 'id')"),
+                    {"tbl": table},
+                ).scalar()
+
+                # If the column isn't backed by a sequence (unlikely), skip
+                if not seq:
+                    continue
+
                 session.execute(
                     text(
                         "SELECT setval(:seq, (SELECT COALESCE(MAX(id), 0) + 1 FROM "
@@ -176,6 +201,9 @@ def main():
                     ),
                     {"seq": seq},
                 )
+            except Exception as e:
+                # Don't fail the entire import due to a sequence reset issue on a single table
+                print(f"Skipping sequence reset for {table}: {e}")
         session.commit()
         session.close()
         print("All CSVs imported successfully.")
