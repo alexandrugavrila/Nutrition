@@ -37,6 +37,7 @@ Set-Location $repoRoot
 # Ensure virtual environment is active
 $activationLog = [System.IO.Path]::GetTempFileName()
 if (-not $env:VIRTUAL_ENV) {
+  Write-Host "No virtualenv detected; activating via ./scripts/activate-venv.ps1 ..."
   & "$PSScriptRoot/activate-venv.ps1" *> $activationLog 2>&1
   if ($LASTEXITCODE -ne 0) {
     Get-Content $activationLog
