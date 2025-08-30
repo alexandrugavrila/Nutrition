@@ -19,9 +19,9 @@ if ! command -v "$PYTHON_CMD" >/dev/null 2>&1; then
 fi
 
 # Load branch-specific environment to populate TEST_* ports, if available
-if [ -f "$(dirname "$0")/lib/branch-env.sh" ]; then
+if [ -f "$(dirname "$0")/../lib/branch-env.sh" ]; then
   # shellcheck disable=SC1090
-  . "$(dirname "$0")/lib/branch-env.sh"
+  . "$(dirname "$0")/../lib/branch-env.sh"
   branch_env_load || true
 fi
 

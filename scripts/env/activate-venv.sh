@@ -4,7 +4,7 @@
 
 set -e
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 VENV_PATH="${VENV_PATH:-$ROOT_DIR/.venv}"
 REQUIREMENTS_PATH="${REQUIREMENTS_PATH:-$ROOT_DIR/Backend/requirements.txt}"
 FRONTEND_PATH="${FRONTEND_PATH:-$ROOT_DIR/Frontend}"

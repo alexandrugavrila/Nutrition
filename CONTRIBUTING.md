@@ -12,13 +12,13 @@ The activation scripts install backend Python deps and (when needed) frontend No
 
 **Windows (PowerShell):**
 ```powershell
-pwsh ./scripts/activate-venv.ps1
+pwsh ./scripts/env/activate-venv.ps1
 ````
 
 **macOS/Linux (Bash):**
 
 ```bash
-source ./scripts/activate-venv.sh
+source ./scripts/env/activate-venv.sh
 ```
 
 Many helper scripts (e.g., `run-e2e-tests` and `import-from-csv`) automatically
@@ -46,7 +46,7 @@ Use:
 **Start services (choose one seed mode):**
 
 ```pwsh
-pwsh ./scripts/compose.ps1 up -test      # or -production / -empty
+pwsh ./scripts/docker/compose.ps1 up -test      # or -production / -empty
 ```
 
 Ensures:
@@ -66,7 +66,7 @@ Compose-up behavior:
 **Stop services:**
 
 ```pwsh
-pwsh ./scripts/compose.ps1 down
+pwsh ./scripts/docker/compose.ps1 down
 ```
 
 Behavior and options:
@@ -81,7 +81,7 @@ Behavior and options:
 **Restart services:**
 
 ```pwsh
-pwsh ./scripts/compose.ps1 restart -test      # or -production / -empty
+pwsh ./scripts/docker/compose.ps1 restart -test      # or -production / -empty
 ```
 
 Stops and then starts the current branch's containers with the chosen seed mode.
@@ -91,8 +91,8 @@ Stops and then starts the current branch's containers with the chosen seed mode.
 Re-import seed data into the running branch database:
 
 ```bash
-./scripts/import-from-csv.sh -production   # or -test
-pwsh ./scripts/import-from-csv.ps1 -production   # or -test
+./scripts/db/import-from-csv.sh -production   # or -test
+pwsh ./scripts/db/import-from-csv.ps1 -production   # or -test
 ```
 
 These helpers require the branch's containers to be running and automatically
@@ -167,17 +167,17 @@ npm --prefix Frontend run preview # preview build
 - End-to-end API tests (require Docker stack):
   - Auto-skip: The e2e module skips itself when `BACKEND_PORT` is missing or the backend is unreachable.
   - Run via helper script (brings stack up if needed):
-    - Bash: `./scripts/run-e2e-tests.sh`
-    - PowerShell: `pwsh ./scripts/run-e2e-tests.ps1`
+    - Bash: `./scripts/tests/run-e2e-tests.sh`
+    - PowerShell: `pwsh ./scripts/tests/run-e2e-tests.ps1`
   - Pass extra pytest args as needed:
-    - `./scripts/run-e2e-tests.sh -q -k ingredient`
-    - `pwsh ./scripts/run-e2e-tests.ps1 -q -k ingredient`
+    - `./scripts/tests/run-e2e-tests.sh -q -k ingredient`
+    - `pwsh ./scripts/tests/run-e2e-tests.ps1 -q -k ingredient`
   - These helpers automatically activate the virtual environment if required.
 
 Notes:
 - The helper script starts the branch-specific stack in `-test` mode if it’s not already healthy, waits for readiness, and then runs `pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py` by default for clearer output. The e2e suite emits explicit `[E2E PASS] ...` step messages; `-s` ensures they are shown.
 - You can still pass your own pytest flags to tailor verbosity (e.g., `-q`, `-k`, etc.).
-- The script leaves containers running; use `compose.ps1 down` (or `compose.sh down`) to stop them when done.
+- The script leaves containers running; use `scripts/docker/compose.ps1 down` (or `scripts/docker/compose.sh down`) to stop them when done.
 
 ---
 
@@ -186,21 +186,21 @@ Notes:
 **Canonical workflow (one script does it all):**
 
 ```powershell
-pwsh ./scripts/sync-api-and-migrations.ps1
+pwsh ./scripts/db/sync-api-and-migrations.ps1
 ```
 
 This orchestrates:
 
 1. **OpenAPI schema + frontend TypeScript types**
 
-* Runs `update-api-schema.ps1`
+* Runs `scripts/db/update-api-schema.ps1`
 * Exports `/openapi.json` → `Backend/openapi.json`
 * Regenerates types → `Frontend/src/api-types.ts`
 * If `git` is available, compares changes and (in interactive mode) lets you **keep** or **revert**
 
 2. **Migration drift detection/adoption**
 
-* Runs `check-migration-drift.ps1`
+* Runs `scripts/db/check-migration-drift.ps1`
 * Starts a temporary Postgres DB
 * Applies all migrations
 * Autogenerates a revision to detect drift
@@ -232,14 +232,14 @@ alembic downgrade base && alembic upgrade head
 #### Drift Check Only
 
 ```powershell
-pwsh ./scripts/check-migration-drift.ps1
+pwsh ./scripts/db/check-migration-drift.ps1
 ```
 
 #### OpenAPI Schema / Frontend Types
 
 ```bash
 # Regenerate both with the helper
-scripts/update-api-schema.sh
+scripts/db/update-api-schema.sh
 ```
 
 Or step-by-step:
@@ -270,7 +270,7 @@ kill %1
 Before opening a PR:
 
 * [ ] **Models changed?**
-  Run `pwsh ./scripts/sync-api-and-migrations.ps1`
+  Run `pwsh ./scripts/db/sync-api-and-migrations.ps1`
   → Commit any new migration(s), `Backend/openapi.json`, `Frontend/src/api-types.ts`
 * [ ] **Frontend API usage added/changed?**
   Ensure `Frontend/src/api-types.ts` is current (via the sync script)
@@ -298,13 +298,13 @@ The repo includes a **two‑job CI**: `backend` and `frontend`.
   * Checks out the repo
   * Installs Python 3.11 and Node 20
   * Caches **pip** (`~/.cache/pip`) keyed by `Backend/requirements.txt`
-  * Activates venv via `scripts/activate-venv.sh` and installs `pytest`
+  * Activates venv via `scripts/env/activate-venv.sh` and installs `pytest`
 
 * **Migration drift gate**
 
   ```bash
-  source scripts/activate-venv.sh
-  scripts/check-migration-drift.sh
+  source scripts/env/activate-venv.sh
+  scripts/db/check-migration-drift.sh
   git diff --exit-code Backend/migrations/versions
   ```
 
@@ -319,9 +319,9 @@ The repo includes a **two‑job CI**: `backend` and `frontend`.
 * **Updates API schema**
 
   ```bash
-  source scripts/activate-venv.sh
+  source scripts/env/activate-venv.sh
   export BACKEND_PORT=8000
-  scripts/update-api-schema.sh
+  scripts/db/update-api-schema.sh
   ```
 
   Starts a temporary server, exports `Backend/openapi.json`, regenerates `Frontend/src/api-types.ts`.

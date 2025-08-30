@@ -25,7 +25,7 @@ cd Nutrition
 
 # Start stack for this branch
 # Choose ONE: -production | -test | -empty
-pwsh ./scripts/compose.ps1 up -test
+pwsh ./scripts/docker/compose.ps1 up -test
 ```
 
 👉 The script prints the branch-specific ports for frontend, backend, and database.
@@ -63,7 +63,11 @@ Nutrition/
 ├── Frontend/       # React app
 ├── Database/       # CSV seed data + import utils
 ├── docker-compose.yml
-└── scripts/        # Helper scripts (compose up/down, venv, tooling)
+└── scripts/        # Helper scripts
+    ├── docker/     # Compose up/down and stack management
+    ├── db/         # Database and API schema utilities
+    ├── env/        # Virtualenv setup helpers
+    └── tests/      # Test runners and helpers
 ```
 
 ---

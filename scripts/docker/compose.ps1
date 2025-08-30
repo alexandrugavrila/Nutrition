@@ -1,4 +1,4 @@
-# scripts/compose.ps1
+# scripts/docker/compose.ps1
 [CmdletBinding()]
 param(
   [Parameter(Position = 0, Mandatory = $true)]
@@ -18,13 +18,13 @@ param(
 
 function Show-Usage {
   Write-Host ""; Write-Host "Usage:" -ForegroundColor Yellow
-  Write-Host "  pwsh ./scripts/compose.ps1 <up|down|restart> [options]"
+  Write-Host "  pwsh ./scripts/docker/compose.ps1 <up|down|restart> [options]"
   Write-Host ""
   Write-Host "  down options: --All | --Project <name> | -PruneImages | -Force"
   Write-Host ""
 }
 
-. "$PSScriptRoot/lib/branch-env.ps1"
+. "$PSScriptRoot/../lib/branch-env.ps1"
 $envInfo = Set-BranchEnv
 
 # If COMPOSE_ENV_FILE is set, write resolved ports for downstream scripts
@@ -93,7 +93,7 @@ function Invoke-Up {
   }
 
   if ($production -or $test) {
-    & "$PSScriptRoot/activate-venv.ps1"
+    & "$PSScriptRoot/../env/activate-venv.ps1"
     if ($production) {
       Write-Host "Importing production data..."
       & python Database/import_from_csv.py --production

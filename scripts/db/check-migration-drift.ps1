@@ -11,7 +11,7 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # Load branch-specific environment to populate TEST_* ports, if available
 try {
-    . (Join-Path $scriptDir 'lib/branch-env.ps1')
+    . (Join-Path $scriptDir '../lib/branch-env.ps1')
     $null = Set-BranchEnv
 } catch { }
 

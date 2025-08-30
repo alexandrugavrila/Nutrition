@@ -12,18 +12,18 @@ $ErrorActionPreference = 'Stop'
 function Show-Usage {
   Write-Host ""
   Write-Host "Usage:" -ForegroundColor Yellow
-  Write-Host "  pwsh ./scripts/run-e2e-tests.ps1  [pytest-args...]"
+  Write-Host "  pwsh ./scripts/tests/run-e2e-tests.ps1  [pytest-args...]"
   Write-Host ""
   Write-Host "Behavior:" -ForegroundColor Yellow
   Write-Host "  - Uses docker compose to determine the backend port for the current branch"
-  Write-Host "  - If the backend is unreachable, starts the stack via ./scripts/compose.ps1 up -test" \
+  Write-Host "  - If the backend is unreachable, starts the stack via ./scripts/docker/compose.ps1 up -test" \
              "and reads port information from the generated env file"
   Write-Host "  - Waits for the backend to become healthy"
   Write-Host "  - Runs: pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py [pytest-args]"
   Write-Host ""
   Write-Host "Examples:" -ForegroundColor Yellow
-  Write-Host "  pwsh ./scripts/run-e2e-tests.ps1 -q"
-  Write-Host "  pwsh ./scripts/run-e2e-tests.ps1 -k ingredient"
+  Write-Host "  pwsh ./scripts/tests/run-e2e-tests.ps1 -q"
+  Write-Host "  pwsh ./scripts/tests/run-e2e-tests.ps1 -k ingredient"
   Write-Host ""
 }
 
@@ -32,14 +32,14 @@ if ($PSBoundParameters.ContainsKey('help') -or $args -contains '-h' -or $args -c
   exit 0
 }
 
-$repoRoot = Resolve-Path "$PSScriptRoot/.."
+$repoRoot = Resolve-Path "$PSScriptRoot/../.."
 Set-Location $repoRoot
 
 # Ensure virtual environment is active
 $activationLog = [System.IO.Path]::GetTempFileName()
 if (-not $env:VIRTUAL_ENV) {
-  Write-Host "No virtualenv detected; activating via ./scripts/activate-venv.ps1 ..."
-  & "$PSScriptRoot/activate-venv.ps1" *> $activationLog 2>&1
+  Write-Host "No virtualenv detected; activating via ./scripts/env/activate-venv.ps1 ..."
+  & "$PSScriptRoot/../env/activate-venv.ps1" *> $activationLog 2>&1
   if ($LASTEXITCODE -ne 0) {
     Get-Content $activationLog
     Remove-Item $activationLog -ErrorAction SilentlyContinue
@@ -79,7 +79,7 @@ if (-not $backendPort -or -not (Test-BackendHealthy -Port $backendPort)) {
   $envFile = [System.IO.Path]::GetTempFileName()
   try {
     $env:COMPOSE_ENV_FILE = $envFile
-    & "$PSScriptRoot/compose.ps1" up -test
+    & "$PSScriptRoot/../docker/compose.ps1" up -test
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Get-Content $envFile | ForEach-Object {
       if ($_ -match '^([^=]+)=(.+)$') { Set-Item -Path "env:$($matches[1])" -Value $matches[2] }

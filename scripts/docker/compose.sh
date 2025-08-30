@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# scripts/compose.sh
+# scripts/docker/compose.sh
 set -euo pipefail
 
 show_usage() {
   cat >&2 <<'USAGE'
-Usage: ./scripts/compose.sh <subcommand> [options]
+Usage: ./scripts/docker/compose.sh <subcommand> [options]
 
 Subcommands:
   up [-production|-test|-empty] [service...]
@@ -14,7 +14,7 @@ USAGE
 }
 
 # Load branch-specific environment variables
-source "$(dirname "${BASH_SOURCE[0]}")/lib/branch-env.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/branch-env.sh"
 branch_env_load
 
 # If a path is provided, export resolved ports for downstream scripts.
@@ -93,7 +93,7 @@ compose_up() {
   docker compose -p "$COMPOSE_PROJECT" exec -T backend python -m alembic upgrade head
 
   if $production || $test; then
-    ./scripts/activate-venv.sh
+    ./scripts/env/activate-venv.sh
     if $production; then
       echo "Importing production data..."
       python Database/import_from_csv.py --production
@@ -185,7 +185,7 @@ compose_down() {
           return 1
         fi
         ;;
-      *) echo "Usage: ./scripts/compose.sh down [--prune-images] [--force] [--all|--project <name>]" >&2; return 1 ;;
+      *) echo "Usage: ./scripts/docker/compose.sh down [--prune-images] [--force] [--all|--project <name>]" >&2; return 1 ;;
     esac
     shift
   done

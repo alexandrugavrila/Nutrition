@@ -23,14 +23,14 @@ case "$1" in
     ;;
 esac
 
-source "$(dirname "${BASH_SOURCE[0]}")/lib/branch-env.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/branch-env.sh"
 branch_env_load
 cd "$REPO_ROOT"
 
 # Ensure the virtual environment is active
 if [[ -z "${VIRTUAL_ENV:-}" ]]; then
-  echo "No virtualenv detected; activating via ./scripts/activate-venv.sh ..."
-  if ! source ./scripts/activate-venv.sh >/tmp/venv.log 2>&1; then
+  echo "No virtualenv detected; activating via ./scripts/env/activate-venv.sh ..."
+  if ! source ./scripts/env/activate-venv.sh >/tmp/venv.log 2>&1; then
     cat /tmp/venv.log
     echo "Failed to activate virtual environment" >&2
     exit 1

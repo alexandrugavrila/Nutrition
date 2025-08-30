@@ -4,7 +4,7 @@ set -euo pipefail
 # Synchronize the OpenAPI schema and database migrations with the current models.
 #
 # The script first regenerates the OpenAPI schema and frontend TypeScript types
-# using scripts/update-api-schema.sh. If this results in changes, the user is
+# using scripts/db/update-api-schema.sh. If this results in changes, the user is
 # prompted whether to keep the updates. In CI or when invoked with -y, the
 # updates are kept automatically.
 #
@@ -23,7 +23,7 @@ if [[ "${1:-}" == "-y" || "${CI:-}" == "true" ]]; then
 fi
 
 # Ensure we're running from the repository root
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 # Load branch-specific environment so we have dev and test ports available
 if [ -f "scripts/lib/branch-env.sh" ]; then
@@ -35,7 +35,7 @@ fi
 # Ensure the virtual environment is active and required packages are installed
 if [ -z "${VIRTUAL_ENV:-}" ] || ! command -v uvicorn >/dev/null 2>&1; then
   echo "Activating virtual environment..."
-  if ! scripts/activate-venv.sh >/tmp/venv.log 2>&1; then
+  if ! scripts/env/activate-venv.sh >/tmp/venv.log 2>&1; then
     cat /tmp/venv.log
     echo "Failed to activate virtual environment" >&2
     exit 1
@@ -96,7 +96,7 @@ fi
 #############################
 
 # Run the existing update script; capture output to avoid noise
-scripts/update-api-schema.sh >/tmp/api-sync.log 2>&1 || {
+scripts/db/update-api-schema.sh >/tmp/api-sync.log 2>&1 || {
   cat /tmp/api-sync.log
   echo "Failed to update API schema" >&2
   exit 1

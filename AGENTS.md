@@ -11,7 +11,7 @@ This repository contains a full-stack nutrition planning and tracking applicatio
 
 ## Docker environment
 - Develop inside branch-specific Docker Compose stacks.
-- Launch with `./scripts/compose.sh up -test` (or `.ps1`); stop with `compose.sh down`.
+- Launch with `./scripts/docker/compose.sh up -test` (or `.ps1`); stop with `docker/compose.sh down`.
 - Containers and ports are isolated per branch, enabling parallel stacks.
 - Port offsets per branch (N from branch hash): DB 5432+N, Backend 8000+N, Frontend 3000+N.
 
@@ -56,7 +56,7 @@ We use a **split-responsibility model** between `README.md` and `CONTRIBUTING.md
     - Virtual environment setup
     - Branching conventions
     - Docker workflows and port mapping
-    - API & migrations handling (via `sync-api-and-migrations.ps1` as the canonical workflow)
+    - API & migrations handling (via `scripts/db/sync-api-and-migrations.ps1` as the canonical workflow)
     - Manual fallback commands (Alembic, update-api-schema, drift check)
     - Tools (DBeaver, etc.)
     - Typical commit checklist
