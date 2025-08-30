@@ -5,10 +5,6 @@ param(
   [ValidateSet('up','down','restart')]
   [string]$Command,
 
-  [switch]$PruneImages,
-  [switch]$Force,
-  [switch]$All,
-  [string]$Project,
   [Parameter(ValueFromRemainingArguments = $true)]
   [string[]]$Services
 )
@@ -17,9 +13,9 @@ function Show-Usage {
   Write-Host ""; Write-Host "Usage:" -ForegroundColor Yellow
   Write-Host "  pwsh ./scripts/docker/compose.ps1 <up|down|restart> [options]"
   Write-Host ""
-  Write-Host "  up:      [type <-dev|-test>] data <-test|-prod> [--Project <name>] [service...]"
-  Write-Host "  down:    [type <-dev|-test>] [--All | --Project <name>] [-PruneImages] [-Force]"
-  Write-Host "  restart: [type <-dev|-test>] data <-test|-prod> [--Project <name>]"
+  Write-Host "  up:      [type <-dev|-test>] data <-test|-prod> [service...]"
+  Write-Host "  down:    [type <-dev|-test>]"
+  Write-Host "  restart: [type <-dev|-test>] data <-test|-prod>"
   Write-Host ""
 }
 
@@ -69,7 +65,7 @@ function Invoke-Up {
 
   # Resolve compose project name. Allow override via -Project; otherwise
   # when -UseTestPorts is set, suffix "-test" to isolate from the dev stack.
-  $proj = if ($Project) { $Project } elseif ($useTestPorts) { "$($envInfo.Project)-test" } else { $envInfo.Project }
+  $proj = if ($useTestPorts) { "$($envInfo.Project)-test" } else { $envInfo.Project }
 
   # Preserve current environment, optionally remap to TEST values only for the
   # duration of this 'up' call.
@@ -225,38 +221,11 @@ function Invoke-Down {
   }
 
   $chosen = @()
-  if ($All) {
-    $chosen = Get-ComposeProjects | Prioritize-CurrentBranch
-    if (-not $chosen -or $chosen.Count -eq 0) { 
-      Write-Host "No Compose projects found with the expected prefix." -ForegroundColor Yellow
-      return
-    }
-  } elseif ($Project) {
-    $chosen = @($Project)
-  } else {
-    $defaultProj = if ($useTestPorts) { "$($envInfo.Project)-test" } else { $envInfo.Project }
-    $chosen = @($defaultProj)
-  }
-
-  if (-not $Force -and $chosen.Count -gt 1) {
-    Write-Host "You are about to delete the following Compose project(s):" -ForegroundColor Yellow
-    $chosen | ForEach-Object { Write-Host "  - $_" }
-    $confirm = Read-Host "Type 'yes' to proceed"
-    if ($confirm -ne 'yes') {
-      Write-Host "Cancelled."
-      return
-    }
-  }
-
-  foreach ($proj in $chosen) {
-    Write-Host "Bringing down '$proj'..." -ForegroundColor Cyan
-    $args = @('compose','-p',$proj,'down','-v','--remove-orphans')
-    if ($PruneImages) { $args += @('--rmi','local') }
-    docker @args
-    $defaultNet = "${proj}_default"
-    docker network rm $defaultNet 2>$null | Out-Null
-    docker volume rm "${proj}_node_modules" 2>$null | Out-Null
-  }
+  $proj = if ($useTestPorts) { "$($envInfo.Project)-test" } else { $envInfo.Project }
+  Write-Host "Bringing down '$proj'..." -ForegroundColor Cyan
+  docker compose -p $proj down -v --remove-orphans | Out-Null
+  docker network rm "${proj}_default" 2>$null | Out-Null
+  docker volume rm "${proj}_node_modules" 2>$null | Out-Null
   Write-Host "Done." -ForegroundColor Green
 }
 
@@ -281,7 +250,7 @@ function Invoke-Restart {
   }
   if (-not $dataMode) { Write-Error "restart requires: data <-test|-prod> (optionally type <-dev|-test>)"; return }
 
-  $proj = if ($Project) { $Project } elseif ($useTestPorts) { "$($envInfo.Project)-test" } else { $envInfo.Project }
+  $proj = if ($useTestPorts) { "$($envInfo.Project)-test" } else { $envInfo.Project }
   Write-Host "Bringing down containers for project '$proj'..." -ForegroundColor Cyan
   docker compose -p $proj down -v --remove-orphans | Out-Null
   docker network rm "${proj}_default" 2>$null | Out-Null

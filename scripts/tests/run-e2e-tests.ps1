@@ -86,7 +86,7 @@ try {
   $envFile = [System.IO.Path]::GetTempFileName()
   try {
     $env:COMPOSE_ENV_FILE = $envFile
-    & "$PSScriptRoot/../docker/compose.ps1" up -Project $testProject type -test data -test
+    & "$PSScriptRoot/../docker/compose.ps1" up type -test data -test
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Get-Content $envFile | ForEach-Object {
       if ($_ -match '^([^=]+)=(.+)$') { Set-Item -Path "env:$($matches[1])" -Value $matches[2] }
@@ -116,6 +116,6 @@ try {
   $exit = $LASTEXITCODE
 } finally {
   # Tear down the dedicated TEST stack regardless of test outcome
-  & "$PSScriptRoot/../docker/compose.ps1" down -Project $testProject -Force
+  & "$PSScriptRoot/../docker/compose.ps1" down type -test
 }
 exit $exit

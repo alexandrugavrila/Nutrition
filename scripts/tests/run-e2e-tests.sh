@@ -54,7 +54,7 @@ TEST_PROJECT="nutrition-${BRANCH_SANITIZED}-test"
 ENV_FILE=$(mktemp)
 cleanup_env() { rm -f "$ENV_FILE"; }
 trap cleanup_env EXIT
-COMPOSE_ENV_FILE="$ENV_FILE" ./scripts/docker/compose.sh up type -test data -test --project "$TEST_PROJECT"
+COMPOSE_ENV_FILE="$ENV_FILE" ./scripts/docker/compose.sh up type -test data -test
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 
@@ -80,5 +80,5 @@ test_exit=$?
 set -e
 
 # Tear down the dedicated TEST stack
-./scripts/docker/compose.sh down --project "$TEST_PROJECT" --force
+./scripts/docker/compose.sh down type -test
 exit $test_exit
