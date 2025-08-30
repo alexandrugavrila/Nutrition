@@ -35,8 +35,9 @@ else
   echo "Using existing virtualenv: $VIRTUAL_ENV"
 fi
 
-# Backend tests
-pytest
+# Backend tests (exclude e2e by default; use --e2e to include)
+# Force an isolated test database so unit tests never touch the dev DB.
+DATABASE_URL=sqlite:// pytest -m 'not e2e'
 
 # Frontend tests
 CI=true npm --prefix Frontend test

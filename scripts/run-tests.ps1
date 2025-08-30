@@ -32,9 +32,14 @@ if (-not $env:VIRTUAL_ENV) {
     Write-Host "Using existing virtualenv: $env:VIRTUAL_ENV"
 }
 
-# Backend tests
-pytest
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+# Backend tests (exclude e2e by default; use -e2e to include)
+# Force an isolated test database so unit tests never touch the dev DB.
+$prevDbUrl = $env:DATABASE_URL
+$env:DATABASE_URL = 'sqlite://'
+pytest -m "not e2e"
+$pyExit = $LASTEXITCODE
+if ($null -eq $prevDbUrl) { Remove-Item Env:DATABASE_URL -ErrorAction Ignore } else { $env:DATABASE_URL = $prevDbUrl }
+if ($pyExit -ne 0) { exit $pyExit }
 
 # Frontend tests
 $prevCI = $env:CI

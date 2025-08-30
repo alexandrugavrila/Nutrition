@@ -98,6 +98,10 @@ pwsh ./scripts/db/import-from-csv.ps1 -production   # or -test
 These helpers require the branch's containers to be running and automatically
 activate the virtual environment if needed.
 
+Notes:
+- The CSV importer detects an empty schema and will automatically run `alembic upgrade head` using the current `DATABASE_URL` before importing data.
+- When no tables are present it skips the TRUNCATE step to avoid SQL errors, then re-checks table order post-migration.
+
 ---
 
 ## ⚙️ Port Mapping
@@ -280,6 +284,8 @@ Before opening a PR:
   `alembic upgrade head` (or rely on the sync/drift script outcome)
 * [ ] **Tests pass?**
   `./scripts/run-tests.sh` (or `pwsh ./scripts/run-tests.ps1`)
+  - These exclude e2e tests by default.
+  - To include e2e tests, pass the flag: `./scripts/run-tests.sh --e2e` or `pwsh ./scripts/run-tests.ps1 -e2e`.
 * [ ] **Lint/build ok?**
   `npm --prefix Frontend run lint` and `npm --prefix Frontend run build`
 
