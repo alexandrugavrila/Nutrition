@@ -1,61 +1,153 @@
-from flask import Blueprint, request, jsonify
+from typing import List
 
-from db import db
-from db_models.ingredient import Ingredient as db_Ingredient
-from db_models.possible_ingredient_tag import PossibleIngredientTag as db_PossibleIngredientTag
-from schemas import IngredientSchema, PossibleIngredientTagSchema
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
+from sqlmodel import Session, select
 
-ingredient_blueprint = Blueprint('ingredient', __name__)
+from ..db import get_db
+from ..models import Ingredient, IngredientUnit, Nutrition, PossibleIngredientTag
+from ..models.schemas import IngredientCreate, IngredientRead, IngredientUpdate
 
-
-ingredient_schema = IngredientSchema()
-ingredients_schema = IngredientSchema(many=True)
-possible_tags_schema = PossibleIngredientTagSchema(many=True)
-
-
-@ingredient_blueprint.route('/ingredients', methods=['GET'])
-def get_all_ingredients():
-    ingredients = db_Ingredient.query.all()
-    return jsonify(ingredients_schema.dump(ingredients))
+router = APIRouter(prefix="/ingredients", tags=["ingredients"])
 
 
-@ingredient_blueprint.route('/ingredients/<int:ingredient_id>', methods=['GET'])
-def get_ingredient(ingredient_id):
-    ingredient = db_Ingredient.query.get(ingredient_id)
+def ingredient_to_read(ingredient: Ingredient) -> IngredientRead:
+    """Convert an Ingredient to IngredientRead ensuring a 1 g unit exists."""
+    ingredient_read = IngredientRead.model_validate(ingredient)
+    if not any(unit.name == "1g" for unit in ingredient_read.units):
+        ingredient_read.units.append(
+            IngredientUnit(id=0, ingredient_id=ingredient.id, name="1g", grams=1)
+        )
+    return ingredient_read
+
+
+@router.get("/", response_model=List[IngredientRead])
+def get_all_ingredients(db: Session = Depends(get_db)) -> List[IngredientRead]:
+    """Return all ingredients."""
+    ingredients = db.exec(select(Ingredient)).all()
+    return [ingredient_to_read(ing) for ing in ingredients]
+
+
+@router.get("/possible_tags", response_model=List[PossibleIngredientTag])
+def get_all_possible_tags(
+    db: Session = Depends(get_db),
+) -> List[PossibleIngredientTag]:
+    """Return all possible ingredient tags ordered by name."""
+    statement = select(PossibleIngredientTag).order_by(PossibleIngredientTag.name)
+    return db.exec(statement).all()
+
+
+@router.get("/{ingredient_id}", response_model=IngredientRead)
+def get_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> IngredientRead:
+    """Retrieve a single ingredient by ID."""
+    ingredient = db.get(Ingredient, ingredient_id)
     if not ingredient:
-        return jsonify({'error': 'Ingredient not found'}), 404
-    return jsonify(ingredient_schema.dump(ingredient))
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+    return ingredient_to_read(ingredient)
 
 
-@ingredient_blueprint.route('/ingredients', methods=['POST'])
-def add_ingredient():
-    ingredient = ingredient_schema.load(request.json, session=db.session)
-    db.session.add(ingredient)
-    db.session.commit()
-    return jsonify(ingredient_schema.dump(ingredient)), 201
+@router.post("/", response_model=IngredientRead, status_code=201)
+def add_ingredient(
+    ingredient: IngredientCreate, db: Session = Depends(get_db)
+) -> IngredientRead:
+    """Create a new ingredient."""
+    ingredient_obj = Ingredient.from_create(ingredient)
+    if ingredient.tags:
+        ingredient_obj.tags = [
+            db.get(PossibleIngredientTag, t.id) for t in ingredient.tags if t.id
+        ]
+    db.add(ingredient_obj)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        # Likely a unique constraint violation on name; return the existing record
+        db.rollback()
+        statement = (
+            select(Ingredient)
+            .options(
+                selectinload(Ingredient.nutrition),
+                selectinload(Ingredient.units),
+                selectinload(Ingredient.tags),
+            )
+            .where(Ingredient.name == ingredient_obj.name)
+        )
+        existing = db.exec(statement).one()
+        return ingredient_to_read(existing)
+
+    statement = (
+        select(Ingredient)
+        .options(
+            selectinload(Ingredient.nutrition),
+            selectinload(Ingredient.units),
+            selectinload(Ingredient.tags),
+        )
+        .where(Ingredient.id == ingredient_obj.id)
+    )
+    ingredient_obj = db.exec(statement).one()
+    return ingredient_to_read(ingredient_obj)
 
 
-@ingredient_blueprint.route('/ingredients/<int:ingredient_id>', methods=['PUT'])
-def update_ingredient(ingredient_id):
-    ingredient = db_Ingredient.query.get(ingredient_id)
+@router.put("/{ingredient_id}", response_model=IngredientRead)
+def update_ingredient(
+    ingredient_id: int,
+    ingredient_data: IngredientUpdate,
+    db: Session = Depends(get_db),
+) -> IngredientRead:
+    """Update an existing ingredient."""
+    ingredient = db.get(Ingredient, ingredient_id)
     if not ingredient:
-        return jsonify({'error': 'Ingredient not found'}), 404
-    ingredient_schema.load(request.json, instance=ingredient, session=db.session)
-    db.session.commit()
-    return jsonify(ingredient_schema.dump(ingredient)), 200
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+
+    ingredient.name = ingredient_data.name
+
+    if ingredient_data.nutrition:
+        ingredient.nutrition = Nutrition.model_validate(
+            ingredient_data.nutrition.model_dump()
+        )
+    else:
+        ingredient.nutrition = None
+
+    ingredient.units = [
+        IngredientUnit.model_validate(u.model_dump()) for u in ingredient_data.units
+    ]
+
+    with db.no_autoflush:
+        if ingredient_data.tags:
+            ingredient.tags = [
+                db.get(PossibleIngredientTag, t.id)
+                for t in ingredient_data.tags
+                if t.id
+            ]
+        else:
+            ingredient.tags = []
+
+    db.add(ingredient)
+    db.commit()
+
+    statement = (
+        select(Ingredient)
+        .options(
+            selectinload(Ingredient.nutrition),
+            selectinload(Ingredient.units),
+            selectinload(Ingredient.tags),
+        )
+        .where(Ingredient.id == ingredient.id)
+    )
+    ingredient = db.exec(statement).one()
+    return ingredient_to_read(ingredient)
 
 
-@ingredient_blueprint.route('/ingredients/<int:ingredient_id>', methods=['DELETE'])
-def delete_ingredient(ingredient_id):
-    ingredient = db_Ingredient.query.get(ingredient_id)
+@router.delete("/{ingredient_id}")
+def delete_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> dict:
+    """Delete an ingredient."""
+    ingredient = db.get(Ingredient, ingredient_id)
     if not ingredient:
-        return jsonify({'error': 'Ingredient not found'}), 404
-    db.session.delete(ingredient)
-    db.session.commit()
-    return jsonify({'message': 'Ingredient deleted successfully'}), 200
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+    db.delete(ingredient)
+    db.commit()
+    return {"message": "Ingredient deleted successfully"}
 
 
-@ingredient_blueprint.route('/ingredients/possible_tags', methods=['GET'])
-def get_all_possible_tags():
-    tags = db_PossibleIngredientTag.query.all()
-    return jsonify(possible_tags_schema.dump(tags))
+__all__ = ["router"]

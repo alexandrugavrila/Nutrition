@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nutrition
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nutrition"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nutrition
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        id: setup-python
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Cache backend dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: backend-${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('Backend/requirements.txt') }}
+          restore-keys: |
+            backend-${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}-
+      - name: Verify pip cache
+        run: ls -al ~/.cache/pip || echo 'No pip cache found'
+      - name: Install backend dependencies
+        run: |
+          source scripts/activate-venv.sh
+          pip install pytest
+      - name: Check migration drift
+        run: |
+          source scripts/activate-venv.sh
+          scripts/check-migration-drift.sh
+          git diff --exit-code Backend/migrations/versions
+      - name: Install frontend dependencies for API schema
+        working-directory: Frontend
+        run: npm ci
+      - name: Run Alembic migrations
+        run: |
+          source scripts/activate-venv.sh
+          alembic upgrade head
+      - name: Update API schema
+        run: |
+          source scripts/activate-venv.sh
+          export BACKEND_PORT=8000
+          scripts/update-api-schema.sh
+      - name: Ensure API schema is up to date
+        run: |
+          git diff --exit-code Backend/openapi.json Frontend/src/api-types.ts
+      - name: Backend tests
+        run: |
+          source scripts/activate-venv.sh
+          pytest
+      - name: Teardown database
+        if: always()
+        run: |
+          source scripts/activate-venv.sh
+          python - <<'PY'
+          import os
+          from sqlalchemy import create_engine, text
+          engine = create_engine(os.environ['DATABASE_URL'])
+          with engine.begin() as conn:
+              conn.execute(text('DROP SCHEMA public CASCADE'))
+              conn.execute(text('CREATE SCHEMA public'))
+          PY
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        id: setup-node
+        with:
+          node-version: '20'
+      - name: Cache frontend dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: frontend-${{ runner.os }}-npm-${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('Frontend/package-lock.json') }}
+          restore-keys: |
+            frontend-${{ runner.os }}-npm-${{ steps.setup-node.outputs.node-version }}-
+      - name: Verify npm cache
+        run: ls -al ~/.npm || echo 'No npm cache found'
+      - name: Install frontend dependencies
+        working-directory: Frontend
+        run: npm ci
+      - name: Frontend lint
+        working-directory: Frontend
+        run: npm run lint
+      - name: Frontend tests
+        working-directory: Frontend
+        env:
+          CI: true
+        run: npm test
+      - name: Production build
+        working-directory: Frontend
+        run: npm run build

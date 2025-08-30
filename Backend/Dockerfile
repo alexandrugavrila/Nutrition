@@ -13,11 +13,14 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Install dependencies system-wide to ensure modules are available
 COPY Backend/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+RUN pip install --no-cache-dir --break-system-packages -r /tmp/requirements.txt
 
-# Copy backend source
-COPY Backend/ /app
+# Copy backend source preserving package structure
+COPY Backend/ /app/Backend
 
-CMD ["python", "backend.py"]
+# Copy Alembic configuration for database migrations
+COPY alembic.ini /app/alembic.ini
+
+CMD ["python", "-m", "uvicorn", "Backend.backend:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

@@ -1,191 +1,386 @@
 # 🤝 Contributing Guide
 
-This guide covers **developer setup, branch conventions, database management, and local dev workflows**.
-The [README](README.md) has the high-level overview and quick start.
+This guide covers **developer setup, branching, Docker workflows, API & migration handling, testing, and CI**.  
+For the high‑level overview and quick start, see [README](README.md).
 
 ---
 
-## Virtual environment
+## 🐍 Virtual Environment
 
-All development tasks should be run from inside the project's Python virtual environment. The helper script will create and activate it and install dependencies as needed:
+All development tasks should run inside the project’s Python virtual environment.  
+The activation scripts install backend Python deps and (when needed) frontend Node deps.
 
+**Windows (PowerShell):**
 ```powershell
-pwsh ./scripts/activate-venv.ps1
+pwsh ./scripts/env/activate-venv.ps1
+````
+
+**macOS/Linux (Bash):**
+
+```bash
+source ./scripts/env/activate-venv.sh
 ```
+
+Many helper scripts (e.g., `run-e2e-tests` and `import-from-csv`) automatically
+activate the virtual environment when `VIRTUAL_ENV` is unset, so they can be run
+directly.
+
+---
 
 ## 🔀 Branching
 
-* Use the format:
+Use:
 
-  ```
-  [type]/issue-in-kabob-case
-  ```
-* Types: `feature`, `refactor`, `bugfix`, `housekeeping`
+```
+[type]/issue-in-kabob-case
+```
+
+**Types:** `feature`, `refactor`, `bugfix`, `housekeeping`
 
 ---
 
 ## 🐳 Docker Workflows
 
-### Rebuilding containers
+> Use the helper scripts per branch (don’t call `docker compose` directly) so ports and names stay isolated.
 
-Always use the helper script for your branch (not raw `docker compose`):
+**Start services (choose a data seed):**
 
 ```pwsh
-pwsh ./scripts/compose-up-branch.ps1 -test        # or -production / -empty
+pwsh ./scripts/docker/compose.ps1 up data -test    # or data -prod
 ```
 
-This ensures:
+Ensures:
 
 * Correct **per-branch project name**
 * Correct **branch-specific ports**
-* Optional CSV import (`-production` / `-test`), or skip with `-empty`
+* Sets `DATABASE_URL` for local utilities to match the branch's DB port
+* Optional CSV import (based on mode)
 
----
+Compose-up behavior:
 
-### Stopping containers
+- Waits for the Postgres service to become healthy.
+- Waits for the backend container to finish installing deps (verifies `alembic` is present).
+- Runs Alembic migrations inside the backend container: `python -m alembic upgrade head`.
+- Seeds data based on `data -test` or `data -prod`.
 
-Clean up branch containers safely with:
+**Stop services:**
 
 ```pwsh
-pwsh ./scripts/compose-down-branch.ps1
+pwsh ./scripts/docker/compose.ps1 down
 ```
 
-Options:
+Behavior and options:
 
-* `-Force` → skip confirmation
-* `-PruneImages` → also remove built images
-* Volumes are removed by default (`-v`) so each branch starts fresh
+* Defaults to the current branch's stack (non-interactive).
+* Volumes (including branch-specific `node_modules` cache) are removed by default for clean isolation
+* Add `type -test` to target the dedicated test stack (if you used it)
+
+**Restart services:**
+
+```pwsh
+pwsh ./scripts/docker/compose.ps1 restart data -test    # or data -prod
+```
+
+Stops and then starts the current branch's containers with the chosen data seed. Use `type -test` if you want to target the TEST ports/project.
+
+### Import data from CSV
+
+Re-import seed data into the running branch database:
+
+```bash
+./scripts/db/import-from-csv.sh -production   # or -test
+pwsh ./scripts/db/import-from-csv.ps1 -production   # or -test
+```
+
+These helpers require the branch's containers to be running and automatically
+activate the virtual environment if needed.
+
+Notes:
+- The CSV importer detects an empty schema and will automatically run `alembic upgrade head` using the current `DATABASE_URL` before importing data.
+- When no tables are present it skips the TRUNCATE step to avoid SQL errors, then re-checks table order post-migration.
 
 ---
 
 ## ⚙️ Port Mapping
 
-Each branch gets **unique host ports**, calculated as:
+Each branch gets unique host ports: **base + branch offset (hash of branch name)**
 
-* Base ports → Frontend `3000`, Backend `5000`, DB `5432`
-* Plus branch-specific offset (hash of branch name)
+| Service  | Base | Example (`feature/x`) |
+| -------- | ---- | --------------------- |
+| Frontend | 3000 | 3004                  |
+| Backend  | 8000 | 8006                  |
+| DB       | 5432 | 5438                  |
 
-The startup script prints exact values.
+Printed on startup and visible in Docker Desktop as `HOST:CONTAINER`.
 
-### Example
+### Testing-Only Ports (ephemeral scripts)
 
-| Branch      | Frontend | Backend | DB   |
-| ----------- | -------- | ------- | ---- |
-| `main`      | 3000     | 5000    | 5432 |
-| `feature/x` | 3004     | 5006    | 5438 |
-| `bugfix/y`  | 3012     | 5012    | 5444 |
+In addition to the dev ports above, the branch environment exports a separate set of testing ports that are reserved for scripts which spin up a dedicated container, run work, and then tear it down.
 
-In Docker Desktop, ports show as `HOST:CONTAINER` (e.g. `3099:3000`).
-Click the **host port** (3099) to open the frontend in your browser.
+- `TEST_FRONTEND_PORT` base: `13000 + offset`
+- `TEST_BACKEND_PORT` base: `18000 + offset`
+- `TEST_DB_PORT` base: `15432 + offset`
 
----
+Scripts that manage their own temporary containers (e.g., migration drift checks) will prefer `TEST_*` ports when they're set to avoid colliding with your running dev stack.
 
-## 🗄️ Database Management
+Examples:
 
-### Seeding and imports
+- `scripts/check-migration-drift.(ps1|sh)` starts a temporary Postgres and uses `TEST_DB_PORT`.
+- `scripts/sync-api-and-migrations.sh` starts a temporary Postgres compose project (per-branch) bound to `TEST_DB_PORT` and sets `DATABASE_URL` accordingly.
 
-On a fresh DB volume, Postgres runs the SQL files in `Database/`:
+Notes:
 
-* `createtables.sql`
-* `addingredients.sql`
-* `addnutrition.sql`
-
-In addition, the startup script may run:
-
-* `import_from_csv.py --production` (with `-production`)
-* `import_from_csv.py --test` (with `-test`)
-* Skips import with `-empty`
+- The frontend dev server binds to `0.0.0.0` and uses a strict port. Use the printed host port (e.g., `http://localhost:<DEV_FRONTEND_PORT>`).
 
 ---
 
-### Resetting from scratch
+## 🌐 Environment Variables
 
-Drop and recreate tables manually:
+- `DEV_BACKEND_PORT` → backend service port (defaults to `8000`; compose scripts set this automatically)
+- `BACKEND_URL` → full URL for the backend API. The frontend dev server proxies `/api` to this value. If unset, it falls back to `http://localhost:${DEV_BACKEND_PORT}`.
+
+---
+
+## 🖥️ Local Development (Non‑Docker)
+
+**Backend (FastAPI):**
 
 ```bash
-python ./Database/reset_database.py
+# First: activate venv (see above)
+uvicorn Backend.backend:app --reload
 ```
 
-Options:
+**Frontend (React):**
 
 ```bash
-python ./Database/reset_database.py --test
+npm --prefix Frontend run dev     # start dev server
+npm --prefix Frontend run build   # production build
+npm --prefix Frontend run preview # preview build
 ```
 
 ---
 
-### DBeaver setup
+## 🧪 Testing
 
-[DBeaver](https://dbeaver.io/download/) is a free GUI for PostgreSQL.
+- Run backend and frontend unit tests:
+  - Bash: `./scripts/run-tests.sh`
+  - PowerShell: `pwsh ./scripts/run-tests.ps1`
+  - Add `--e2e` to also run the end-to-end API suite.
 
-1. **Install** Community Edition
-2. **New Connection** → PostgreSQL
-3. Enter:
+- End-to-end API tests only (require Docker stack):
+  - Auto-skip: The e2e module skips itself when `DEV_BACKEND_PORT` is missing or the backend is unreachable.
+  - Run via helper script (brings stack up if needed):
+    - Bash: `./scripts/tests/run-e2e-tests.sh`
+    - PowerShell: `pwsh ./scripts/tests/run-e2e-tests.ps1`
+  - Pass extra pytest args as needed:
+    - `./scripts/tests/run-e2e-tests.sh -q -k ingredient`
+    - `pwsh ./scripts/tests/run-e2e-tests.ps1 -q -k ingredient`
+  - These helpers automatically activate the virtual environment if required.
 
-| Field    | Value            |
-| -------- | ---------------- |
-| Host     | `localhost`      |
-| Port     | `<DB_PORT>`      |
-| Database | `nutrition`      |
-| Username | `nutrition_user` |
-| Password | `nutrition_pass` |
-
-👉 `<DB_PORT>` = base 5432 + branch offset (printed on startup).
-In Docker Desktop, shown as `PORT:5432`.
+Notes:
+- The helper starts a dedicated test stack (`type -test data -test`) on TEST ports, waits for readiness, runs the e2e suite, and tears the stack down afterward.
+- You can still pass your own pytest flags to tailor verbosity (e.g., `-q`, `-k`, etc.).
+- The script leaves containers running; use `scripts/docker/compose.ps1 down` (or `scripts/docker/compose.sh down`) to stop them when done.
 
 ---
 
-## 💻 Local Development (Non-Docker)
+## 📚 API & Migrations Handling
 
-You can also run backend/frontend directly on your machine.
+**Canonical workflow (one script does it all):**
 
-### Backend (Flask)
-
-Virtual Environment Setup
 ```powershell
-pwsh ./scripts/activate-venv.ps1
+pwsh ./scripts/db/sync-api-and-migrations.ps1
 ```
 
-# Run backend
-python Backend/backend.py
-```
+This orchestrates:
 
-### Frontend (React)
+1. **OpenAPI schema + frontend TypeScript types**
+
+* Runs `scripts/db/update-api-schema.ps1`
+* Exports `/openapi.json` → `Backend/openapi.json`
+* Regenerates types → `Frontend/src/api-types.ts`
+* If `git` is available, compares changes and (in interactive mode) lets you **keep** or **revert**
+
+2. **Migration drift detection/adoption**
+
+* Runs `scripts/db/check-migration-drift.ps1`
+* Starts a temporary Postgres DB
+* Applies all migrations
+* Autogenerates a revision to detect drift
+* If drift exists, **adopts** it as a new migration file, reapplies, and verifies clean
+
+**Exit codes (from the drift step):**
+
+* `0` → Up to date (already clean or clean after adoption)
+* `1` → Script/tooling error
+* `2` → Continued drift after adoption (investigate manually)
+
+👉 **Normal development**: run the script, review changes, and commit any new migration(s), `Backend/openapi.json`, and `Frontend/src/api-types.ts`.
+
+### 🛠️ Manual Workflows (Fallbacks)
+
+#### Alembic (Database Migrations)
 
 ```bash
-cd Frontend/nutrition-frontend
-npm install
-npm start
+# Create a migration after editing models
+alembic revision --autogenerate -m "describe change"
+
+# Apply migrations
+alembic upgrade head
+
+# Reset database
+alembic downgrade base && alembic upgrade head
+```
+
+#### Drift Check Only
+
+```powershell
+pwsh ./scripts/db/check-migration-drift.ps1
+```
+
+#### OpenAPI Schema / Frontend Types
+
+```bash
+# Regenerate both with the helper
+scripts/db/update-api-schema.sh
+```
+
+Or step-by-step:
+
+```bash
+uvicorn Backend.backend:app --port 8000 &
+curl http://localhost:8000/openapi.json -o Backend/openapi.json
+npx openapi-typescript Backend/openapi.json -o Frontend/src/api-types.ts
+kill %1
 ```
 
 ---
 
-## 🧩 Project Structure (Developer View)
+## 🛠️ Tools
 
-```
-Backend/                  # Flask app
-  ├── db_models/          # SQLAlchemy ORM models
-  ├── schemas/            # Marshmallow schemas
-  ├── routes/             # API routes
-  ├── backend.py          # Entrypoint
-  └── db.py               # SQLAlchemy setup
+### DBeaver (optional)
 
-Frontend/nutrition-frontend/
-  ├── src/                # React components, context
-  ├── Dockerfile          # Frontend build config
-  └── nginx.conf          # Static serving config
-
-Database/                 # SQL + CSV seeding
-scripts/                  # Helper scripts (compose up/down, tooling)
-```
+* **Host:** `localhost`
+* **Port:** `<DEV_DB_PORT>` (printed at startup)
+* **DB:** `nutrition`
+* **User:** `nutrition_user`
+* **Pass:** `nutrition_pass`
 
 ---
 
-## 📚 Reference
+## ✅ Typical Commit Checklist
 
-* **Frontend ports** → base `3000` + offset
-* **Backend ports** → base `5000` + offset
-* **DB ports** → base `5432` + offset
-* **Credentials** → `nutrition_user` / `nutrition_pass` / `nutrition`
+Before opening a PR:
+
+* [ ] **Models changed?**
+  Run `pwsh ./scripts/db/sync-api-and-migrations.ps1`
+  → Commit any new migration(s), `Backend/openapi.json`, `Frontend/src/api-types.ts`
+* [ ] **Frontend API usage added/changed?**
+  Ensure `Frontend/src/api-types.ts` is current (via the sync script)
+* [ ] **Migrations apply cleanly?**
+  `alembic upgrade head` (or rely on the sync/drift script outcome)
+* [ ] **Tests pass?**
+  `./scripts/run-tests.sh` (or `pwsh ./scripts/run-tests.ps1`)
+  - These exclude e2e tests by default.
+  - To include e2e tests, pass the flag: `./scripts/run-tests.sh --e2e` or `pwsh ./scripts/run-tests.ps1 -e2e`.
+* [ ] **Lint/build ok?**
+  `npm --prefix Frontend run lint` and `npm --prefix Frontend run build`
 
 ---
+
+## 🧪 Continuous Integration (GitHub Actions)
+
+The repo includes a **two‑job CI**: `backend` and `frontend`.
+
+### `backend` job (Ubuntu + Postgres service)
+
+* **Services → Postgres 16**
+  Spins up a DB with health checks. Exposes `postgres:5432` to the job via Docker networking.
+  Sets `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nutrition` for the app.
+
+* **Environment & toolchain**
+
+  * Checks out the repo
+  * Installs Python 3.11 and Node 20
+  * Caches **pip** (`~/.cache/pip`) keyed by `Backend/requirements.txt`
+  * Activates venv via `scripts/env/activate-venv.sh` and installs `pytest`
+
+* **Migration drift gate**
+
+  ```bash
+  source scripts/env/activate-venv.sh
+  scripts/db/check-migration-drift.sh
+  git diff --exit-code Backend/migrations/versions
+  ```
+
+  Runs the Bash version of the drift check; then fails the build if it detects **uncommitted** migration file changes (enforces “migrations committed” policy).
+
+* **Installs frontend deps (for schema generation)**
+  `npm ci` in `Frontend/` (used later when generating types from OpenAPI).
+
+* **Runs Alembic migrations**
+  `alembic upgrade head` applies the schema to the CI Postgres.
+
+* **Updates API schema**
+
+  ```bash
+  source scripts/env/activate-venv.sh
+  export DEV_BACKEND_PORT=8000
+  scripts/db/update-api-schema.sh
+  ```
+
+  Starts a temporary server, exports `Backend/openapi.json`, regenerates `Frontend/src/api-types.ts`.
+
+* **Schema unchanged gate**
+
+  ```bash
+  git diff --exit-code Backend/openapi.json Frontend/src/api-types.ts
+  ```
+
+  Fails if the OpenAPI spec or types are out of date (enforces “generate & commit API artifacts”).
+
+* **Tests**
+  `./scripts/run-tests.sh` executes backend (pytest) and frontend (npm test) suites.
+
+* **DB teardown (always runs)**
+  Drops and recreates the `public` schema to leave the container clean.
+
+**Why these gates?**
+
+* **Drift gate** ensures developers include migrations when models change.
+* **Schema gate** ensures OpenAPI + TS types are regenerated and committed with API changes.
+
+### `frontend` job
+
+* Checks out repo and sets up Node 20
+* Caches npm modules (`~/.npm`) keyed by `Frontend/package-lock.json`
+* `npm ci` installs exact deps
+* `npm --prefix Frontend run lint` enforces code quality
+* `npm --prefix Frontend run build` ensures the app builds for production
+
+**Benefits:**
+
+* Caching speeds up repeated CI runs
+* Frontend job is independent of the backend DB and focuses on build quality
+* Backend job validates migrations and API contract artifacts
+
+---
+
+## 📚 Troubleshooting
+
+* **“No changes detected”** during autogenerate
+  Ensure new models are **imported** in `alembic/env.py`.
+* **Migration fails to apply**
+  Verify `DATABASE_URL` points to the running service (local or CI).
+* **Stuck DB state**
+  `alembic downgrade base && alembic upgrade head` to reset schema.
+* **Frontend can't reach backend**
+  Ensure `DEV_BACKEND_PORT` or `BACKEND_URL` is set so the dev proxy knows where to forward API calls.
+* **`/openapi.json` 404**
+  Confirm the backend server is running and you’re using the correct `DEV_BACKEND_PORT`.
+* **CI drift/schema gates failing**
+  Run the **sync script** locally, review diffs, and **commit generated files**.
+
+---
+
+Thanks for contributing! 🎉

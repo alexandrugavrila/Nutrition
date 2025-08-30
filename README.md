@@ -2,51 +2,64 @@
 
 A full-stack nutrition planning and tracking app built with:
 
-* 🖥️ **React** frontend (Material UI + Context API)
-* 🐍 **Flask** backend (SQLAlchemy + Marshmallow)
-* 🐘 **PostgreSQL** database (seeded with food and nutrition data)
-* 🐳 **Docker** for development and deployment
+- 🖥️ **React** frontend (Material UI + Context API)
+- 🐍 **FastAPI** backend (SQLModel)
+- 🐘 **PostgreSQL** database (seeded with food and nutrition data)
+- 🐳 **Docker** for development and deployment
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Install prerequisites
+### 1. Prerequisites
 
-* [Docker Desktop](https://www.docker.com/products/docker-desktop) (✅ check “Add to PATH” during install)
-* [DBeaver Community](https://dbeaver.io/download/) (for exploring the database, optional)
-* [PowerShell 7+](https://learn.microsoft.com/powershell/) (Windows/macOS/Linux)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [PowerShell 7+](https://learn.microsoft.com/powershell/) (Windows/macOS/Linux)
+- [DBeaver](https://dbeaver.io/download/) (optional, DB GUI)
 
-### 2. Clone & launch
+### 2. Clone & Launch
 
 ```pwsh
-# Clone the repository
 git clone https://github.com/alexandrugavrila/Nutrition
 cd Nutrition
 
-# Start all services for the current branch
-# Pick ONE: -production | -test | -empty
-pwsh ./scripts/compose-up-branch.ps1 -test
+# Start stack for this branch (dev ports)
+pwsh ./scripts/docker/compose.ps1 up data -test   # or data -prod
 ```
 
-👉 On startup, the script prints the **branch-specific ports** for the frontend, backend, and database.
-Multiple branches can run in parallel without conflict.
+👉 The script prints the branch-specific ports for frontend, backend, and database.
+Multiple branches can run in parallel without conflicts.
 
-### 3. Access services
+### 3. Access Services
 
-* Frontend: [http://localhost:\<FRONTEND\_PORT>](http://localhost:3000)
-* Backend API: [http://localhost:\<BACKEND\_PORT>](http://localhost:5000)
-* PostgreSQL: `localhost:<DB_PORT>`
+- Frontend → `http://localhost:<DEV_FRONTEND_PORT>`
+- Backend API → `http://localhost:<DEV_BACKEND_PORT>`
+- PostgreSQL → `localhost:<DEV_DB_PORT>`
 
-## 🐍 Virtual Environment
+### 4. Environment Variables
 
-All development should be run from inside the project's Python virtual environment. Use the helper script to create and activate it:
+The frontend dev server proxies `/api` requests to the backend. By default it targets the branch-specific port printed above. Set `BACKEND_URL` to point at a different backend host.
 
-```powershell
-pwsh ./scripts/activate-venv.ps1
+### 5. Frontend Commands
+
+Run the React app directly without Docker:
+
+```bash
+npm --prefix Frontend run dev     # start dev server
+npm --prefix Frontend run build   # production build
+npm --prefix Frontend run preview # preview build
 ```
 
-The script creates the `.venv` directory if needed and installs required dependencies.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full contributor workflow details.
+
+### 6. Run Tests
+
+```bash
+./scripts/run-tests.sh        # Bash
+pwsh ./scripts/run-tests.ps1  # PowerShell
+```
+
+Pass `--e2e` to also run the end-to-end API suite. The e2e runner stands up a dedicated test stack (on TEST ports) and tears it down after tests.
 
 ---
 
@@ -54,81 +67,48 @@ The script creates the `.venv` directory if needed and installs required depende
 
 ```
 Nutrition/
-├── Backend/                     # Flask app
-│   ├── db_models/              # SQLAlchemy ORM models
-│   ├── schemas/                # Marshmallow schemas
-│   ├── routes/                 # Ingredient and meal routes
-│   ├── backend.py              # Main Flask entrypoint
-│   ├── db.py                   # SQLAlchemy setup
-│   └── Dockerfile              # Backend build config
-│
-├── Frontend/
-│   └── nutrition-frontend/     # React app
-│       ├── src/                # App components, context, etc.
-│       ├── Dockerfile          # Frontend build config
-│       └── nginx.conf          # Nginx static serving config
-│
-├── Database/                   # SQL seed scripts
-│   ├── createtables.sql
-│   ├── addingredients.sql
-│   └── addnutrition.sql
-│
-├── docker-compose.yml          # Orchestration config
-└── scripts/
-    ├── compose-up-branch.ps1   # Start stack with branch-specific ports
-    ├── compose-down-branch.ps1
-    ├── import-from-csv.sh
-    └── activate-venv.ps1       # Create and activate the venv
+├── Backend/        # FastAPI app (models, routes, db)
+├── Frontend/       # React app
+├── Database/       # CSV seed data + import utils
+├── docker-compose.yml
+└── scripts/        # Helper scripts
+    ├── docker/     # Compose up/down and stack management
+    ├── db/         # Database and API schema utilities
+    ├── env/        # Virtualenv setup helpers
+    └── tests/      # Test runners and helpers
 ```
 
 ---
 
 ## 🧠 Core Concepts
 
-* **Backend**
-
-  * API routes in `Backend/routes/`
-  * SQLAlchemy models in `db_models/`, validated by Marshmallow `schemas/`
-
-* **Frontend**
-
-  * Built in `Frontend/nutrition-frontend/`
-  * Uses global `DataContext.js` to fetch and manage meals, ingredients, and tags
-
-* **Database**
-
-  * Seeded with initial tables + nutrition data from `Database/`
-  * Can be reset or re-imported (see contributing guide)
+- **Backend** → API routes in `Backend/routes/`, models in `Backend/models/`
+- **Frontend** → React app in `Frontend/`, global `DataContext.js` for state
+- **Database** → Schema managed with Alembic migrations, optional CSV seed data
 
 ---
 
-## 📖 More for Contributors
+## ✅ API Endpoints
 
-* Branch naming conventions
-* Port offset system (per-branch)
-* Database reset/import scripts
-* Local (non-Docker) dev setup
+**Ingredients**
 
-👉 See [CONTRIBUTING.md](CONTRIBUTING.md) for full developer setup and workflows.
+- `GET /ingredients` – list all
+- `GET /ingredients/{id}` – single ingredient
+- `GET /ingredients/possible_tags` – list tags
+- `POST /ingredients` – add new
+- `PUT /ingredients/{id}` – update
+- `DELETE /ingredients/{id}` – remove
 
----
+Every ingredient response automatically includes a synthetic `1g` unit for convenience.
 
-## ✅ API Endpoints (Highlights)
+**Meals**
 
-### Ingredients
-
-* `GET /ingredients` – all ingredients
-* `POST /ingredients` – add ingredient
-* `PUT /ingredients/<id>` – update ingredient
-* `DELETE /ingredients/<id>` – delete ingredient
-* `GET /ingredients/possible_tags` – list possible ingredient tags
-
-### Meals
-
-* `GET /meals` – all meals
-* `GET /meals/<id>` – single meal
-* `GET /meals/possible_tags` – list possible meal tags
-  ⚠️ Meal `POST/PUT/DELETE` endpoints are currently commented out
+- `GET /meals` – list all
+- `GET /meals/{id}` – single meal
+- `GET /meals/possible_tags` – list tags
+- `POST /meals` – add new
+- `PUT /meals/{id}` – update
+- `DELETE /meals/{id}` – remove
 
 ---
 
@@ -166,6 +146,5 @@ classDiagram
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full developer setup, scripts, and workflows.
-
----
+For **developer setup, migrations, OpenAPI generation, commit checklist, and CI/CD details**, see
+👉 [CONTRIBUTING.md](CONTRIBUTING.md)
