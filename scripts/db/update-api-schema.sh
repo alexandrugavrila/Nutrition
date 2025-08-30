@@ -14,7 +14,7 @@ cleanup() {
 }
 trap cleanup EXIT INT
 
-BACKEND_PORT="${BACKEND_PORT:-8000}"
+DEV_BACKEND_PORT="${DEV_BACKEND_PORT:-8000}"
 
 # Determine a workable Python command. Default to `python` but fall back to
 # `python3` or `py -3` for environments (such as Windows/WSL) where the default
@@ -35,15 +35,15 @@ fi
 
 # Launch the FastAPI app in the background using the Python module invocation
 # to avoid relying on the `uvicorn` entry point being on the PATH.
-"$PYTHON_CMD" $PYTHON_ARGS -m uvicorn Backend.backend:app --port "$BACKEND_PORT" &
+"$PYTHON_CMD" $PYTHON_ARGS -m uvicorn Backend.backend:app --port "$DEV_BACKEND_PORT" &
 UVICORN_PID=$!
 # Wait for the server to be ready
-until curl --silent --fail "http://localhost:${BACKEND_PORT}/openapi.json" >/dev/null; do
+until curl --silent --fail "http://localhost:${DEV_BACKEND_PORT}/openapi.json" >/dev/null; do
   sleep 1
 done
 
 # Capture the schema
-curl "http://localhost:${BACKEND_PORT}/openapi.json" -o Backend/openapi.json
+curl "http://localhost:${DEV_BACKEND_PORT}/openapi.json" -o Backend/openapi.json
 
 # Generate TypeScript types for the frontend
 npx --prefix Frontend openapi-typescript Backend/openapi.json -o Frontend/src/api-types.ts

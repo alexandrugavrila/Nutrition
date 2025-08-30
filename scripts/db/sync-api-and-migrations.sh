@@ -4,7 +4,7 @@ set -euo pipefail
 # Synchronize the OpenAPI schema and database migrations with the current models.
 #
 # The script first regenerates the OpenAPI schema and frontend TypeScript types
-# using scripts/update-api-schema.sh. If this results in changes, the user is
+# using scripts/db/update-api-schema.sh. If this results in changes, the user is
 # prompted whether to keep the updates. In CI or when invoked with -y, the
 # updates are kept automatically.
 #
@@ -23,12 +23,19 @@ if [[ "${1:-}" == "-y" || "${CI:-}" == "true" ]]; then
 fi
 
 # Ensure we're running from the repository root
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
+
+# Load branch-specific environment so we have dev and test ports available
+if [ -f "scripts/lib/branch-env.sh" ]; then
+  # shellcheck disable=SC1091
+  . "scripts/lib/branch-env.sh"
+  branch_env_load || true
+fi
 
 # Ensure the virtual environment is active and required packages are installed
 if [ -z "${VIRTUAL_ENV:-}" ] || ! command -v uvicorn >/dev/null 2>&1; then
   echo "Activating virtual environment..."
-  if ! scripts/activate-venv.sh >/tmp/venv.log 2>&1; then
+  if ! scripts/env/activate-venv.sh >/tmp/venv.log 2>&1; then
     cat /tmp/venv.log
     echo "Failed to activate virtual environment" >&2
     exit 1
@@ -41,7 +48,8 @@ if ! command -v uvicorn >/dev/null 2>&1; then
 fi
 
 # Use a dedicated compose project for the temporary database container.
-SYNC_PROJECT="nutrition-sync"
+# Include the branch to avoid collisions across branches.
+SYNC_PROJECT="nutrition-sync${BRANCH_SANITIZED:+-$BRANCH_SANITIZED}"
 
 # Clean up any leftover sync database container from previous runs.
 if docker compose -p "$SYNC_PROJECT" ps -q db >/dev/null 2>&1; then
@@ -59,7 +67,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Starting database container..."
+# Bind the temporary DB to the branch's testing port to avoid colliding with the dev stack.
+export DEV_DB_PORT="${TEST_DB_PORT:-${DEV_DB_PORT:-5432}}"
+export DATABASE_URL="postgresql://nutrition_user:nutrition_pass@localhost:${DEV_DB_PORT}/nutrition"
+
+echo "Starting database container on test port ${DEV_DB_PORT}..."
 if ! docker compose -p "$SYNC_PROJECT" up -d db >/tmp/db-start.log 2>&1; then
   cat /tmp/db-start.log
   echo "Failed to start database container" >&2
@@ -71,9 +83,6 @@ echo "Waiting for database to be ready..."
 until docker compose -p "$SYNC_PROJECT" exec -T db pg_isready -U nutrition_user -d nutrition >/tmp/db-ready.log 2>&1; do
   sleep 1
 done
-
-# Ensure the backend connects to the local container
-export DATABASE_URL="${DATABASE_URL:-postgresql://nutrition_user:nutrition_pass@localhost:5432/nutrition}"
 
 echo "Applying database migrations..."
 if ! alembic upgrade head >/tmp/db-upgrade.log 2>&1; then
@@ -87,7 +96,7 @@ fi
 #############################
 
 # Run the existing update script; capture output to avoid noise
-scripts/update-api-schema.sh >/tmp/api-sync.log 2>&1 || {
+scripts/db/update-api-schema.sh >/tmp/api-sync.log 2>&1 || {
   cat /tmp/api-sync.log
   echo "Failed to update API schema" >&2
   exit 1
@@ -150,4 +159,3 @@ else
   echo "Database migrations are up to date."
 fi
 rm -r "$tmpdir"
-

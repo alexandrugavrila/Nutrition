@@ -8,7 +8,6 @@ from collections import defaultdict, deque
 from pathlib import Path
 
 from sqlalchemy import create_engine, text
-import subprocess
 from sqlalchemy.orm import sessionmaker
 
 # Ensure repository root is on sys.path for module imports
@@ -87,10 +86,6 @@ def get_table_order(session):
 
 
 def wipe_data(session, ordered_tables):
-    if not ordered_tables:
-        # Nothing to wipe; avoid emitting invalid TRUNCATE SQL
-        print("🧹 No tables detected; skipping wipe.")
-        return
     print("🧹 Wiping existing data...")
     session.execute(
         text(
@@ -161,80 +156,7 @@ def main():
     try:
         session = SessionLocal()
 
-        def _apply_migrations():
-            print("No tables found; applying Alembic migrations (upgrade head)...")
-            env_copy = os.environ.copy()
-            # Ensure Alembic uses the same DB URL as this script
-            dburl = DATABASE_URL
-            try:
-                subprocess.run(
-                    [
-                        sys.executable,
-                        "-m",
-                        "alembic",
-                        "upgrade",
-                        "head",
-                        "-x",
-                        f"dburl={dburl}",
-                    ],
-                    check=True,
-                    env=env_copy,
-                    cwd=str(Path(__file__).resolve().parents[1]),
-                )
-            except Exception as e:
-                raise RuntimeError(
-                    f"Failed to apply Alembic migrations against {dburl}: {e}"
-                ) from e
-
-            # Recreate session on a fresh connection after migrations
-            try:
-                session.close()
-            except Exception:
-                pass
-            try:
-                engine.dispose()
-            except Exception:
-                pass
-            return SessionLocal()
-
         ordered_tables = get_table_order(session)
-        if not ordered_tables:
-            session = _apply_migrations()
-            ordered_tables = get_table_order(session)
-
-        # Fallback: if introspection still fails, attempt a conservative static order
-        if not ordered_tables:
-            static_order = [
-                "ingredients",
-                "meals",
-                "possible_ingredient_tags",
-                "possible_meal_tags",
-                "ingredient_units",
-                "nutrition",
-                "ingredient_tags",
-                "meal_tags",
-                "meal_ingredients",
-            ]
-            # Verify tables actually exist before proceeding
-            existing = []
-            for tbl in static_order:
-                exists = session.execute(
-                    text(
-                        "SELECT to_regclass(:reg) IS NOT NULL"
-                    ),
-                    {"reg": f"public.{tbl}"},
-                ).scalar()
-                if exists:
-                    existing.append(tbl)
-
-            if not existing:
-                raise RuntimeError(
-                    "No tables detected even after migrations. "
-                    "Check DATABASE_URL and migration logs."
-                )
-
-            ordered_tables = existing
-
         print(f"Load order: {ordered_tables}")
 
         wipe_data(session, ordered_tables)
@@ -288,7 +210,6 @@ def main():
 
     except Exception as e:
         print(f"Error: {e}")
-        sys.exit(1)
 
 
 if __name__ == "__main__":

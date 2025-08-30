@@ -1,4 +1,4 @@
-# scripts/sync-api-and-migrations.ps1
+# scripts/db/sync-api-and-migrations.ps1
 # Orchestrates:
 #   1) Update OpenAPI schema + frontend TS types (via update-api-schema.ps1)
 #   2) Ensure Alembic migrations reflect models (via check-migration-drift.ps1)
@@ -33,8 +33,8 @@ function Ensure-Venv {
     $needActivate = (-not $env:VIRTUAL_ENV)
     if ($needActivate) {
         Out-Step "Activating virtual environment..."
-        if (Test-Path "$PSScriptRoot/activate-venv.ps1") {
-            & "$PSScriptRoot/activate-venv.ps1" *> $activationLog 2>&1
+        if (Test-Path "$PSScriptRoot/../env/activate-venv.ps1") {
+            & "$PSScriptRoot/../env/activate-venv.ps1" *> $activationLog 2>&1
             if ($LASTEXITCODE -ne 0) {
                 Get-Content $activationLog
                 Remove-Item $activationLog -ErrorAction SilentlyContinue
@@ -42,13 +42,13 @@ function Ensure-Venv {
             }
         } else {
             Remove-Item $activationLog -ErrorAction SilentlyContinue
-            throw "activate-venv.ps1 was not found next to this script"
+            throw "activate-venv.ps1 was not found in scripts/env"
         }
     }
     Remove-Item $activationLog -ErrorAction SilentlyContinue
 }
 
-function Get-RepoRoot { Split-Path -Parent $PSScriptRoot }
+function Get-RepoRoot { Split-Path -Parent (Split-Path -Parent $PSScriptRoot) }
 function Test-GitPresent { return [bool](Get-Command git -ErrorAction SilentlyContinue) }
 
 # --------------------------- Setup -------------------------------------------

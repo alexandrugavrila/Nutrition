@@ -1,4 +1,4 @@
-# scripts/update-api-schema.ps1
+# scripts/db/update-api-schema.ps1
 # Generate the OpenAPI schema and frontend TypeScript types using the current backend models.
 # Behavior:
 #   - Ensures the Python virtual environment is active (via activate-venv.ps1).
@@ -52,17 +52,17 @@ function Wait-ForBackend {
 }
 
 # --------------------------- Setup -------------------------------------------
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $repoRoot
 
-$backendPort = if ($env:BACKEND_PORT) { $env:BACKEND_PORT } else { 8000 }
+$backendPort = if ($env:DEV_BACKEND_PORT) { $env:DEV_BACKEND_PORT } else { 8000 }
 
 # Ensure venv is active
 $activationLog = [System.IO.Path]::GetTempFileName()
 $needActivate = (-not $env:VIRTUAL_ENV)
 if ($needActivate) {
     Out-Step "Activating virtual environment..."
-    & "$PSScriptRoot/activate-venv.ps1" *> $activationLog 2>&1
+    & "$PSScriptRoot/../env/activate-venv.ps1" *> $activationLog 2>&1
     if ($LASTEXITCODE -ne 0) {
         Get-Content $activationLog
         Remove-Item $activationLog -ErrorAction SilentlyContinue

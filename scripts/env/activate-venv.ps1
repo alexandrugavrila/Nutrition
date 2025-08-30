@@ -2,9 +2,9 @@
 # install required packages if they are missing
 
 param(
-    [string]$VenvPath = (Join-Path (Resolve-Path "$PSScriptRoot/..") ".venv"),
-    [string]$RequirementsPath = (Join-Path (Resolve-Path "$PSScriptRoot/..") "Backend/requirements.txt"),
-    [string]$FrontendPath = (Join-Path (Resolve-Path "$PSScriptRoot/..") "Frontend")
+    [string]$VenvPath = (Join-Path (Resolve-Path "$PSScriptRoot/../..") ".venv"),
+    [string]$RequirementsPath = (Join-Path (Resolve-Path "$PSScriptRoot/../..") "Backend/requirements.txt"),
+    [string]$FrontendPath = (Join-Path (Resolve-Path "$PSScriptRoot/../..") "Frontend")
 )
 
 $ErrorActionPreference = 'Stop'

@@ -23,9 +23,8 @@ A full-stack nutrition planning and tracking app built with:
 git clone https://github.com/alexandrugavrila/Nutrition
 cd Nutrition
 
-# Start stack for this branch
-# Choose ONE: -production | -test | -empty
-pwsh ./scripts/compose-up-branch.ps1 -test
+# Start stack for this branch (dev ports)
+pwsh ./scripts/docker/compose.ps1 up data -test   # or data -prod
 ```
 
 👉 The script prints the branch-specific ports for frontend, backend, and database.
@@ -33,9 +32,9 @@ Multiple branches can run in parallel without conflicts.
 
 ### 3. Access Services
 
-- Frontend → `http://localhost:<FRONTEND_PORT>`
-- Backend API → `http://localhost:<BACKEND_PORT>`
-- PostgreSQL → `localhost:<DB_PORT>`
+- Frontend → `http://localhost:<DEV_FRONTEND_PORT>`
+- Backend API → `http://localhost:<DEV_BACKEND_PORT>`
+- PostgreSQL → `localhost:<DEV_DB_PORT>`
 
 ### 4. Environment Variables
 
@@ -53,6 +52,15 @@ npm --prefix Frontend run preview # preview build
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full contributor workflow details.
 
+### 6. Run Tests
+
+```bash
+./scripts/run-tests.sh        # Bash
+pwsh ./scripts/run-tests.ps1  # PowerShell
+```
+
+Pass `--e2e` to also run the end-to-end API suite. The e2e runner stands up a dedicated test stack (on TEST ports) and tears it down after tests.
+
 ---
 
 ## 🗂️ Project Structure
@@ -63,7 +71,11 @@ Nutrition/
 ├── Frontend/       # React app
 ├── Database/       # CSV seed data + import utils
 ├── docker-compose.yml
-└── scripts/        # Helper scripts (compose up/down, venv, tooling)
+└── scripts/        # Helper scripts
+    ├── docker/     # Compose up/down and stack management
+    ├── db/         # Database and API schema utilities
+    ├── env/        # Virtualenv setup helpers
+    └── tests/      # Test runners and helpers
 ```
 
 ---
