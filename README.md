@@ -23,9 +23,8 @@ A full-stack nutrition planning and tracking app built with:
 git clone https://github.com/alexandrugavrila/Nutrition
 cd Nutrition
 
-# Start stack for this branch
-# Choose ONE: -production | -test | -empty
-pwsh ./scripts/docker/compose.ps1 up -test
+# Start stack for this branch (dev ports)
+pwsh ./scripts/docker/compose.ps1 up data -test   # or data -prod
 ```
 
 👉 The script prints the branch-specific ports for frontend, backend, and database.

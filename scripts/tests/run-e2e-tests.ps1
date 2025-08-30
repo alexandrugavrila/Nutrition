@@ -16,7 +16,8 @@ function Show-Usage {
   Write-Host ""
   Write-Host "Behavior:" -ForegroundColor Yellow
   Write-Host "  - Uses docker compose to determine the backend port for the current branch"
-  Write-Host "  - If the backend is unreachable, starts the stack via ./scripts/docker/compose.ps1 up -test" \
+  Write-Host "  - If the backend is unreachable, starts a dedicated test stack via" \
+             "    ./scripts/docker/compose.ps1 up type -test data -test" \
              "and reads port information from the generated env file"
   Write-Host "  - Waits for the backend to become healthy"
   Write-Host "  - Runs: pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py [pytest-args]"
@@ -67,10 +68,10 @@ function Test-BackendHealthy([int]$Port) {
   }
 }
 
-# Determine compose project for this branch
+# Determine a dedicated TEST compose project for this branch
 $branch = (git rev-parse --abbrev-ref HEAD).Trim()
 $sanitized = ($branch.ToLower() -replace '[^a-z0-9]', '-').Trim('-')
-$project = "nutrition-$sanitized"
+$testProject = "nutrition-$sanitized-test"
 
 function Get-BackendPort($proj) {
   try {
@@ -80,34 +81,41 @@ function Get-BackendPort($proj) {
   return $null
 }
 
-$backendPort = Get-BackendPort $project
-if (-not $backendPort -or -not (Test-BackendHealthy -Port $backendPort)) {
+try {
+  # Always stand up a dedicated TEST stack on TEST ports and project name
   $envFile = [System.IO.Path]::GetTempFileName()
   try {
     $env:COMPOSE_ENV_FILE = $envFile
-    & "$PSScriptRoot/../docker/compose.ps1" up -test
+    & "$PSScriptRoot/../docker/compose.ps1" up -Project $testProject type -test data -test
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Get-Content $envFile | ForEach-Object {
       if ($_ -match '^([^=]+)=(.+)$') { Set-Item -Path "env:$($matches[1])" -Value $matches[2] }
     }
-    $backendPort = $env:DEV_BACKEND_PORT
   } finally {
     Remove-Item $envFile -ErrorAction SilentlyContinue
     Remove-Item env:COMPOSE_ENV_FILE -ErrorAction SilentlyContinue
   }
-}
-$env:DEV_BACKEND_PORT = $backendPort
 
-Write-Host "Checking backend health on port $backendPort..."
-$deadline = (Get-Date).AddSeconds(120)
-while (-not (Test-BackendHealthy -Port $backendPort)) {
-  if ((Get-Date) -ge $deadline) {
-    Write-Error "Backend did not become healthy on port $backendPort within timeout."
-    exit 1
+  # Ask docker for the published backend port for this test project
+  $backendPort = Get-BackendPort $testProject
+  if (-not $backendPort) { $backendPort = $env:TEST_BACKEND_PORT }
+  $env:DEV_BACKEND_PORT = $backendPort
+
+  Write-Host "Checking backend health on port $backendPort..."
+  $deadline = (Get-Date).AddSeconds(120)
+  while (-not (Test-BackendHealthy -Port $backendPort)) {
+    if ((Get-Date) -ge $deadline) {
+      Write-Error "Backend did not become healthy on port $backendPort within timeout."
+      exit 1
+    }
+    Start-Sleep -Seconds 1
   }
-  Start-Sleep -Seconds 1
-}
 
-Write-Host "Running e2e tests against http://localhost:$backendPort/api"
-& pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py @PytestArgs
-exit $LASTEXITCODE
+  Write-Host "Running e2e tests against http://localhost:$backendPort/api"
+  & pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py @PytestArgs
+  $exit = $LASTEXITCODE
+} finally {
+  # Tear down the dedicated TEST stack regardless of test outcome
+  & "$PSScriptRoot/../docker/compose.ps1" down -Project $testProject -Force
+}
+exit $exit

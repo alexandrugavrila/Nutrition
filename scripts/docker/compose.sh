@@ -7,9 +7,9 @@ show_usage() {
 Usage: ./scripts/docker/compose.sh <subcommand> [options]
 
 Subcommands:
-  up [-production|-test|-empty] [service...]
-  down [--prune-images] [--force] [--all|--project <name>]
-  restart [-production|-test|-empty] [service...]
+  up [type <-dev|-test>] data <-test|-prod> [--project <name>] [service...]
+  down [type <-dev|-test>] [--prune-images] [--force] [--all|--project <name>]
+  restart [type <-dev|-test>] data <-test|-prod> [--project <name>]
 USAGE
 }
 
@@ -34,44 +34,53 @@ cd "$REPO_ROOT"
 # --- Helper functions shared across subcommands ---
 
 compose_up() {
-  local production=false test=false empty=false
+  local use_test_ports=false project_override="" data_mode=""
   local services=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -production|--production) production=true ;;
-      -test|--test) test=true ;;
-      -empty|--empty) empty=true ;;
+      type) shift; case "${1:-}" in -test) use_test_ports=true ;; -dev) use_test_ports=false ;; *) echo "Error: type expects -test or -dev" >&2; return 1 ;; esac ;;
+      data) shift; case "${1:-}" in -test) data_mode="test" ;; -prod) data_mode="prod" ;; *) echo "Error: data expects -test|-prod" >&2; return 1 ;; esac ;;
+      --project)
+        shift; project_override="${1:-}"; [[ -z "$project_override" ]] && { echo "Error: --project requires a name" >&2; return 1; } ;;
       *) services+=("$1") ;;
     esac
     shift
   done
-  local mode_count=0
-  $production && ((mode_count++))
-  $test && ((mode_count++))
-  $empty && ((mode_count++))
-  if (( mode_count != 1 )); then
-    echo "You must specify exactly one of: -production, -test, or -empty." >&2
+  if [[ -z "$data_mode" ]]; then
+    echo "Missing required 'data' selection. Usage: up [type <-dev|-test>] data <-test|-prod>" >&2
     return 1
   fi
+  local proj
+  if [[ -n "$project_override" ]]; then
+    proj="$project_override"
+  elif $use_test_ports; then
+    proj="${COMPOSE_PROJECT}-test"
+  else
+    proj="$COMPOSE_PROJECT"
+  fi
 
-  echo "Starting '$BRANCH_NAME' with ports:"
+  # If requested, publish on testing ports and point host DATABASE_URL at them
+  if $use_test_ports; then
+    DEV_DB_PORT="$TEST_DB_PORT"
+    DEV_BACKEND_PORT="$TEST_BACKEND_PORT"
+    DEV_FRONTEND_PORT="$TEST_FRONTEND_PORT"
+    DATABASE_URL="postgresql://nutrition_user:nutrition_pass@localhost:${DEV_DB_PORT}/nutrition"
+    export DEV_DB_PORT DEV_BACKEND_PORT DEV_FRONTEND_PORT DATABASE_URL
+  fi
+
+  echo "Starting '$BRANCH_NAME' as project '$proj' with ports:"
   echo "  DB: $DEV_DB_PORT"
   echo "  Backend: $DEV_BACKEND_PORT"
   echo "  Frontend: $DEV_FRONTEND_PORT"
 
-  if ! docker compose -p "$COMPOSE_PROJECT" up -d "${services[@]}"; then
+  if ! docker compose -p "$proj" up -d "${services[@]}"; then
     echo "Failed to start services." >&2
     return 1
   fi
 
-  if $empty; then
-    echo "Starting with empty database."
-    return 0
-  fi
-
   echo "Waiting for database to be ready..."
   local deadline=$((SECONDS + 120))
-  until docker compose -p "$COMPOSE_PROJECT" exec -T db pg_isready -U nutrition_user -d nutrition >/dev/null 2>&1; do
+  until docker compose -p "$proj" exec -T db pg_isready -U nutrition_user -d nutrition >/dev/null 2>&1; do
     if (( SECONDS >= deadline )); then
       echo "Database did not become ready within the timeout." >&2
       return 1
@@ -81,7 +90,7 @@ compose_up() {
 
   echo "Waiting for backend dependencies (alembic) to be ready..."
   deadline=$((SECONDS + 180))
-  until docker compose -p "$COMPOSE_PROJECT" exec -T backend sh -lc 'python -m pip show alembic >/dev/null 2>&1'; do
+  until docker compose -p "$proj" exec -T backend sh -lc 'python -m pip show alembic >/dev/null 2>&1'; do
     if (( SECONDS >= deadline )); then
       echo "Backend did not finish installing dependencies (alembic not available) within timeout." >&2
       return 1
@@ -90,17 +99,14 @@ compose_up() {
   done
 
   echo "Applying database migrations..."
-  docker compose -p "$COMPOSE_PROJECT" exec -T backend python -m alembic upgrade head
-
-  if $production || $test; then
-    ./scripts/env/activate-venv.sh
-    if $production; then
-      echo "Importing production data..."
-      python Database/import_from_csv.py --production
-    else
-      echo "Importing test data..."
-      python Database/import_from_csv.py --test
-    fi
+  docker compose -p "$proj" exec -T backend python -m alembic upgrade head
+  ./scripts/env/activate-venv.sh
+  if [[ "$data_mode" == "prod" ]]; then
+    echo "Importing production data..."
+    python Database/import_from_csv.py --production
+  else
+    echo "Importing test data..."
+    python Database/import_from_csv.py --test
   fi
 
   echo "Done."
@@ -171,7 +177,7 @@ select_projects() {
 }
 
 compose_down() {
-  local prune_images=false force=false all=false project=""
+  local prune_images=false force=false all=false project="" use_test_ports=false
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --prune-images) prune_images=true ;;
@@ -185,7 +191,15 @@ compose_down() {
           return 1
         fi
         ;;
-      *) echo "Usage: ./scripts/docker/compose.sh down [--prune-images] [--force] [--all|--project <name>]" >&2; return 1 ;;
+      type)
+        shift
+        case "${1:-}" in
+          -test) use_test_ports=true ;;
+          -dev) use_test_ports=false ;;
+          *) echo "Error: type expects -test or -dev" >&2; return 1 ;;
+        esac
+        ;;
+      *) echo "Usage: ./scripts/docker/compose.sh down [type <-dev|-test>] [--prune-images] [--force] [--all|--project <name>]" >&2; return 1 ;;
     esac
     shift
   done
@@ -202,7 +216,9 @@ compose_down() {
   elif [[ -n "$project" ]]; then
     chosen=("$project")
   else
-    chosen=("$COMPOSE_PROJECT")
+    local default_proj
+    if $use_test_ports; then default_proj="${COMPOSE_PROJECT}-test"; else default_proj="$COMPOSE_PROJECT"; fi
+    chosen=("$default_proj")
   fi
 
   if ! $force && (( ${#chosen[@]} > 1 )); then
@@ -231,11 +247,38 @@ compose_down() {
 }
 
 compose_restart() {
-  echo "Bringing down containers for '$BRANCH_NAME'..."
-  docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans >/dev/null 2>&1 || true
-  docker network rm "${COMPOSE_PROJECT}_default" >/dev/null 2>&1 || true
-  docker volume rm "${COMPOSE_PROJECT}_node_modules" >/dev/null 2>&1 || true
-  compose_up "$@"
+  local use_test_ports=false project_override="" data_mode=""
+  local args=( )
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      type) shift; case "${1:-}" in -test) use_test_ports=true ;; -dev) use_test_ports=false ;; *) echo "Error: type expects -test or -dev" >&2; return 1 ;; esac ;;
+      data) shift; case "${1:-}" in -test) data_mode="test" ;; -prod) data_mode="prod" ;; *) echo "Error: data expects -test|-prod" >&2; return 1 ;; esac ;;
+      --project) shift; project_override="${1:-}" ;;
+      *) args+=("$1") ;;
+    esac
+    shift
+  done
+  if [[ -z "$data_mode" ]]; then
+    echo "restart requires: data <-test|-prod> (optionally type <-dev|-test>)" >&2
+    return 1
+  fi
+  local proj
+  if [[ -n "$project_override" ]]; then
+    proj="$project_override"
+  elif $use_test_ports; then
+    proj="${COMPOSE_PROJECT}-test"
+  else
+    proj="$COMPOSE_PROJECT"
+  fi
+  echo "Bringing down containers for project '$proj'..."
+  docker compose -p "$proj" down -v --remove-orphans >/dev/null 2>&1 || true
+  docker network rm "${proj}_default" >/dev/null 2>&1 || true
+  docker volume rm "${proj}_node_modules" >/dev/null 2>&1 || true
+  local next_args=( )
+  $use_test_ports && next_args+=(type -test)
+  next_args+=(data "-${data_mode}")
+  [[ -n "$project_override" ]] && next_args+=(--project "$project_override")
+  compose_up "${next_args[@]}" "${args[@]}"
 }
 
 case "${1:-}" in

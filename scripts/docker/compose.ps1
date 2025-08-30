@@ -5,9 +5,6 @@ param(
   [ValidateSet('up','down','restart')]
   [string]$Command,
 
-  [switch]$production,
-  [switch]$test,
-  [switch]$empty,
   [switch]$PruneImages,
   [switch]$Force,
   [switch]$All,
@@ -20,7 +17,9 @@ function Show-Usage {
   Write-Host ""; Write-Host "Usage:" -ForegroundColor Yellow
   Write-Host "  pwsh ./scripts/docker/compose.ps1 <up|down|restart> [options]"
   Write-Host ""
-  Write-Host "  down options: --All | --Project <name> | -PruneImages | -Force"
+  Write-Host "  up:      [type <-dev|-test>] data <-test|-prod> [--Project <name>] [service...]"
+  Write-Host "  down:    [type <-dev|-test>] [--All | --Project <name>] [-PruneImages] [-Force]"
+  Write-Host "  restart: [type <-dev|-test>] data <-test|-prod> [--Project <name>]"
   Write-Host ""
 }
 
@@ -42,21 +41,62 @@ if ($env:COMPOSE_ENV_FILE) {
 Set-Location $envInfo.RepoRoot
 
 function Invoke-Up {
-  $modeCount = @($production,$test,$empty) | Where-Object { $_ } | Measure-Object | Select-Object -ExpandProperty Count
-  if ($modeCount -ne 1) {
-    Write-Error "You must specify exactly one of: -production, -test, or -empty."
-    exit 1
+  # Parse tokenized syntax in $Services: optional "type -test|-dev" and
+  # required "data -test|-prod". Remove consumed tokens from $Services.
+  $useTestPorts = $false
+  $dataMode = $null
+  if ($Services -and $Services.Count -gt 0) {
+    $parsed = New-Object System.Collections.Generic.List[string]
+    for ($i = 0; $i -lt $Services.Count; $i++) {
+      $tok = $Services[$i]
+      if ($tok -eq 'type' -and ($i + 1) -lt $Services.Count) {
+        $val = $Services[$i + 1]
+        if ($val -eq '-test') { $useTestPorts = $true; $i++; continue }
+        elseif ($val -eq '-dev') { $useTestPorts = $false; $i++; continue }
+        else { Write-Error "Invalid value for 'type'. Expected -test or -dev"; exit 1 }
+      } elseif ($tok -eq 'data' -and ($i + 1) -lt $Services.Count) {
+        $val = $Services[$i + 1]
+        if ($val -eq '-test' -or $val -eq '-prod') { $dataMode = $val; $i++; continue }
+        else { Write-Error "Invalid value for 'data'. Expected -test or -prod"; exit 1 }
+      } else {
+        [void]$parsed.Add($tok)
+      }
+    }
+    $Services = $parsed.ToArray()
   }
 
-  Write-Host "Starting '$($envInfo.Branch)' with ports:`n  DB: $env:DEV_DB_PORT`n  Backend: $env:DEV_BACKEND_PORT`n  Frontend: $env:DEV_FRONTEND_PORT"
+  if (-not $dataMode) { Write-Error "Missing required 'data' selection. Usage: up [type <-dev|-test>] data <-test|-prod>"; exit 1 }
+
+  # Resolve compose project name. Allow override via -Project; otherwise
+  # when -UseTestPorts is set, suffix "-test" to isolate from the dev stack.
+  $proj = if ($Project) { $Project } elseif ($useTestPorts) { "$($envInfo.Project)-test" } else { $envInfo.Project }
+
+  # Preserve current environment, optionally remap to TEST values only for the
+  # duration of this 'up' call.
+  $origEnv = @{
+    DEV_DB_PORT = $env:DEV_DB_PORT
+    DEV_BACKEND_PORT = $env:DEV_BACKEND_PORT
+    DEV_FRONTEND_PORT = $env:DEV_FRONTEND_PORT
+    DATABASE_URL = $env:DATABASE_URL
+  }
 
   try {
-    docker compose -p $envInfo.Project up -d @Services
-    if ($LASTEXITCODE -ne 0) { throw "docker compose exited with code $LASTEXITCODE" }
-  } catch {
-    Write-Error "Failed to start services: $_"
-    exit 1
-  }
+    if ($useTestPorts) {
+      $env:DEV_DB_PORT = $env:TEST_DB_PORT
+      $env:DEV_BACKEND_PORT = $env:TEST_BACKEND_PORT
+      $env:DEV_FRONTEND_PORT = $env:TEST_FRONTEND_PORT
+      $env:DATABASE_URL = "postgresql://nutrition_user:nutrition_pass@localhost:$($env:DEV_DB_PORT)/nutrition"
+    }
+
+    Write-Host "Starting '$($envInfo.Branch)' as project '$proj' with ports:`n  DB: $env:DEV_DB_PORT`n  Backend: $env:DEV_BACKEND_PORT`n  Frontend: $env:DEV_FRONTEND_PORT"
+
+    try {
+      docker compose -p $proj up -d @Services
+      if ($LASTEXITCODE -ne 0) { throw "docker compose exited with code $LASTEXITCODE" }
+    } catch {
+      Write-Error "Failed to start services: $_"
+      exit 1
+    }
 
   if ($empty) {
     Write-Host "Starting with empty database."
@@ -67,7 +107,7 @@ function Invoke-Up {
   $deadline = (Get-Date).AddMinutes(2)
   do {
     Start-Sleep -Seconds 1
-    docker compose -p $envInfo.Project exec -T db pg_isready -U nutrition_user -d nutrition | Out-Null
+    docker compose -p $proj exec -T db pg_isready -U nutrition_user -d nutrition | Out-Null
   } until ($LASTEXITCODE -eq 0 -or (Get-Date) -ge $deadline)
   if ($LASTEXITCODE -ne 0) {
     Write-Error "Database did not become ready within the timeout."
@@ -78,23 +118,22 @@ function Invoke-Up {
   $deadline = (Get-Date).AddMinutes(3)
   do {
     Start-Sleep -Seconds 1
-    docker compose -p $envInfo.Project exec -T backend sh -lc "python -m pip show alembic >/dev/null 2>&1"
+    docker compose -p $proj exec -T backend sh -lc "python -m pip show alembic >/dev/null 2>&1"
   } until ($LASTEXITCODE -eq 0 -or (Get-Date) -ge $deadline)
   if ($LASTEXITCODE -ne 0) {
     Write-Error "Backend did not finish installing dependencies (alembic not available) within timeout."
     exit 1
   }
 
-  Write-Host "Applying database migrations..."
-  docker compose -p $envInfo.Project exec -T backend python -m alembic upgrade head
-  if ($LASTEXITCODE -ne 0) {
-    Write-Error "Database migration failed with exit code $LASTEXITCODE."
-    exit $LASTEXITCODE
-  }
+    Write-Host "Applying database migrations..."
+    docker compose -p $proj exec -T backend python -m alembic upgrade head
+    if ($LASTEXITCODE -ne 0) {
+      Write-Error "Database migration failed with exit code $LASTEXITCODE."
+      exit $LASTEXITCODE
+    }
 
-  if ($production -or $test) {
     & "$PSScriptRoot/../env/activate-venv.ps1"
-    if ($production) {
+    if ($dataMode -eq '-prod') {
       Write-Host "Importing production data..."
       & python Database/import_from_csv.py --production
     } else {
@@ -105,9 +144,17 @@ function Invoke-Up {
       Write-Error "Data import failed with exit code $LASTEXITCODE."
       exit $LASTEXITCODE
     }
-  }
 
-  Write-Host "Done." -ForegroundColor Green
+    Write-Host "Done." -ForegroundColor Green
+  }
+  finally {
+    # Restore prior environment values so caller shells aren't polluted
+    foreach ($k in $origEnv.Keys) {
+      $v = $origEnv[$k]
+      if ($null -eq $v) { Remove-Item "Env:$k" -ErrorAction SilentlyContinue }
+      else { Set-Item "Env:$k" -Value $v }
+    }
+  }
 }
 
 function Get-ComposeProjects([string]$Prefix = 'nutrition-') {
@@ -159,6 +206,24 @@ function Select-Projects([string[]]$Projects) {
 }
 
 function Invoke-Down {
+  # Parse optional tokenized arguments from $Services: allow "type -test|-dev"
+  $useTestPorts = $false
+  if ($Services -and $Services.Count -gt 0) {
+    $parsed = New-Object System.Collections.Generic.List[string]
+    for ($i = 0; $i -lt $Services.Count; $i++) {
+      $tok = $Services[$i]
+      if ($tok -eq 'type' -and ($i + 1) -lt $Services.Count) {
+        $val = $Services[$i + 1]
+        if ($val -eq '-test') { $useTestPorts = $true; $i++; continue }
+        elseif ($val -eq '-dev') { $useTestPorts = $false; $i++; continue }
+        else { Write-Error "Invalid value for 'type'. Expected -test or -dev"; return }
+      } else {
+        [void]$parsed.Add($tok)
+      }
+    }
+    $Services = $parsed.ToArray()
+  }
+
   $chosen = @()
   if ($All) {
     $chosen = Get-ComposeProjects | Prioritize-CurrentBranch
@@ -169,7 +234,8 @@ function Invoke-Down {
   } elseif ($Project) {
     $chosen = @($Project)
   } else {
-    $chosen = @($envInfo.Project)
+    $defaultProj = if ($useTestPorts) { "$($envInfo.Project)-test" } else { $envInfo.Project }
+    $chosen = @($defaultProj)
   }
 
   if (-not $Force -and $chosen.Count -gt 1) {
@@ -195,10 +261,31 @@ function Invoke-Down {
 }
 
 function Invoke-Restart {
-  Write-Host "Bringing down containers for '$($envInfo.Branch)'..." -ForegroundColor Cyan
-  docker compose -p $envInfo.Project down -v --remove-orphans | Out-Null
-  docker network rm "${($envInfo.Project)}_default" 2>$null | Out-Null
-  docker volume rm "${($envInfo.Project)}_node_modules" 2>$null | Out-Null
+  # Parse but do not remove tokens from $Services: require data, optional type
+  $useTestPorts = $false
+  $dataMode = $null
+  if ($Services -and $Services.Count -gt 0) {
+    for ($i = 0; $i -lt $Services.Count; $i++) {
+      $tok = $Services[$i]
+      if ($tok -eq 'type' -and ($i + 1) -lt $Services.Count) {
+        $val = $Services[$i + 1]
+        if ($val -eq '-test') { $useTestPorts = $true }
+        elseif ($val -eq '-dev') { $useTestPorts = $false }
+        else { Write-Error "Invalid value for 'type'. Expected -test or -dev"; return }
+      } elseif ($tok -eq 'data' -and ($i + 1) -lt $Services.Count) {
+        $val = $Services[$i + 1]
+        if ($val -eq '-test' -or $val -eq '-prod') { $dataMode = $val }
+        else { Write-Error "Invalid value for 'data'. Expected -test or -prod"; return }
+      }
+    }
+  }
+  if (-not $dataMode) { Write-Error "restart requires: data <-test|-prod> (optionally type <-dev|-test>)"; return }
+
+  $proj = if ($Project) { $Project } elseif ($useTestPorts) { "$($envInfo.Project)-test" } else { $envInfo.Project }
+  Write-Host "Bringing down containers for project '$proj'..." -ForegroundColor Cyan
+  docker compose -p $proj down -v --remove-orphans | Out-Null
+  docker network rm "${proj}_default" 2>$null | Out-Null
+  docker volume rm "${proj}_node_modules" 2>$null | Out-Null
   Invoke-Up
 }
 

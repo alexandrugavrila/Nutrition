@@ -43,10 +43,10 @@ Use:
 
 > Use the helper scripts per branch (don’t call `docker compose` directly) so ports and names stay isolated.
 
-**Start services (choose one seed mode):**
+**Start services (choose a data seed):**
 
 ```pwsh
-pwsh ./scripts/docker/compose.ps1 up -test      # or -production / -empty
+pwsh ./scripts/docker/compose.ps1 up data -test    # or data -prod
 ```
 
 Ensures:
@@ -61,7 +61,7 @@ Compose-up behavior:
 - Waits for the Postgres service to become healthy.
 - Waits for the backend container to finish installing deps (verifies `alembic` is present).
 - Runs Alembic migrations inside the backend container: `python -m alembic upgrade head`.
-- Seeds data when `-production` or `-test` is provided.
+- Seeds data based on `data -test` or `data -prod`.
 
 **Stop services:**
 
@@ -81,10 +81,10 @@ Behavior and options:
 **Restart services:**
 
 ```pwsh
-pwsh ./scripts/docker/compose.ps1 restart -test      # or -production / -empty
+pwsh ./scripts/docker/compose.ps1 restart data -test    # or data -prod
 ```
 
-Stops and then starts the current branch's containers with the chosen seed mode.
+Stops and then starts the current branch's containers with the chosen data seed. Use `type -test` if you want to target the TEST ports/project.
 
 ### Import data from CSV
 
@@ -181,7 +181,7 @@ npm --prefix Frontend run preview # preview build
   - These helpers automatically activate the virtual environment if required.
 
 Notes:
-- The helper script starts the branch-specific stack in `-test` mode if it’s not already healthy, waits for readiness, and then runs `pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py` by default for clearer output. The e2e suite emits explicit `[E2E PASS] ...` step messages; `-s` ensures they are shown.
+- The helper starts a dedicated test stack (`type -test data -test`) on TEST ports, waits for readiness, runs the e2e suite, and tears the stack down afterward.
 - You can still pass your own pytest flags to tailor verbosity (e.g., `-q`, `-k`, etc.).
 - The script leaves containers running; use `scripts/docker/compose.ps1 down` (or `scripts/docker/compose.sh down`) to stop them when done.
 
