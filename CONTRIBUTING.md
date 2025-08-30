@@ -42,7 +42,7 @@ Use:
 **Start services (choose one seed mode):**
 
 ```pwsh
-pwsh ./scripts/compose-up-branch.ps1 -test      # or -production / -empty
+pwsh ./scripts/compose.ps1 up -test      # or -production / -empty
 ```
 
 Ensures:
@@ -62,7 +62,7 @@ Compose-up behavior:
 **Stop services:**
 
 ```pwsh
-pwsh ./scripts/compose-down-branch.ps1
+pwsh ./scripts/compose.ps1 down
 ```
 
 Options:
@@ -74,7 +74,7 @@ Options:
 **Restart services:**
 
 ```pwsh
-pwsh ./scripts/compose-restart-branch.ps1 -test      # or -production / -empty
+pwsh ./scripts/compose.ps1 restart -test      # or -production / -empty
 ```
 
 Stops and then starts the current branch's containers with the chosen seed mode.
@@ -142,7 +142,7 @@ npm --prefix Frontend run preview # preview build
 Notes:
 - The helper script starts the branch-specific stack in `-test` mode if it’s not already healthy, waits for readiness, and then runs `pytest -vv -rP -s -m e2e Backend/tests/test_e2e_api.py` by default for clearer output. The e2e suite emits explicit `[E2E PASS] ...` step messages; `-s` ensures they are shown.
 - You can still pass your own pytest flags to tailor verbosity (e.g., `-q`, `-k`, etc.).
-- The script leaves containers running; use `compose-down-branch` scripts to stop them when done.
+- The script leaves containers running; use `./scripts/compose.sh down` to stop them when done.
 
 ---
 
