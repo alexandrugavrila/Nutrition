@@ -294,7 +294,7 @@ The repo includes a **two‑job CI**: `backend` and `frontend`.
 
 ### `backend` job (Ubuntu + Postgres service)
 
-* **Services → Postgres 16**
+* **Services → Postgres 13**
   Spins up a DB with health checks. Exposes `postgres:5432` to the job via Docker networking.
   Sets `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nutrition` for the app.
 

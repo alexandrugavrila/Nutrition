@@ -1,15 +1,11 @@
-import { createTheme } from "@mui/material/styles";
+import { createTheme } from '@mui/material/styles';
 
 const theme = createTheme({
   components: {
     MuiTextField: {
       styleOverrides: {
-        root: {
-          // Customize TextField root style here
-        },
-        outlined: {
-          // Customize outlined variant style here
-        },
+        root: {},
+        outlined: {},
       },
       defaultProps: {
         InputProps: {
@@ -23,3 +19,4 @@ const theme = createTheme({
 });
 
 export default theme;
+

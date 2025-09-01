@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:13
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -44,36 +44,36 @@ jobs:
         run: ls -al ~/.cache/pip || echo 'No pip cache found'
       - name: Install backend dependencies
         run: |
-          source scripts/activate-venv.sh
+          source scripts/env/activate-venv.sh
           pip install pytest
       - name: Check migration drift
         run: |
-          source scripts/activate-venv.sh
-          scripts/check-migration-drift.sh
+          source scripts/env/activate-venv.sh
+          scripts/db/check-migration-drift.sh
           git diff --exit-code Backend/migrations/versions
       - name: Install frontend dependencies for API schema
         working-directory: Frontend
         run: npm ci
       - name: Run Alembic migrations
         run: |
-          source scripts/activate-venv.sh
+          source scripts/env/activate-venv.sh
           alembic upgrade head
       - name: Update API schema
         run: |
-          source scripts/activate-venv.sh
+          source scripts/env/activate-venv.sh
           export BACKEND_PORT=8000
-          scripts/update-api-schema.sh
+          scripts/db/update-api-schema.sh
       - name: Ensure API schema is up to date
         run: |
           git diff --exit-code Backend/openapi.json Frontend/src/api-types.ts
       - name: Backend tests
         run: |
-          source scripts/activate-venv.sh
+          source scripts/env/activate-venv.sh
           pytest
       - name: Teardown database
         if: always()
         run: |
-          source scripts/activate-venv.sh
+          source scripts/env/activate-venv.sh
           python - <<'PY'
           import os
           from sqlalchemy import create_engine, text
