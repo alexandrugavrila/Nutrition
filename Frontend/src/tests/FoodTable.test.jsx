@@ -1,12 +1,12 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
-import MealTable from "../components/data/meal/MealTable";
+import FoodTable from "../components/data/food/FoodTable";
 import { useData } from "../contexts/DataContext";
 
 vi.mock("../contexts/DataContext");
 
-const mockMeals = [
+const mockFoods = [
   {
     id: 1,
     name: "Veg Breakfast",
@@ -30,39 +30,39 @@ const mockMeals = [
   },
   {
     id: 4,
-    name: "Mystery Meal",
+    name: "Mystery Food",
     ingredients: [],
   },
 ];
 
 const renderWithData = () => {
   useData.mockReturnValue({
-    meals: mockMeals,
+    foods: mockFoods,
     ingredients: [],
-    mealDietTags: [{ id: 3, name: "Vegetarian" }],
-    mealTypeTags: [
+    foodDietTags: [{ id: 3, name: "Vegetarian" }],
+    foodTypeTags: [
       { id: 1, name: "Breakfast" },
       { id: 2, name: "Dinner" },
     ],
-    mealOtherTags: [],
+    foodOtherTags: [],
   });
-  return render(<MealTable />);
+  return render(<FoodTable />);
 };
 
-describe("MealTable tag filtering", () => {
+describe("FoodTable tag filtering", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  test("shows all meals when no tags are selected", () => {
+  test("shows all foods when no tags are selected", () => {
     renderWithData();
     expect(screen.getByText("Veg Breakfast")).toBeInTheDocument();
     expect(screen.getByText("Chicken Dinner")).toBeInTheDocument();
     expect(screen.getByText("Snack")).toBeInTheDocument();
-    expect(screen.getByText("Mystery Meal")).toBeInTheDocument();
+    expect(screen.getByText("Mystery Food")).toBeInTheDocument();
   });
 
-  test("filters meals by a single selected tag and excludes meals without tags", async () => {
+  test("filters foods by a single selected tag and excludes foods without tags", async () => {
     renderWithData();
     await userEvent.click(screen.getByLabelText(/Filter tags/i));
     await userEvent.click(screen.getByRole("option", { name: "Dinner" }));
@@ -70,11 +70,11 @@ describe("MealTable tag filtering", () => {
     await waitFor(() => {
       expect(screen.queryByText("Veg Breakfast")).not.toBeInTheDocument();
       expect(screen.queryByText("Snack")).not.toBeInTheDocument();
-      expect(screen.queryByText("Mystery Meal")).not.toBeInTheDocument();
+      expect(screen.queryByText("Mystery Food")).not.toBeInTheDocument();
     });
   });
 
-  test("filters meals when multiple tags are selected", async () => {
+  test("filters foods when multiple tags are selected", async () => {
     renderWithData();
     await userEvent.click(screen.getByLabelText(/Filter tags/i));
     await userEvent.click(screen.getByRole("option", { name: "Breakfast" }));

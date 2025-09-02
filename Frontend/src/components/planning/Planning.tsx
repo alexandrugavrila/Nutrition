@@ -20,7 +20,7 @@ import { useData } from "@/contexts/DataContext";
 import { formatCellNumber } from "@/utils/utils";
 
 function Planning() {
-  const { meals, ingredients } = useData();
+  const { foods, ingredients } = useData();
 
   const [days, setDays] = useState(1);
   const [daysError, setDaysError] = useState(false);
@@ -31,10 +31,10 @@ function Planning() {
     fat: 0,
     fiber: 0,
   });
-  const [plan, setPlan] = useState([]); // [{type:'meal', mealId, portions} or {type:'ingredient', ingredientId, unitId, amount}]
+  const [plan, setPlan] = useState([]); // [{type:'food', foodId, portions} or {type:'ingredient', ingredientId, unitId, amount}]
 
-  const [selectedType, setSelectedType] = useState("meal");
-  const [selectedMealId, setSelectedMealId] = useState("");
+  const [selectedType, setSelectedType] = useState("food");
+  const [selectedFoodId, setSelectedFoodId] = useState("");
   const [selectedPortions, setSelectedPortions] = useState(1);
   const [selectedIngredientId, setSelectedIngredientId] = useState("");
   const [selectedIngredientUnitId, setSelectedIngredientUnitId] = useState(0);
@@ -42,10 +42,10 @@ function Planning() {
   const [open, setOpen] = useState({});
 
   const handleAddItem = () => {
-    if (selectedType === "meal") {
-      if (!selectedMealId || selectedPortions <= 0) return;
+    if (selectedType === "food") {
+      if (!selectedFoodId || selectedPortions <= 0) return;
       const existingIndex = plan.findIndex(
-        (p) => p.type === "meal" && p.mealId === selectedMealId
+        (p) => p.type === "food" && p.foodId === selectedFoodId
       );
       if (existingIndex >= 0) {
         const updated = [...plan];
@@ -54,10 +54,10 @@ function Planning() {
       } else {
         setPlan([
           ...plan,
-          { type: "meal", mealId: selectedMealId, portions: selectedPortions },
+          { type: "food", foodId: selectedFoodId, portions: selectedPortions },
         ]);
       }
-      setSelectedMealId("");
+      setSelectedFoodId("");
       setSelectedPortions(1);
     } else {
       if (!selectedIngredientId || selectedIngredientAmount <= 0) return;
@@ -79,7 +79,7 @@ function Planning() {
   const handleQuantityChange = (index, value) => {
     if (value <= 0) return;
     const updated = [...plan];
-    if (updated[index].type === "meal") {
+    if (updated[index].type === "food") {
       updated[index].portions = value;
     } else {
       updated[index].amount = value;
@@ -109,9 +109,9 @@ function Planning() {
     };
   }, [ingredients]);
 
-  const calculateMealMacros = useCallback((meal) => {
-    if (!meal) return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
-    return meal.ingredients.reduce(
+  const calculateFoodMacros = useCallback((food) => {
+    if (!food) return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
+    return food.ingredients.reduce(
       (totals, ingredient) => {
         const macros = calculateIngredientMacros(ingredient);
         totals.calories += macros.calories;
@@ -126,9 +126,9 @@ function Planning() {
   }, [calculateIngredientMacros]);
 
   const calculateItemMacros = useCallback((item) => {
-    if (item.type === "meal") {
-      const meal = meals.find((m) => m.id === item.mealId);
-      const macros = calculateMealMacros(meal);
+    if (item.type === "food") {
+      const food = foods.find((m) => m.id === item.foodId);
+      const macros = calculateFoodMacros(food);
       return {
         calories: macros.calories * item.portions,
         protein: macros.protein * item.portions,
@@ -142,7 +142,7 @@ function Planning() {
       unit_id: item.unitId,
       unit_quantity: item.amount,
     });
-  }, [meals, calculateMealMacros, calculateIngredientMacros]);
+  }, [foods, calculateFoodMacros, calculateIngredientMacros]);
 
   const totalMacros = useMemo(() => {
     return plan.reduce(
@@ -221,21 +221,21 @@ function Planning() {
           onChange={(e) => setSelectedType(e.target.value)}
           sx={{ minWidth: 120 }}
         >
-          <MenuItem value="meal">Meal</MenuItem>
+          <MenuItem value="food">Food</MenuItem>
           <MenuItem value="ingredient">Ingredient</MenuItem>
         </TextField>
-        {selectedType === "meal" ? (
+        {selectedType === "food" ? (
           <>
             <TextField
               select
-              label="Meal"
-              value={selectedMealId}
-              onChange={(e) => setSelectedMealId(e.target.value)}
+              label="Food"
+              value={selectedFoodId}
+              onChange={(e) => setSelectedFoodId(e.target.value)}
               sx={{ minWidth: 200 }}
             >
-              {meals.map((meal) => (
-                <MenuItem key={meal.id} value={meal.id}>
-                  {meal.name}
+              {foods.map((food) => (
+                <MenuItem key={food.id} value={food.id}>
+                  {food.name}
                 </MenuItem>
               ))}
             </TextField>
@@ -313,8 +313,8 @@ function Planning() {
           variant="contained"
           onClick={handleAddItem}
           disabled={
-            selectedType === "meal"
-              ? !selectedMealId || selectedPortions <= 0
+            selectedType === "food"
+              ? !selectedFoodId || selectedPortions <= 0
               : !selectedIngredientId || selectedIngredientAmount <= 0
           }
         >
@@ -339,16 +339,16 @@ function Planning() {
         </TableHead>
         <TableBody>
           {plan.map((item, index) => {
-            if (item.type === "meal") {
-              const meal = meals.find((m) => m.id === item.mealId);
-              const macros = calculateMealMacros(meal);
+            if (item.type === "food") {
+              const food = foods.find((m) => m.id === item.foodId);
+              const macros = calculateFoodMacros(food);
               return (
-                <React.Fragment key={`meal-${item.mealId}`}>
+                <React.Fragment key={`food-${item.foodId}`}>
                   <TableRow>
                     <TableCell onClick={() => setOpen({ ...open, [index]: !open[index] })}>
                       {open[index] ? <KeyboardArrowDown /> : <KeyboardArrowRight />}
                     </TableCell>
-                    <TableCell>{meal ? meal.name : ""}</TableCell>
+                    <TableCell>{food ? food.name : ""}</TableCell>
                     <TableCell>
                       <TextField
                         type="number"
@@ -400,7 +400,7 @@ function Planning() {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {meal?.ingredients.map((ingredient) => {
+                            {food?.ingredients.map((ingredient) => {
                               const dataIngredient = ingredients.find(
                                 (i) => i.id === ingredient.ingredient_id
                               );

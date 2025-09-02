@@ -1,4 +1,4 @@
-// MealTable.js
+// FoodTable.js
 
 import React, { useState } from "react";
 import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, Collapse, Typography, TablePagination } from "@mui/material";
@@ -8,14 +8,14 @@ import { useData } from "@/contexts/DataContext";
 import { formatCellNumber } from "@/utils/utils";
 import TagFilter from "@/components/common/TagFilter";
 
-function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} }) {
+function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} }) {
   //#region States
   const {
-    meals,
+    foods,
     ingredients,
-    mealDietTags,
-    mealTypeTags,
-    mealOtherTags,
+    foodDietTags,
+    foodTypeTags,
+    foodOtherTags,
   } = useData();
 
   const [search, setSearch] = useState("");
@@ -30,27 +30,27 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
     setSearch(event.target.value);
   };
 
-  const handleTagFilter = (meal) => {
+  const handleTagFilter = (food) => {
     if (selectedTags.length === 0) {
-      return true; // Show all meals if no tags are selected
+      return true; // Show all foods if no tags are selected
     }
-    if (!Array.isArray(meal.tags) || meal.tags.length === 0) {
+    if (!Array.isArray(food.tags) || food.tags.length === 0) {
       return false;
     }
     return selectedTags.some((selectedTag) =>
-      meal.tags.some(({ name }) => name === selectedTag.name)
+      food.tags.some(({ name }) => name === selectedTag.name)
     );
   };
 
-  const handleMealDoubleClick = (meal) => {
-    onMealDoubleClick(meal);
+  const handleFoodDoubleClick = (food) => {
+    onFoodDoubleClick(food);
   };
 
-  const handleMealClick = (event, meal) => {
+  const handleFoodClick = (event, food) => {
     if (event.ctrlKey) {
-      onMealCtrlClick(meal);
+      onFoodCtrlClick(food);
     } else {
-      setOpen({ ...open, [meal.id]: !open[meal.id] });
+      setOpen({ ...open, [food.id]: !open[food.id] });
     }
   };
 
@@ -66,15 +66,15 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const filteredMeals = meals
-    .filter((meal) => meal.name.toLowerCase().includes(search.toLowerCase()))
+  const filteredFoods = foods
+    .filter((food) => food.name.toLowerCase().includes(search.toLowerCase()))
     .filter(handleTagFilter);
-  const currentMeals = filteredMeals.slice(indexOfFirstItem, indexOfLastItem);
+  const currentFoods = filteredFoods.slice(indexOfFirstItem, indexOfLastItem);
 
-  const allMealTags = [
-    ...mealDietTags.map((tag) => ({ ...tag, group: "Diet" })),
-    ...mealTypeTags.map((tag) => ({ ...tag, group: "Type" })),
-    ...mealOtherTags.map((tag) => ({ ...tag, group: "Other" })),
+  const allFoodTags = [
+    ...foodDietTags.map((tag) => ({ ...tag, group: "Diet" })),
+    ...foodTypeTags.map((tag) => ({ ...tag, group: "Type" })),
+    ...foodOtherTags.map((tag) => ({ ...tag, group: "Other" })),
   ];
 
   const calculateIngredientMacros = (ingredient) => {
@@ -124,14 +124,14 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
     };
   };
 
-  const calculateMealMacros = (meal) => {
+  const calculateFoodMacros = (food) => {
     let totalCalories = 0;
     let totalProtein = 0;
     let totalFat = 0;
     let totalCarbs = 0;
     let totalFiber = 0;
 
-    meal.ingredients.forEach((ingredient) => {
+    food.ingredients.forEach((ingredient) => {
       const dataIngredient = ingredients.find((item) => item.id === ingredient.ingredient_id);
       if (dataIngredient) {
         totalCalories += calculateIngredientMacros(ingredient).calories;
@@ -154,7 +154,7 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
 
   return (
     <div>
-      <h1 style={{ textAlign: "center" }}>Meals</h1>
+      <h1 style={{ textAlign: "center" }}>Foods</h1>
 
       <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
         <TextField
@@ -166,7 +166,7 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
       </Box>
 
       <TagFilter
-        tags={allMealTags}
+        tags={allFoodTags}
         selectedTags={selectedTags}
         onChange={setSelectedTags}
         label="Filter tags"
@@ -186,25 +186,25 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentMeals.map((meal) => (
-                <React.Fragment key={meal.id}>
+            {currentFoods.map((food) => (
+                <React.Fragment key={food.id}>
                   <TableRow
-                    onDoubleClick={() => handleMealDoubleClick(meal)}
-                    onClick={(event) => handleMealClick(event, meal)}>
-                    <TableCell>{open[meal.id] ? <KeyboardArrowDown /> : <KeyboardArrowRight />}</TableCell>
-                    <TableCell>{meal.name}</TableCell>
-                    <TableCell>{formatCellNumber(calculateMealMacros(meal).totalCalories)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateMealMacros(meal).totalProtein)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateMealMacros(meal).totalFat)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateMealMacros(meal).totalCarbs)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateMealMacros(meal).totalFiber)}</TableCell>
+                    onDoubleClick={() => handleFoodDoubleClick(food)}
+                    onClick={(event) => handleFoodClick(event, food)}>
+                    <TableCell>{open[food.id] ? <KeyboardArrowDown /> : <KeyboardArrowRight />}</TableCell>
+                    <TableCell>{food.name}</TableCell>
+                    <TableCell>{formatCellNumber(calculateFoodMacros(food).totalCalories)}</TableCell>
+                    <TableCell>{formatCellNumber(calculateFoodMacros(food).totalProtein)}</TableCell>
+                    <TableCell>{formatCellNumber(calculateFoodMacros(food).totalFat)}</TableCell>
+                    <TableCell>{formatCellNumber(calculateFoodMacros(food).totalCarbs)}</TableCell>
+                    <TableCell>{formatCellNumber(calculateFoodMacros(food).totalFiber)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell
                       style={{ paddingBottom: 0, paddingTop: 0 }}
                       colSpan={6}>
                       <Collapse
-                        in={open[meal.id]}
+                        in={open[food.id]}
                         timeout="auto"
                         unmountOnExit>
                         <Typography
@@ -229,7 +229,7 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {meal.ingredients.map((ingredient) => {
+                            {food.ingredients.map((ingredient) => {
                               const dataIngredient = ingredients.find(
                                 (item) => item.id === ingredient.ingredient_id
                               );
@@ -300,7 +300,7 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
       </TableContainer>
       <TablePagination
         component="div"
-        count={filteredMeals.length}
+        count={filteredFoods.length}
         page={currentPage - 1}
         onPageChange={handlePageChange}
         rowsPerPage={itemsPerPage}
@@ -310,4 +310,4 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
     </div>
   );
 }
-export default MealTable;
+export default FoodTable;

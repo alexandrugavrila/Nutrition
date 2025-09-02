@@ -5,10 +5,10 @@ from sqlmodel import Session
 from Backend.models import (
     Ingredient,
     IngredientUnit,
-    Meal,
-    MealIngredient,
+    Food,
+    FoodIngredient,
     PossibleIngredientTag,
-    PossibleMealTag,
+    PossibleFoodTag,
 )
 
 
@@ -93,23 +93,23 @@ def test_ingredient_endpoints(client: TestClient, engine, case: str) -> None:
         "possible_tags",
     ],
 )
-def test_meal_endpoints(client: TestClient, engine, case: str) -> None:
-    """Test meal API endpoints for various cases."""
+def test_food_endpoints(client: TestClient, engine, case: str) -> None:
+    """Test food API endpoints for various cases."""
     with Session(engine) as session:
         if case in {"list", "get", "put", "delete"}:
             ingredient = Ingredient(
                 name="Rice",
                 units=[IngredientUnit(name="g", grams=1)],
             )
-            tag = PossibleMealTag(name="Dinner")
+            tag = PossibleFoodTag(name="Dinner")
             session.add_all([ingredient, tag])
             session.commit()
             ingredient_id = ingredient.id
             unit_id = ingredient.units[0].id
-            meal = Meal(
+            food = Food(
                 name="Rice Bowl",
                 ingredients=[
-                    MealIngredient(
+                    FoodIngredient(
                         ingredient_id=ingredient_id,
                         unit_id=unit_id,
                         unit_quantity=100,
@@ -117,30 +117,30 @@ def test_meal_endpoints(client: TestClient, engine, case: str) -> None:
                 ],
                 tags=[tag],
             )
-            session.add(meal)
+            session.add(food)
             session.commit()
-            meal_id = meal.id
+            food_id = food.id
         elif case == "post":
             ingredient = Ingredient(
                 name="Beans",
                 units=[IngredientUnit(name="g", grams=1)],
             )
-            tag = PossibleMealTag(name="Lunch")
+            tag = PossibleFoodTag(name="Lunch")
             session.add_all([ingredient, tag])
             session.commit()
             ingredient_id = ingredient.id
             unit_id = ingredient.units[0].id
             tag_id = tag.id
         elif case == "possible_tags":
-            session.add(PossibleMealTag(name="Snack"))
+            session.add(PossibleFoodTag(name="Snack"))
             session.commit()
 
     if case == "list":
-        response = client.get("/api/meals/")
+        response = client.get("/api/foods/")
         assert response.status_code == 200
         assert any(item["name"] == "Rice Bowl" for item in response.json())
     elif case == "get":
-        response = client.get(f"/api/meals/{meal_id}")
+        response = client.get(f"/api/foods/{food_id}")
         assert response.status_code == 200
         assert response.json()["name"] == "Rice Bowl"
     elif case == "post":
@@ -155,7 +155,7 @@ def test_meal_endpoints(client: TestClient, engine, case: str) -> None:
             ],
             "tags": [{"id": tag_id}],
         }
-        response = client.post("/api/meals/", json=payload)
+        response = client.post("/api/foods/", json=payload)
         assert response.status_code == 201
         data = response.json()
         assert data["name"] == "Bean Salad"
@@ -173,14 +173,14 @@ def test_meal_endpoints(client: TestClient, engine, case: str) -> None:
             ],
             "tags": [],
         }
-        response = client.put(f"/api/meals/{meal_id}", json=payload)
+        response = client.put(f"/api/foods/{food_id}", json=payload)
         assert response.status_code == 200
         assert response.json()["name"] == "Rice Bowl Updated"
     elif case == "delete":
-        response = client.delete(f"/api/meals/{meal_id}")
+        response = client.delete(f"/api/foods/{food_id}")
         assert response.status_code == 200
-        assert response.json()["message"] == "Meal deleted successfully"
+        assert response.json()["message"] == "Food deleted successfully"
     elif case == "possible_tags":
-        response = client.get("/api/meals/possible_tags")
+        response = client.get("/api/foods/possible_tags")
         assert response.status_code == 200
         assert any(tag["name"] == "Snack" for tag in response.json())

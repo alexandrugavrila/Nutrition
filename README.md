@@ -117,14 +117,14 @@ Nutrition/
 
 Every ingredient response automatically includes a synthetic `1g` unit for convenience.
 
-**Meals**
+**Foods**
 
-- `GET /meals` – list all
-- `GET /meals/{id}` – single meal
-- `GET /meals/possible_tags` – list tags
-- `POST /meals` – add new
-- `PUT /meals/{id}` – update
-- `DELETE /meals/{id}` – remove
+- `GET /foods` – list all
+- `GET /foods/{id}` – single food
+- `GET /foods/possible_tags` – list tags
+- `POST /foods` – add new
+- `PUT /foods/{id}` – update
+- `DELETE /foods/{id}` – remove
 
 ---
 
@@ -139,10 +139,10 @@ erDiagram
   INGREDIENT ||--|| NUTRITION : contains
   INGREDIENT ||--o{ INGREDIENT_TAG : tagged_with
   INGREDIENT_TAG }o--|| POSSIBLE_INGREDIENT_TAG : references
-  MEAL ||--o{ MEAL_INGREDIENT : includes
-  MEAL_INGREDIENT }o--|| INGREDIENT : uses
-  MEAL ||--o{ MEAL_TAG : tagged_with
-  MEAL_TAG }o--|| POSSIBLE_MEAL_TAG : references
+  FOOD ||--o{ FOOD_INGREDIENT : includes
+  FOOD_INGREDIENT }o--|| INGREDIENT : uses
+  FOOD ||--o{ FOOD_TAG : tagged_with
+  FOOD_TAG }o--|| POSSIBLE_FOOD_TAG : references
 ```
 
 </details>
@@ -153,7 +153,7 @@ erDiagram
 ```mermaid
 classDiagram
   class Ingredient { id; name; Nutrition nutrition; IngredientUnit[] units }
-  class Meal { id; name; MealIngredient[] ingredients; MealTag[] tags }
+  class Food { id; name; FoodIngredient[] ingredients; FoodTag[] tags }
 ```
 
 </details>

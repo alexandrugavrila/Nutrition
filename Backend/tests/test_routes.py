@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from Backend.models import PossibleIngredientTag, PossibleMealTag
+from Backend.models import PossibleIngredientTag, PossibleFoodTag
 
 
 def test_get_possible_ingredient_tags(client: TestClient, engine) -> None:
@@ -16,13 +16,13 @@ def test_get_possible_ingredient_tags(client: TestClient, engine) -> None:
     assert names == ["Spicy", "Sweet"]
 
 
-def test_get_possible_meal_tags(client: TestClient, engine) -> None:
+def test_get_possible_food_tags(client: TestClient, engine) -> None:
     with Session(engine) as session:
-        session.add(PossibleMealTag(name="Breakfast"))
-        session.add(PossibleMealTag(name="Dinner"))
+        session.add(PossibleFoodTag(name="Breakfast"))
+        session.add(PossibleFoodTag(name="Dinner"))
         session.commit()
 
-    response = client.get("/api/meals/possible_tags")
+    response = client.get("/api/foods/possible_tags")
     assert response.status_code == 200
     names = [tag["name"] for tag in response.json()]
     assert names == ["Breakfast", "Dinner"]
@@ -36,6 +36,6 @@ def test_update_nonexistent_ingredient_returns_404(client: TestClient) -> None:
     assert response.status_code == 404
 
 
-def test_delete_nonexistent_meal_returns_404(client: TestClient) -> None:
-    response = client.delete("/api/meals/999")
+def test_delete_nonexistent_food_returns_404(client: TestClient) -> None:
+    response = client.delete("/api/foods/999")
     assert response.status_code == 404

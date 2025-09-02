@@ -3,17 +3,17 @@ from typing import List, Optional
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import Column, String
 
-from .meal_tag import MealTagLink
+from .food_tag import FoodTagLink
 
 
-class PossibleMealTag(SQLModel, table=True):
-    """Tag that can be associated with a meal."""
+class PossibleFoodTag(SQLModel, table=True):
+    """Tag that can be associated with a food."""
 
-    __tablename__ = "possible_meal_tags"
+    __tablename__ = "possible_food_tags"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(sa_column=Column(String(50), unique=True, nullable=False))
 
-    meals: List["Meal"] = Relationship(
-        back_populates="tags", link_model=MealTagLink
+    foods: List["Food"] = Relationship(
+        back_populates="tags", link_model=FoodTagLink
     )

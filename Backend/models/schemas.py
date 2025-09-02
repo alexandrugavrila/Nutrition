@@ -5,9 +5,9 @@ from sqlmodel import SQLModel, Field
 
 from .ingredient_unit import IngredientUnit
 from .nutrition import Nutrition
-from .meal_ingredient import MealIngredient
+from .food_ingredient import FoodIngredient
 from .possible_ingredient_tag import PossibleIngredientTag
-from .possible_meal_tag import PossibleMealTag
+from .possible_food_tag import PossibleFoodTag
 
 
 class NutritionCreate(SQLModel):
@@ -27,8 +27,8 @@ class IngredientUnitCreate(SQLModel):
     grams: float
 
 
-class MealIngredientCreate(SQLModel):
-    """Schema for creating meal ingredient linkage."""
+class FoodIngredientCreate(SQLModel):
+    """Schema for creating food ingredient linkage."""
 
     ingredient_id: int
     unit_id: Optional[int] = None
@@ -68,40 +68,40 @@ class IngredientRead(SQLModel):
     tags: List[PossibleIngredientTag] = Field(default_factory=list)
 
 
-class MealCreate(SQLModel):
-    """Schema for creating a meal."""
+class FoodCreate(SQLModel):
+    """Schema for creating a food."""
 
     name: str
-    ingredients: List[MealIngredientCreate] = Field(default_factory=list)
+    ingredients: List[FoodIngredientCreate] = Field(default_factory=list)
     tags: List[TagRef] = Field(default_factory=list)
 
 
-class MealUpdate(MealCreate):
-    """Schema for updating a meal."""
+class FoodUpdate(FoodCreate):
+    """Schema for updating a food."""
 
     pass
 
 
-class MealRead(SQLModel):
-    """Schema for reading meal data."""
+class FoodRead(SQLModel):
+    """Schema for reading food data."""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     name: str
-    ingredients: List[MealIngredient] = Field(default_factory=list)
-    tags: List[PossibleMealTag] = Field(default_factory=list)
+    ingredients: List[FoodIngredient] = Field(default_factory=list)
+    tags: List[PossibleFoodTag] = Field(default_factory=list)
 
 
 __all__ = [
     "NutritionCreate",
     "IngredientUnitCreate",
-    "MealIngredientCreate",
+    "FoodIngredientCreate",
     "TagRef",
     "IngredientCreate",
     "IngredientUpdate",
     "IngredientRead",
-    "MealCreate",
-    "MealUpdate",
-    "MealRead",
+    "FoodCreate",
+    "FoodUpdate",
+    "FoodRead",
 ]
