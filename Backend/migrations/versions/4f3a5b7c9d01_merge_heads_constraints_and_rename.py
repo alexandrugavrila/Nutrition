@@ -2,7 +2,7 @@
 
 This merge unifies two independent branches:
 - 2ea617f76053: restore ingredient_id non-null
-- 3a2af5cf8e9b: rename meal tables to food
+- 3a2af5cf8e9b: rename tables to food
 
 No schema changes are applied in this merge; it only reconciles history
 so that future upgrades can target a single head.
