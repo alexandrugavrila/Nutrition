@@ -89,13 +89,13 @@ def test_full_ingredient_crud(client: TestClient, engine) -> None:
 
 def test_full_food_crud(client: TestClient, engine) -> None:
     with Session(engine) as session:
-        meal_tag1 = PossibleFoodTag(name="Breakfast")
-        meal_tag2 = PossibleFoodTag(name="Healthy")
+        food_tag1 = PossibleFoodTag(name="Breakfast")
+        food_tag2 = PossibleFoodTag(name="Healthy")
         ing_tag = PossibleIngredientTag(name="Vegetable")
-        session.add_all([meal_tag1, meal_tag2, ing_tag])
+        session.add_all([food_tag1, food_tag2, ing_tag])
         session.commit()
-        meal_tag1_id = meal_tag1.id
-        meal_tag2_id = meal_tag2.id
+        food_tag1_id = food_tag1.id
+        food_tag2_id = food_tag2.id
         ing_tag_id = ing_tag.id
 
     ingredient_payload = {
@@ -126,42 +126,42 @@ def test_full_food_crud(client: TestClient, engine) -> None:
                 "unit_quantity": 2.0,
             }
         ],
-        "tags": [{"id": meal_tag1_id}, {"id": meal_tag2_id}],
+        "tags": [{"id": food_tag1_id}, {"id": food_tag2_id}],
     }
 
     response = client.post("/api/foods", json=food_payload)
     assert response.status_code == 201
     food = response.json()
-    meal_id = food["id"]
+    food_id = food["id"]
     assert food["ingredients"][0]["unit_quantity"] == pytest.approx(2.0)
     assert {t["name"] for t in food["tags"]} == {"Breakfast", "Healthy"}
 
-    response = client.get(f"/api/foods/{meal_id}")
+    response = client.get(f"/api/foods/{food_id}")
     assert response.status_code == 200
     fetched = response.json()
 
     update_payload = {
-        "id": meal_id,
+        "id": food_id,
         "name": "Onion Omelette Deluxe",
         "ingredients": [
             {
                 "ingredient_id": ingredient_id,
-                "food_id": meal_id,
+                "food_id": food_id,
                 "unit_id": unit_id,
                 "unit_quantity": 3.0,
             }
         ],
-        "tags": [{"id": meal_tag1_id}],
+        "tags": [{"id": food_tag1_id}],
     }
 
-    response = client.put(f"/api/foods/{meal_id}", json=update_payload)
+    response = client.put(f"/api/foods/{food_id}", json=update_payload)
     assert response.status_code == 200
     updated = response.json()
     assert updated["name"] == "Onion Omelette Deluxe"
     assert updated["ingredients"][0]["unit_quantity"] == pytest.approx(3.0)
     assert len(updated["tags"]) == 1 and updated["tags"][0]["name"] == "Breakfast"
 
-    response = client.delete(f"/api/foods/{meal_id}")
+    response = client.delete(f"/api/foods/{food_id}")
     assert response.status_code == 200
-    response = client.get(f"/api/foods/{meal_id}")
+    response = client.get(f"/api/foods/{food_id}")
     assert response.status_code == 404
