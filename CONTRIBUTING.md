@@ -308,6 +308,8 @@ Before opening a PR:
 * [ ] **Models changed?**
   Run `pwsh ./scripts/db/sync-api-and-migrations.ps1`
   → Commit any new migration(s), `Backend/openapi.json`, `Frontend/src/api-types.ts`
+* [ ] **API endpoints updated?**
+  Confirm new paths (e.g., `/foods`) after running migrations and update docs and clients as needed.
 * [ ] **Frontend API usage added/changed?**
   Ensure `Frontend/src/api-types.ts` is current (via the sync script)
 * [ ] **Migrations apply cleanly?**
