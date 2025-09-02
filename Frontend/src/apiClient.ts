@@ -35,24 +35,24 @@ class ApiClient {
                 const text = await response.text();
                 parsed = text.length ? text : null;
               }
-            } catch (e) {
+            } catch {
               // Ignore JSON parse errors for empty/error responses
               parsed = null;
             }
 
             if (!response.ok) {
               const statusText = response.statusText || "Request failed";
-              const detail =
-                typeof parsed === "object" && parsed && "detail" in (parsed as any)
-                  ? (parsed as any).detail
-                  : parsed;
+              let detail: unknown = parsed;
+              if (parsed !== null && typeof parsed === "object" && "detail" in parsed) {
+                detail = (parsed as { detail: unknown }).detail;
+              }
               const error = new Error(
                 `${response.status} ${statusText}${detail ? `: ${detail}` : ""}`,
               );
               throw error;
             }
 
-            return { data: parsed } as { data: any };
+            return { data: parsed } as { data: unknown };
           },
       }),
     };

@@ -5,7 +5,7 @@ export const formatCellNumber = (value: number): number => {
   return parseFloat(parseFloat(String(value)).toPrecision(3));
 };
 
-const API_BASE_URL: string = (import.meta as any).env?.VITE_API_BASE_URL || '';
+const API_BASE_URL: string = import.meta.env?.VITE_API_BASE_URL || '';
 
 /**
  * Minimal fetch wrapper.
@@ -28,4 +28,3 @@ export const handleFetchRequest = async (
     throw new Error('Failed to make request');
   }
 };
-
