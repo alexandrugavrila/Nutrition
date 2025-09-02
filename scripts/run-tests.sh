@@ -58,8 +58,9 @@ if $RUN_SYNC; then
 fi
 
 # Backend tests (exclude e2e by default; use --e2e to include)
+# Be verbose and show summary of skips/fails, etc.
 # Force an isolated test database so unit tests never touch the dev DB.
-DATABASE_URL=sqlite:// pytest -m 'not e2e'
+DATABASE_URL=sqlite:// pytest -vv -rd -m 'not e2e'
 
 # Frontend tests
 CI=true npm --prefix Frontend test
