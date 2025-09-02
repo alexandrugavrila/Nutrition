@@ -94,3 +94,4 @@ We use a **split-responsibility model** between `README.md` and `CONTRIBUTING.md
 - Validate and sanitize all user inputs on both client and server.
 - Keep dependencies updated and promptly address security advisories.
 - Restrict network and database permissions to the minimum necessary.
+

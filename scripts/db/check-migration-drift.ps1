@@ -15,12 +15,8 @@ try {
     $null = Set-BranchEnv
 } catch { }
 
-if ($env:PYTHON)      { $pythonParts = @($env:PYTHON) }
-elseif (Get-Command python  -ErrorAction SilentlyContinue) { $pythonParts = @("python") }
-elseif (Get-Command python3 -ErrorAction SilentlyContinue) { $pythonParts = @("python3") }
-elseif (Get-Command py      -ErrorAction SilentlyContinue) { $pythonParts = @("py","-3") }
-else { Write-Error "Python is required but was not found on PATH"; exit 1 }
-
+. (Join-Path $scriptDir '../lib/python.ps1')
+$pythonParts = Get-PythonCommand
 $exe    = $pythonParts[0]
 $exeArgs = @()
 if ($pythonParts.Count -gt 1) { $exeArgs = $pythonParts[1..($pythonParts.Count-1)] }

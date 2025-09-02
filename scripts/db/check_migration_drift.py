@@ -46,16 +46,24 @@ def _err(msg: str) -> None:
 # Paths and configuration
 # ---------------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parent
+# The repo root is two levels up from this script (scripts/db/.. -> scripts/.. -> repo root)
+REPO_ROOT = SCRIPT_DIR.parent.parent
 os.chdir(REPO_ROOT)
 
-ALEMBIC_INI = REPO_ROOT / "alembic.ini"
-MIGRATION_ROOT = REPO_ROOT / "Backend" / "migrations" / "versions"
+ALEMBIC_INI = REPO_ROOT / "Backend" / "alembic.ini"
+MIGRATIONS_DIR = REPO_ROOT / "Backend" / "migrations"
+MIGRATION_ROOT = MIGRATIONS_DIR / "versions"
 if not MIGRATION_ROOT.is_dir():
     _err(f"Alembic versions directory not found: {MIGRATION_ROOT}")
     sys.exit(1)
 
 CONFIG = Config(str(ALEMBIC_INI)) if ALEMBIC_INI.exists() else Config()
+# Ensure Alembic resolves script_location to Backend/migrations regardless of CWD
+try:
+    CONFIG.set_main_option("script_location", str(MIGRATIONS_DIR))
+except Exception:
+    # Config without an ini still supports overriding options; ignore if not available
+    pass
 
 
 # ---------------------------------------------------------------------------
@@ -197,7 +205,7 @@ def _start_temp_db() -> None:
             f"Starting temporary database container {CONTAINER_NAME} with random host port..."
         )
     try:
-        _run("docker", "pull", "postgres:16")
+        _run("docker", "pull", "postgres:13")
         run_cmd = (
             [
                 "docker",
@@ -214,7 +222,7 @@ def _start_temp_db() -> None:
             ]
             + port_arg
             + [
-                "postgres:16",
+                "postgres:13",
             ]
         )
         # Capture output for clearer diagnostics on failure

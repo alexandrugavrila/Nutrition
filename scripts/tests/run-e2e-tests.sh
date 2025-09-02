@@ -30,15 +30,15 @@ fi
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
 
+# Load shared helpers and branch env
+# shellcheck disable=SC1090
+source "$REPO_ROOT/scripts/lib/venv.sh"
+source "$REPO_ROOT/scripts/lib/branch-env.sh"
+source "$REPO_ROOT/scripts/lib/compose-utils.sh"
+branch_env_load
+
 # Ensure the virtual environment is active
-if [[ -z "${VIRTUAL_ENV:-}" ]]; then
-  echo "No virtualenv detected; activating via ./scripts/env/activate-venv.sh ..."
-  if ! source ./scripts/env/activate-venv.sh >/tmp/venv.log 2>&1; then
-    cat /tmp/venv.log
-    echo "Failed to activate virtual environment" >&2
-    exit 1
-  fi
-fi
+ensure_venv
 
 is_backend_healthy() {
   local port="$1"
@@ -46,9 +46,7 @@ is_backend_healthy() {
 }
 
 # Determine dedicated TEST compose project for this branch
-BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD | tr -d '\n')
-BRANCH_SANITIZED=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/^[-]*//;s/[-]*$//')
-TEST_PROJECT="nutrition-${BRANCH_SANITIZED}-test"
+TEST_PROJECT="$(compose_test_project)"
 
 # Always start a dedicated TEST stack; capture resolved ports
 ENV_FILE=$(mktemp)
@@ -67,7 +65,7 @@ deadline=$((SECONDS + 120))
 until is_backend_healthy "$DEV_BACKEND_PORT"; do
   if (( SECONDS >= deadline )); then
     echo "Backend did not become healthy on port ${DEV_BACKEND_PORT} within timeout." >&2
-    ./scripts/docker/compose.sh down --project "$TEST_PROJECT" --force || true
+    ./scripts/docker/compose.sh down type -test || true
     exit 1
   fi
   sleep 1

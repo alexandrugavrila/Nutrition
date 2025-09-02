@@ -21,6 +21,6 @@ RUN pip install --no-cache-dir --break-system-packages -r /tmp/requirements.txt
 COPY Backend/ /app/Backend
 
 # Copy Alembic configuration for database migrations
-COPY alembic.ini /app/alembic.ini
+## Alembic config now lives within the Backend/ tree and is copied above.
 
 CMD ["python", "-m", "uvicorn", "Backend.backend:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

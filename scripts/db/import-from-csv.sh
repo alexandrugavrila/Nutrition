@@ -25,23 +25,16 @@ esac
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/branch-env.sh"
 branch_env_load
+# Shared helpers
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/venv.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/compose-utils.sh"
 cd "$REPO_ROOT"
 
 # Ensure the virtual environment is active
-if [[ -z "${VIRTUAL_ENV:-}" ]]; then
-  echo "No virtualenv detected; activating via ./scripts/env/activate-venv.sh ..."
-  if ! source ./scripts/env/activate-venv.sh >/tmp/venv.log 2>&1; then
-    cat /tmp/venv.log
-    echo "Failed to activate virtual environment" >&2
-    exit 1
-  fi
-fi
+ensure_venv
 
 # Ensure containers are running for this branch
-if [[ -z $(docker compose -p "$COMPOSE_PROJECT" ps -q 2>/dev/null) ]]; then
-  echo "Warning: no containers running for branch '$BRANCH_NAME'. Run the compose script first." >&2
-  exit 1
-fi
+require_branch_containers
 
 export DEV_DB_PORT
 python Database/import_from_csv.py "$flag"

@@ -36,25 +36,9 @@ if ($PSBoundParameters.ContainsKey('help') -or $args -contains '-h' -or $args -c
 $repoRoot = Resolve-Path "$PSScriptRoot/../.."
 Set-Location $repoRoot
 
-# Ensure virtual environment is active (activate only if not already)
-if (-not $env:VIRTUAL_ENV) {
-  Write-Host "No virtualenv detected; activating via ./scripts/env/activate-venv.ps1 ..."
-  $activationLog = [System.IO.Path]::GetTempFileName()
-  try {
-    . "$PSScriptRoot/../env/activate-venv.ps1" *> $activationLog 2>&1
-  }
-  catch {
-    if (Test-Path $activationLog) { Get-Content $activationLog | Write-Host }
-    Remove-Item $activationLog -ErrorAction SilentlyContinue
-    Write-Error "Failed to activate virtual environment: $($_.Exception.Message)"
-    exit 1
-  }
-  finally {
-    Remove-Item $activationLog -ErrorAction SilentlyContinue
-  }
-  # Clear any lingering native process exit code from activation steps
-  if ($LASTEXITCODE -ne 0) { $global:LASTEXITCODE = 0 }
-}
+# Ensure virtual environment is active
+. "$PSScriptRoot/../lib/venv.ps1"
+Ensure-Venv
 
 function Test-BackendHealthy([int]$Port) {
   try {
@@ -69,9 +53,8 @@ function Test-BackendHealthy([int]$Port) {
 }
 
 # Determine a dedicated TEST compose project for this branch
-$branch = (git rev-parse --abbrev-ref HEAD).Trim()
-$sanitized = ($branch.ToLower() -replace '[^a-z0-9]', '-').Trim('-')
-$testProject = "nutrition-$sanitized-test"
+. "$PSScriptRoot/../lib/compose-utils.ps1"
+$testProject = Get-TestProject
 
 function Get-BackendPort($proj) {
   try {

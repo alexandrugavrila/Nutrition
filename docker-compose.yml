@@ -24,12 +24,12 @@ services:
     environment:
       DATABASE_URL: postgresql://nutrition_user:nutrition_pass@db:5432/nutrition
       WATCHFILES_FORCE_POLLING: "true"
+      ALEMBIC_CONFIG: /app/Backend/alembic.ini
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./Backend:/app/Backend
-      - ./alembic.ini:/app/alembic.ini:ro
     command: >
       bash -c "set -eux; python -m pip install --break-system-packages -v -r Backend/requirements.txt;
       python -m pip show uvicorn;

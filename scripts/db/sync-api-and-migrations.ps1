@@ -17,36 +17,9 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-# --------------------------- Shared Logging Helpers ---------------------------
-function Out-Step   { param([string]$m) Write-Host "» $m" -ForegroundColor Cyan }
-function Out-Info   { param([string]$m) Write-Host "$m" }
-function Out-Ok     { param([string]$m) Write-Host "$m" -ForegroundColor Green }
-function Out-Warn   { param([string]$m) Write-Warning $m }
-function Out-Err    { param([string]$m) Write-Error $m }
-function Out-Result { param([string]$m,[string]$color) Write-Host "[RESULT] $m" -ForegroundColor $color }
-
-# --------------------------- Helpers -----------------------------------------
-function Ensure-Venv {
-    # We activate only to ensure Python/uvicorn for update-api-schema.ps1.
-    # The drift script activates Alembic itself.
-    $activationLog = [System.IO.Path]::GetTempFileName()
-    $needActivate = (-not $env:VIRTUAL_ENV)
-    if ($needActivate) {
-        Out-Step "Activating virtual environment..."
-        if (Test-Path "$PSScriptRoot/../env/activate-venv.ps1") {
-            & "$PSScriptRoot/../env/activate-venv.ps1" *> $activationLog 2>&1
-            if ($LASTEXITCODE -ne 0) {
-                Get-Content $activationLog
-                Remove-Item $activationLog -ErrorAction SilentlyContinue
-                throw "Failed to activate virtual environment"
-            }
-        } else {
-            Remove-Item $activationLog -ErrorAction SilentlyContinue
-            throw "activate-venv.ps1 was not found in scripts/env"
-        }
-    }
-    Remove-Item $activationLog -ErrorAction SilentlyContinue
-}
+# Shared libraries
+. "$PSScriptRoot/../lib/log.ps1"
+. "$PSScriptRoot/../lib/venv.ps1"
 
 function Get-RepoRoot { Split-Path -Parent (Split-Path -Parent $PSScriptRoot) }
 function Test-GitPresent { return [bool](Get-Command git -ErrorAction SilentlyContinue) }

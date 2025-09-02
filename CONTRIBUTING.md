@@ -165,7 +165,10 @@ npm --prefix Frontend run preview # preview build
 - Run backend and frontend unit tests:
   - Bash: `./scripts/run-tests.sh`
   - PowerShell: `pwsh ./scripts/run-tests.ps1`
-  - Add `--e2e` to also run the end-to-end API suite.
+  - Flags:
+    - Include e2e: `--e2e` (Bash) or `-e2e` (PowerShell)
+    - Sync models/API (OpenAPI + types + migration drift): `--sync` (Bash) or `-sync` (PowerShell)
+    - Full (sync + e2e): `--full` (Bash) or `-full` (PowerShell)
 
 - End-to-end API tests only (require Docker stack):
   - Auto-skip: The e2e module skips itself when `DEV_BACKEND_PORT` is missing or the backend is unreachable.
@@ -254,6 +257,36 @@ npx openapi-typescript Backend/openapi.json -o Frontend/src/api-types.ts
 kill %1
 ```
 
+#### Database Backups & Restores
+
+Create a snapshot of the branch-local Postgres database:
+
+```bash
+./scripts/db/backup.sh
+# or
+pwsh ./scripts/db/backup.ps1
+```
+
+This writes a custom-format dump and a sidecar JSON metadata file containing the Alembic revision and git commit, e.g.:
+
+- `Database/backups/<branch>-<timestamp>.dump`
+- `Database/backups/<branch>-<timestamp>.dump.meta.json`
+
+Restore a dump into the branch-local database (containers must be running):
+
+```bash
+./scripts/db/restore.sh [--upgrade-after] [--fail-on-mismatch] Database/backups/<file>
+pwsh ./scripts/db/restore.ps1 [-UpgradeAfter] [-FailOnMismatch] Database/backups/<file>
+```
+
+Both scripts target `postgresql://localhost:<DEV_DB_PORT>/nutrition` and refuse to run against non-local hosts.
+
+Behavior notes:
+
+- On restore, if the metadata file exists, the script prints the backup's Alembic revision and compares it to the repo head(s) when Alembic is available.
+- Add `--fail-on-mismatch`/`-FailOnMismatch` to abort when the backup revision does not match the repo head(s).
+- Add `--upgrade-after`/`-UpgradeAfter` to run `alembic upgrade head` after the restore (recommended when restoring an older dump).
+
 ---
 
 ## 🛠️ Tools
@@ -281,8 +314,8 @@ Before opening a PR:
   `alembic upgrade head` (or rely on the sync/drift script outcome)
 * [ ] **Tests pass?**
   `./scripts/run-tests.sh` (or `pwsh ./scripts/run-tests.ps1`)
-  - These exclude e2e tests by default.
-  - To include e2e tests, pass the flag: `./scripts/run-tests.sh --e2e` or `pwsh ./scripts/run-tests.ps1 -e2e`.
+  - Excludes e2e by default. Include with `--e2e`/`-e2e`.
+  - Run model/API sync first with `--sync`/`-sync`, or do both with `--full`/`-full`.
 * [ ] **Lint/build ok?**
   `npm --prefix Frontend run lint` and `npm --prefix Frontend run build`
 
@@ -294,7 +327,7 @@ The repo includes a **two‑job CI**: `backend` and `frontend`.
 
 ### `backend` job (Ubuntu + Postgres service)
 
-* **Services → Postgres 16**
+* **Services → Postgres 13**
   Spins up a DB with health checks. Exposes `postgres:5432` to the job via Docker networking.
   Sets `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nutrition` for the app.
 
