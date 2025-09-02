@@ -264,14 +264,25 @@ Create a snapshot of the branch-local Postgres database:
 pwsh ./scripts/db/backup.ps1
 ```
 
+This writes a custom-format dump and a sidecar JSON metadata file containing the Alembic revision and git commit, e.g.:
+
+- `Database/backups/<branch>-<timestamp>.dump`
+- `Database/backups/<branch>-<timestamp>.dump.meta.json`
+
 Restore a dump into the branch-local database (containers must be running):
 
 ```bash
-./scripts/db/restore.sh Database/backups/<file>
-pwsh ./scripts/db/restore.ps1 Database/backups/<file>
+./scripts/db/restore.sh [--upgrade-after] [--fail-on-mismatch] Database/backups/<file>
+pwsh ./scripts/db/restore.ps1 [-UpgradeAfter] [-FailOnMismatch] Database/backups/<file>
 ```
 
 Both scripts target `postgresql://localhost:<DEV_DB_PORT>/nutrition` and refuse to run against non-local hosts.
+
+Behavior notes:
+
+- On restore, if the metadata file exists, the script prints the backup's Alembic revision and compares it to the repo head(s) when Alembic is available.
+- Add `--fail-on-mismatch`/`-FailOnMismatch` to abort when the backup revision does not match the repo head(s).
+- Add `--upgrade-after`/`-UpgradeAfter` to run `alembic upgrade head` after the restore (recommended when restoring an older dump).
 
 ---
 
