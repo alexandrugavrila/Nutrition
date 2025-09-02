@@ -51,12 +51,19 @@ REPO_ROOT = SCRIPT_DIR.parent.parent
 os.chdir(REPO_ROOT)
 
 ALEMBIC_INI = REPO_ROOT / "Backend" / "alembic.ini"
-MIGRATION_ROOT = REPO_ROOT / "Backend" / "migrations" / "versions"
+MIGRATIONS_DIR = REPO_ROOT / "Backend" / "migrations"
+MIGRATION_ROOT = MIGRATIONS_DIR / "versions"
 if not MIGRATION_ROOT.is_dir():
     _err(f"Alembic versions directory not found: {MIGRATION_ROOT}")
     sys.exit(1)
 
 CONFIG = Config(str(ALEMBIC_INI)) if ALEMBIC_INI.exists() else Config()
+# Ensure Alembic resolves script_location to Backend/migrations regardless of CWD
+try:
+    CONFIG.set_main_option("script_location", str(MIGRATIONS_DIR))
+except Exception:
+    # Config without an ini still supports overriding options; ignore if not available
+    pass
 
 
 # ---------------------------------------------------------------------------
