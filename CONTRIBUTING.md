@@ -254,6 +254,25 @@ npx openapi-typescript Backend/openapi.json -o Frontend/src/api-types.ts
 kill %1
 ```
 
+#### Database Backups & Restores
+
+Create a snapshot of the branch-local Postgres database:
+
+```bash
+./scripts/db/backup.sh
+# or
+pwsh ./scripts/db/backup.ps1
+```
+
+Restore a dump into the branch-local database (containers must be running):
+
+```bash
+./scripts/db/restore.sh Database/backups/<file>
+pwsh ./scripts/db/restore.ps1 Database/backups/<file>
+```
+
+Both scripts target `postgresql://localhost:<DEV_DB_PORT>/nutrition` and refuse to run against non-local hosts.
+
 ---
 
 ## 🛠️ Tools

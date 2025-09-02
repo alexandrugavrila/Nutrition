@@ -61,6 +61,22 @@ pwsh ./scripts/run-tests.ps1  # PowerShell
 
 Pass `--e2e` to also run the end-to-end API suite. The e2e runner stands up a dedicated test stack (on TEST ports) and tears it down after tests.
 
+### 7. Database Backups
+
+```bash
+./scripts/db/backup.sh        # Bash
+pwsh ./scripts/db/backup.ps1  # PowerShell
+```
+
+Backups are written to `Database/backups/` with timestamped filenames. Restore one with:
+
+```bash
+./scripts/db/restore.sh Database/backups/<file>
+pwsh ./scripts/db/restore.ps1 Database/backups/<file>
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
 ---
 
 ## 🗂️ Project Structure
