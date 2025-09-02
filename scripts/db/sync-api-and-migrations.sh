@@ -85,7 +85,7 @@ until docker compose -p "$SYNC_PROJECT" exec -T db pg_isready -U nutrition_user 
 done
 
 echo "Applying database migrations..."
-if ! alembic upgrade head >/tmp/db-upgrade.log 2>&1; then
+if ! alembic -c Backend/alembic.ini upgrade head >/tmp/db-upgrade.log 2>&1; then
   cat /tmp/db-upgrade.log
   echo "Failed to apply database migrations" >&2
   exit 1
@@ -132,8 +132,8 @@ print(os.pathsep)
 PY
 )"
 version_paths="Backend/migrations/versions${pathsep}${tmpdir}"
-if ! alembic revision --autogenerate -m "tmp" --version-path "$tmpdir" --version-paths "$version_paths" >/dev/null 2>&1; then
-  if ! alembic revision --autogenerate -m "tmp" --version-path "$tmpdir" >/dev/null 2>&1; then
+if ! alembic -c Backend/alembic.ini revision --autogenerate -m "tmp" --version-path "$tmpdir" --version-paths "$version_paths" >/dev/null 2>&1; then
+  if ! alembic -c Backend/alembic.ini revision --autogenerate -m "tmp" --version-path "$tmpdir" >/dev/null 2>&1; then
     rm -r "$tmpdir"
     echo "Failed to check for migration changes" >&2
     exit 1
@@ -144,13 +144,13 @@ if [[ -f "$tmpfile" && $(grep -E "op\\." "$tmpfile") ]]; then
   echo "Model changes detected that are not captured in migrations."
   if [[ $AUTO == yes ]]; then
     msg="auto migration"
-    alembic revision --autogenerate -m "$msg"
+    alembic -c Backend/alembic.ini revision --autogenerate -m "$msg"
     echo "Created migration: $msg"
   else
     read -r -p "Generate new migration now? [y/N] " resp
     if [[ $resp =~ ^[Yy]$ ]]; then
       read -r -p "Migration message: " msg
-      alembic revision --autogenerate -m "$msg"
+      alembic -c Backend/alembic.ini revision --autogenerate -m "$msg"
     else
       echo "Skipping migration generation."
     fi

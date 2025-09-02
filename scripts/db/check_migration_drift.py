@@ -49,7 +49,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
 os.chdir(REPO_ROOT)
 
-ALEMBIC_INI = REPO_ROOT / "alembic.ini"
+ALEMBIC_INI = REPO_ROOT / "Backend" / "alembic.ini"
 MIGRATION_ROOT = REPO_ROOT / "Backend" / "migrations" / "versions"
 if not MIGRATION_ROOT.is_dir():
     _err(f"Alembic versions directory not found: {MIGRATION_ROOT}")
@@ -197,7 +197,7 @@ def _start_temp_db() -> None:
             f"Starting temporary database container {CONTAINER_NAME} with random host port..."
         )
     try:
-        _run("docker", "pull", "postgres:16")
+        _run("docker", "pull", "postgres:13")
         run_cmd = (
             [
                 "docker",
@@ -214,7 +214,7 @@ def _start_temp_db() -> None:
             ]
             + port_arg
             + [
-                "postgres:16",
+                "postgres:13",
             ]
         )
         # Capture output for clearer diagnostics on failure

@@ -7,7 +7,7 @@ usage() {
 Usage: $(basename "$0") [--upgrade-after] [--fail-on-mismatch] <dump_file>
 
 Options:
-  --upgrade-after      Run 'alembic upgrade head' after restore
+  --upgrade-after      Run 'alembic -c Backend/alembic.ini upgrade head' after restore
   --fail-on-mismatch   Exit if backup Alembic revision doesn't match repo head(s)
 USAGE
   exit 1
@@ -78,7 +78,7 @@ if command -v python >/dev/null 2>&1; then
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 try:
-    cfg = Config('alembic.ini')
+    cfg = Config('Backend/alembic.ini')
     script = ScriptDirectory.from_config(cfg)
     print(','.join(script.get_heads()))
 except Exception:
@@ -104,9 +104,10 @@ pg_restore --clean --if-exists --no-owner --no-privileges --dbname="$DATABASE_UR
 
 if $upgrade_after; then
   if command -v alembic >/dev/null 2>&1; then
-    echo "Running 'alembic upgrade head' after restore..."
-    alembic upgrade head
+    echo "Running 'alembic -c Backend/alembic.ini upgrade head' after restore..."
+    alembic -c Backend/alembic.ini upgrade head
   else
     echo "Alembic not found on PATH; skipping upgrade. Install backend deps to enable this." >&2
   fi
 fi
+

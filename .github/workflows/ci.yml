@@ -57,7 +57,7 @@ jobs:
       - name: Run Alembic migrations
         run: |
           source scripts/env/activate-venv.sh
-          alembic upgrade head
+          alembic -c Backend/alembic.ini upgrade head
       - name: Update API schema
         run: |
           source scripts/env/activate-venv.sh
@@ -114,3 +114,4 @@ jobs:
       - name: Production build
         working-directory: Frontend
         run: npm run build
+

@@ -39,7 +39,7 @@ if (Test-Path $metaPath) {
 
 $repoHeads = ''
 try {
-  $pyLine = "from alembic.config import Config; from alembic.script import ScriptDirectory as S; print(','.join(S.from_config(Config('alembic.ini')).get_heads()))"
+  $pyLine = "from alembic.config import Config; from alembic.script import ScriptDirectory as S; print(','.join(S.from_config(Config('Backend/alembic.ini')).get_heads()))"
   $repoHeads = (& python -c $pyLine 2>$null)
 } catch {}
 
@@ -56,9 +56,10 @@ pg_restore --clean --if-exists --no-owner --no-privileges --dbname=$env:DATABASE
 
 if ($UpgradeAfter) {
   if (Get-Command alembic -ErrorAction SilentlyContinue) {
-    Write-Host "Running 'alembic upgrade head' after restore..."
-    alembic upgrade head
+    Write-Host "Running 'alembic -c Backend/alembic.ini upgrade head' after restore..."
+    alembic -c Backend/alembic.ini upgrade head
   } else {
     Write-Warning "Alembic not found on PATH; skipping upgrade. Install backend deps to enable this."
   }
 }
+
