@@ -17,6 +17,7 @@ if (-Not (Test-Path $VenvPath)) {
 
 # Activate the virtual environment unless we're already inside it.
 if ($env:VIRTUAL_ENV -ne $VenvPath) {
+    Write-Host "Activating Python virtual environment at: $VenvPath"
     & "$VenvPath\Scripts\Activate.ps1"
 }
 
