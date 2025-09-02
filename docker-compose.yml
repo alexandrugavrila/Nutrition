@@ -56,6 +56,8 @@ services:
         - "${DEV_FRONTEND_PORT:-3000}:3000"
     networks:
       - nutrition-net
+    command: >
+      sh -c "set -eux; npm ci; npm run dev"
 
 volumes:
   dbdata:

@@ -1,0 +1,6 @@
+{
+  "branch": "bugfix/db-backup-not-working",
+  "timestamp": "20250901-233338",
+  "git_commit": "cdbe3d3b",
+  "alembic_version": "2ea617f76053"
+}
