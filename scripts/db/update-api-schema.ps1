@@ -17,22 +17,10 @@ param()
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-# --------------------------- Shared Logging Helpers ---------------------------
-function Out-Step   { param([string]$m) Write-Host "» $m" -ForegroundColor Cyan }
-function Out-Info   { param([string]$m) Write-Host "$m" }
-function Out-Ok     { param([string]$m) Write-Host "$m" -ForegroundColor Green }
-function Out-Warn   { param([string]$m) Write-Warning $m }
-function Out-Err    { param([string]$m) Write-Error $m }
-function Out-Result { param([string]$m,[string]$color) Write-Host "[RESULT] $m" -ForegroundColor $color }
-
-# --------------------------- Helpers -----------------------------------------
-function Get-PythonCommand {
-    if ($env:PYTHON) { return ,@($env:PYTHON) }
-    elseif (Get-Command python  -ErrorAction SilentlyContinue) { return ,@("python") }
-    elseif (Get-Command python3 -ErrorAction SilentlyContinue) { return ,@("python3") }
-    elseif (Get-Command py      -ErrorAction SilentlyContinue) { return ,@("py","-3") }
-    else { throw "Python is required but was not found on PATH" }
-}
+# Shell libs
+. "$PSScriptRoot/../lib/log.ps1"
+. "$PSScriptRoot/../lib/python.ps1"
+. "$PSScriptRoot/../lib/venv.ps1"
 
 function Wait-ForBackend {
     param([int]$port, [int]$timeoutSeconds = 60)
@@ -58,18 +46,7 @@ Set-Location $repoRoot
 $backendPort = if ($env:DEV_BACKEND_PORT) { $env:DEV_BACKEND_PORT } else { 8000 }
 
 # Ensure venv is active
-$activationLog = [System.IO.Path]::GetTempFileName()
-$needActivate = (-not $env:VIRTUAL_ENV)
-if ($needActivate) {
-    Out-Step "Activating virtual environment..."
-    & "$PSScriptRoot/../env/activate-venv.ps1" *> $activationLog 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Get-Content $activationLog
-        Remove-Item $activationLog -ErrorAction SilentlyContinue
-        throw "Failed to activate virtual environment"
-    }
-}
-Remove-Item $activationLog -ErrorAction SilentlyContinue
+Ensure-Venv
 
 # Choose python (prefer venv-provided)
 $pythonParts = Get-PythonCommand

@@ -32,20 +32,10 @@ if [ -f "scripts/lib/branch-env.sh" ]; then
   branch_env_load || true
 fi
 
-# Ensure the virtual environment is active and required packages are installed
-if [ -z "${VIRTUAL_ENV:-}" ] || ! command -v uvicorn >/dev/null 2>&1; then
-  echo "Activating virtual environment..."
-  if ! scripts/env/activate-venv.sh >/tmp/venv.log 2>&1; then
-    cat /tmp/venv.log
-    echo "Failed to activate virtual environment" >&2
-    exit 1
-  fi
-fi
-
-if ! command -v uvicorn >/dev/null 2>&1; then
-  echo "uvicorn command not found after activating virtual environment" >&2
-  exit 1
-fi
+# Ensure the virtual environment is active
+# shellcheck disable=SC1090
+source scripts/lib/venv.sh
+ensure_venv
 
 # Use a dedicated compose project for the temporary database container.
 # Include the branch to avoid collisions across branches.

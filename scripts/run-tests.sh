@@ -46,14 +46,10 @@ done
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-# Ensure virtual environment is active (activate only if not already)
-if [[ -z "${VIRTUAL_ENV:-}" ]]; then
-  echo "No virtualenv detected; activating via ./scripts/env/activate-venv.sh ..."
-  # shellcheck disable=SC1090
-  source "$REPO_ROOT/scripts/env/activate-venv.sh"
-else
-  echo "Using existing virtualenv: $VIRTUAL_ENV"
-fi
+# Ensure virtual environment is active
+# shellcheck disable=SC1090
+source "$REPO_ROOT/scripts/lib/venv.sh"
+ensure_venv
 
 # Optional: synchronize OpenAPI + migrations (non-interactive)
 if $RUN_SYNC; then

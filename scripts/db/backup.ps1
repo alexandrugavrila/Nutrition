@@ -3,14 +3,12 @@
 param()
 
 . "$PSScriptRoot/../lib/branch-env.ps1"
+. "$PSScriptRoot/../lib/compose-utils.ps1"
 $envInfo = Set-BranchEnv
 Set-Location $envInfo.RepoRoot
 
-$containers = docker compose -p $envInfo.Project ps -q 2>$null
-if (-not $containers) {
-  Write-Warning "Warning: no containers running for branch '$($envInfo.Branch)'. Run the compose script first."
-  exit 1
-}
+# Ensure containers are running for this branch
+Ensure-BranchContainers | Out-Null
 
 $backupDir = Join-Path $envInfo.RepoRoot "Database/backups"
 New-Item -ItemType Directory -Path $backupDir -Force | Out-Null

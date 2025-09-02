@@ -35,21 +35,10 @@ if ($sync) {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
-# Ensure virtual environment is active (activate only if not already)
-if (-not $env:VIRTUAL_ENV) {
-    Write-Host "No virtualenv detected; activating via ./scripts/env/activate-venv.ps1 ..."
-    try {
-        . "$RepoRoot/scripts/env/activate-venv.ps1"
-    }
-    catch {
-        Write-Error "Failed to activate virtual environment: $($_.Exception.Message)"
-        exit 1
-    }
-    # Clear any lingering native process exit code from activation steps
-    if ($LASTEXITCODE -ne 0) { $global:LASTEXITCODE = 0 }
-} else {
-    Write-Host "Using existing virtualenv: $env:VIRTUAL_ENV"
-}
+# Ensure virtual environment is active
+. "$RepoRoot/scripts/lib/log.ps1"
+. "$RepoRoot/scripts/lib/venv.ps1"
+Ensure-Venv
 
 # Backend tests (exclude e2e by default; use -e2e to include)
 # Force an isolated test database so unit tests never touch the dev DB.

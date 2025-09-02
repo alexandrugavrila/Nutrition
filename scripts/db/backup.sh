@@ -4,13 +4,11 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/branch-env.sh"
 branch_env_load
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/compose-utils.sh"
 cd "$REPO_ROOT"
 
 # Ensure containers are running for this branch
-if [[ -z $(docker compose -p "$COMPOSE_PROJECT" ps -q 2>/dev/null) ]]; then
-  echo "Warning: no containers running for branch '$BRANCH_NAME'. Run the compose script first." >&2
-  exit 1
-fi
+require_branch_containers
 
 mkdir -p Database/backups
 timestamp=$(date +"%Y%m%d-%H%M%S")

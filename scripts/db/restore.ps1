@@ -13,6 +13,7 @@ if (-not (Test-Path $DumpPath)) {
 }
 
 . "$PSScriptRoot/../lib/branch-env.ps1"
+. "$PSScriptRoot/../lib/compose-utils.ps1"
 $envInfo = Set-BranchEnv
 Set-Location $envInfo.RepoRoot
 
@@ -21,11 +22,8 @@ if ($env:DATABASE_URL -notlike "postgresql://*localhost*") {
   exit 1
 }
 
-$containers = docker compose -p $envInfo.Project ps -q 2>$null
-if (-not $containers) {
-  Write-Warning "Warning: no containers running for branch '$($envInfo.Branch)'. Run the compose script first."
-  exit 1
-}
+# Ensure containers are running for this branch
+Ensure-BranchContainers | Out-Null
 
 # Print backup Alembic version and compare with repo head(s) if possible
 $backupVersion = 'unknown'
