@@ -12,8 +12,8 @@ import type { components } from "../api-types";
 
 type Ingredient = components["schemas"]["IngredientRead"];
 type PossibleIngredientTag = components["schemas"]["PossibleIngredientTag"];
-type Meal = components["schemas"]["MealRead"];
-type PossibleMealTag = components["schemas"]["PossibleMealTag"];
+type Food = components["schemas"]["FoodRead"];
+type PossibleFoodTag = components["schemas"]["PossibleFoodTag"];
 type IngredientWithSelection = Ingredient & { selectedUnitId: number | null };
 
 interface DataContextValue {
@@ -24,12 +24,12 @@ interface DataContextValue {
   ingredientProcessingTags: PossibleIngredientTag[];
   ingredientGroupTags: PossibleIngredientTag[];
   ingredientOtherTags: PossibleIngredientTag[];
-  meals: Meal[];
-  mealDietTags: PossibleMealTag[];
-  mealTypeTags: PossibleMealTag[];
-  mealOtherTags: PossibleMealTag[];
+  foods: Food[];
+  foodDietTags: PossibleFoodTag[];
+  foodTypeTags: PossibleFoodTag[];
+  foodOtherTags: PossibleFoodTag[];
   setIngredientsNeedsRefetch: React.Dispatch<React.SetStateAction<boolean>>;
-  setMealsNeedsRefetch: React.Dispatch<React.SetStateAction<boolean>>;
+  setFoodsNeedsRefetch: React.Dispatch<React.SetStateAction<boolean>>;
   fetching: boolean;
   startRequest: () => void;
   endRequest: () => void;
@@ -46,11 +46,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [possibleIngredientTags, setPossibleIngredientTags] = useState<
     PossibleIngredientTag[]
   >([]);
-  const [meals, setMeals] = useState<Meal[]>([]);
-  const [possibleMealTags, setPossibleMealTags] = useState<PossibleMealTag[]>(
+  const [foods, setFoods] = useState<Food[]>([]);
+  const [possibleFoodTags, setPossibleFoodTags] = useState<PossibleFoodTag[]>(
     [],
   );
-  const [mealsNeedsRefetch, setMealsNeedsRefetch] = useState(false);
+  const [foodsNeedsRefetch, setFoodsNeedsRefetch] = useState(false);
   const [activeRequests, setActiveRequests] = useState(0);
   const fetching = activeRequests > 0;
 
@@ -93,19 +93,19 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       )
     : [];
 
-  const mealDietTagNames = ["Vegetarian", "Vegan", "Carnivore"];
-  const mealTypeTagNames = ["Breakfast", "Lunch", "Dinner", "Snack"];
+  const foodDietTagNames = ["Vegetarian", "Vegan", "Carnivore"];
+  const foodTypeTagNames = ["Breakfast", "Lunch", "Dinner", "Snack"];
 
-  const mealDietTags = possibleMealTags
-    ? possibleMealTags.filter(({ name }) => mealDietTagNames.includes(name))
+  const foodDietTags = possibleFoodTags
+    ? possibleFoodTags.filter(({ name }) => foodDietTagNames.includes(name))
     : [];
-  const mealTypeTags = possibleMealTags
-    ? possibleMealTags.filter(({ name }) => mealTypeTagNames.includes(name))
+  const foodTypeTags = possibleFoodTags
+    ? possibleFoodTags.filter(({ name }) => foodTypeTagNames.includes(name))
     : [];
-  const mealOtherTags = possibleMealTags
-    ? possibleMealTags.filter(
+  const foodOtherTags = possibleFoodTags
+    ? possibleFoodTags.filter(
         ({ name }) =>
-          !mealDietTagNames.includes(name) && !mealTypeTagNames.includes(name),
+          !foodDietTagNames.includes(name) && !foodTypeTagNames.includes(name),
       )
     : [];
 
@@ -156,40 +156,40 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [startRequest, endRequest]);
 
-  const fetchMeals = useCallback(async () => {
+  const fetchFoods = useCallback(async () => {
     startRequest();
     try {
       const { data } = await apiClient
-        .path("/api/meals/")
+        .path("/api/foods/")
         .method("get")
         .create()({});
-      const processed = data.map((meal) => ({
-        ...meal,
+      const processed = data.map((food) => ({
+        ...food,
         ingredients:
-          meal.ingredients?.map((mi) => ({
+          food.ingredients?.map((mi) => ({
             ...mi,
             unit_quantity: mi.unit_quantity
               ? parseFloat(String(mi.unit_quantity))
               : 0,
           })) ?? [],
       }));
-      setMeals(processed);
+      setFoods(processed);
     } catch (error) {
       console.error("Error fetching data:", error);
-      setMealsNeedsRefetch(true);
+      setFoodsNeedsRefetch(true);
     } finally {
       endRequest();
     }
   }, [startRequest, endRequest]);
 
-  const fetchPossibleMealTags = useCallback(async () => {
+  const fetchPossibleFoodTags = useCallback(async () => {
     startRequest();
     try {
       const { data } = await apiClient
-        .path("/api/meals/possible_tags")
+        .path("/api/foods/possible_tags")
         .method("get")
         .create()({});
-      setPossibleMealTags(data);
+      setPossibleFoodTags(data);
     } catch (error) {
       console.error("Error fetching tags", error);
     } finally {
@@ -201,13 +201,13 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     fetchIngredients();
     fetchPossibleIngredientTags();
-    fetchMeals();
-    fetchPossibleMealTags();
+    fetchFoods();
+    fetchPossibleFoodTags();
   }, [
     fetchIngredients,
     fetchPossibleIngredientTags,
-    fetchMeals,
-    fetchPossibleMealTags,
+    fetchFoods,
+    fetchPossibleFoodTags,
   ]); // Initial fetch
 
   useEffect(() => {
@@ -215,15 +215,15 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       fetchIngredients();
       setIngredientsNeedsRefetch(false);
     }
-    if (mealsNeedsRefetch) {
-      fetchMeals();
-      setMealsNeedsRefetch(false);
+    if (foodsNeedsRefetch) {
+      fetchFoods();
+      setFoodsNeedsRefetch(false);
     }
   }, [
     ingredientsNeedsRefetch,
-    mealsNeedsRefetch,
+    foodsNeedsRefetch,
     fetchIngredients,
-    fetchMeals,
+    fetchFoods,
   ]); // Handle needsRefetch
   //#endregion Effects
 
@@ -233,12 +233,12 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     ingredientProcessingTags,
     ingredientGroupTags,
     ingredientOtherTags,
-    meals,
-    mealDietTags,
-    mealTypeTags,
-    mealOtherTags,
+    foods,
+    foodDietTags,
+    foodTypeTags,
+    foodOtherTags,
     setIngredientsNeedsRefetch,
-    setMealsNeedsRefetch,
+    setFoodsNeedsRefetch,
     fetching,
     startRequest,
     endRequest,

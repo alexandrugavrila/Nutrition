@@ -5,19 +5,19 @@ import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActi
 import { useData } from "@/contexts/DataContext";
 import { handleFetchRequest } from "@/utils/utils";
 
-import MealNameForm from "./MealNameForm";
-import MealIngredientsForm from "./MealIngredientsForm";
+import FoodNameForm from "./FoodNameForm";
+import FoodIngredientsForm from "./FoodIngredientsForm";
 
 /**
- * @typedef {import("../../../../api-types").operations["add_meal_api_meals_post"]["requestBody"]["content"]["application/json"]} MealRequest
- * @typedef {import("../../../../api-types").operations["add_meal_api_meals_post"]["responses"][201]["content"]["application/json"]} MealResponse
+ * @typedef {import("../../../../api-types").operations["add_food_api_foods_post"]["requestBody"]["content"]["application/json"]} FoodRequest
+ * @typedef {import("../../../../api-types").operations["add_food_api_foods_post"]["responses"][201]["content"]["application/json"]} FoodResponse
  */
 
 const intitalState = {
   isOpen: false,
   openConfirmationDialog: false,
   isEditMode: false,
-  mealToEdit: {
+  foodToEdit: {
     name: "",
     id: crypto.randomUUID(),
     ingredients: [],
@@ -33,8 +33,8 @@ const reducer = (state, action) => {
       return { ...state, isOpen: action.payload };
     case "SET_EDIT_MODE":
       return { ...state, isEditMode: action.payload };
-    case "SET_MEAL":
-      return { ...state, mealToEdit: action.payload };
+    case "SET_FOOD":
+      return { ...state, foodToEdit: action.payload };
     case "SET_CLEAR_FORM":
       return { ...state, needsClearForm: action.payload };
     case "SET_FILL_FORM":
@@ -42,23 +42,23 @@ const reducer = (state, action) => {
     case "SET_CONFIRMATION_DIALOG":
       return { ...state, openConfirmationDialog: action.payload };
     case "UPDATE_UNIT_QUANTITY": {
-      const updatedIngredients = [...state.mealToEdit.ingredients];
+      const updatedIngredients = [...state.foodToEdit.ingredients];
       updatedIngredients[action.payload.index].unit_quantity = action.payload.unit_quantity;
-      return { ...state, mealToEdit: { ...state.mealToEdit, ingredients: updatedIngredients } };
+      return { ...state, foodToEdit: { ...state.foodToEdit, ingredients: updatedIngredients } };
     }
     default:
       return state;
   }
 };
 
-function MealForm({ mealToEditData }) {
+function FoodForm({ foodToEditData }) {
   //#region States
-  const { setMealsNeedsRefetch, startRequest, endRequest } = useData();
+  const { setFoodsNeedsRefetch, startRequest, endRequest } = useData();
   const [state, dispatch] = useReducer(reducer, intitalState);
 
-  const { isOpen, openConfirmationDialog, isEditMode, mealToEdit, needsClearForm, needsFillForm } = state;
+  const { isOpen, openConfirmationDialog, isEditMode, foodToEdit, needsClearForm, needsFillForm } = state;
 
-  const initializeEmptyMeal = () => ({
+  const initializeEmptyFood = () => ({
     name: "",
     id: crypto.randomUUID(),
     ingredients: [],
@@ -69,16 +69,16 @@ function MealForm({ mealToEditData }) {
   //#region Handlers
   const handleClearForm = useCallback(() => {
     dispatch({ type: "SET_EDIT_MODE", payload: false });
-    dispatch({ type: "SET_MEAL", payload: initializeEmptyMeal() });
+    dispatch({ type: "SET_FOOD", payload: initializeEmptyFood() });
     dispatch({ type: "SET_CLEAR_FORM", payload: true });
   }, []);
 
-  const handleMealAction = () => {
+  const handleFoodAction = () => {
     startRequest();
 
-    const toDatabaseMeal = {
-      name: mealToEdit.name,
-      ingredients: mealToEdit.ingredients
+    const toDatabaseFood = {
+      name: foodToEdit.name,
+      ingredients: foodToEdit.ingredients
         .filter(
           ({ ingredient_id, unit_id }) =>
             typeof ingredient_id === "number" &&
@@ -89,17 +89,17 @@ function MealForm({ mealToEditData }) {
           unit_id,
           unit_quantity: amount,
         })),
-      tags: mealToEdit.tags
+      tags: foodToEdit.tags
         .filter((tag) => typeof tag.id === "number")
         .map((tag) => ({ id: tag.id })),
     };
 
-    const url = isEditMode ? `/api/meals/${mealToEdit.id}` : "/api/meals/";
+    const url = isEditMode ? `/api/foods/${foodToEdit.id}` : "/api/foods/";
     const method = isEditMode ? "PUT" : "POST";
 
-    handleFetchRequest(url, method, /** @type {MealRequest} */ (toDatabaseMeal))
+    handleFetchRequest(url, method, /** @type {FoodRequest} */ (toDatabaseFood))
       .then(() => {
-        setMealsNeedsRefetch(true);
+        setFoodsNeedsRefetch(true);
         if (!isEditMode) {
           handleClearForm();
         }
@@ -110,19 +110,19 @@ function MealForm({ mealToEditData }) {
       .finally(endRequest);
   };
 
-  const handleMealDelete = () => {
-    if (mealToEdit) {
+  const handleFoodDelete = () => {
+    if (foodToEdit) {
       startRequest();
-      fetch(`/api/meals/${mealToEdit.id}`, {
+      fetch(`/api/foods/${foodToEdit.id}`, {
         method: "DELETE",
       })
         .then((response) => {
-          /** @type {Promise<MealResponse>} */ (response.json());
+          /** @type {Promise<FoodResponse>} */ (response.json());
           if (response.ok) {
-            setMealsNeedsRefetch(true);
+            setFoodsNeedsRefetch(true);
             handleClearForm();
           } else {
-            console.error("Failed to remove meal");
+            console.error("Failed to remove food");
           }
         })
         .catch((error) => {
@@ -142,17 +142,17 @@ function MealForm({ mealToEditData }) {
 
   //#region Effects
   useEffect(() => {
-    if (!mealToEditData) {
-      dispatch({ type: "SET_MEAL", payload: initializeEmptyMeal() });
+    if (!foodToEditData) {
+      dispatch({ type: "SET_FOOD", payload: initializeEmptyFood() });
       dispatch({ type: "SET_EDIT_MODE", payload: false });
       dispatch({ type: "OPEN_FORM", payload: false });
     } else {
-      dispatch({ type: "SET_MEAL", payload: { ...mealToEditData } });
+      dispatch({ type: "SET_FOOD", payload: { ...foodToEditData } });
       dispatch({ type: "SET_EDIT_MODE", payload: true });
       dispatch({ type: "OPEN_FORM", payload: true });
       dispatch({ type: "SET_FILL_FORM", payload: true });
     }
-  }, [mealToEditData]); // Fill mealToEdit and set form state when mealToEditData changes
+  }, [foodToEditData]); // Fill foodToEdit and set form state when foodToEditData changes
 
   useEffect(() => {
     if (!isOpen) {
@@ -180,24 +180,24 @@ function MealForm({ mealToEditData }) {
           sx={{ display: "block", mx: "auto" }}
           onClick={() => dispatch({ type: "OPEN_FORM", payload: !isOpen })}
         >
-          {isOpen ? "Close" : "Add Meal"}
+          {isOpen ? "Close" : "Add Food"}
         </Button>
         <Collapse in={isOpen}>
           <>
-            <MealNameForm
-              meal={mealToEdit}
+            <FoodNameForm
+              food={foodToEdit}
               dispatch={dispatch}
               needsClearForm={needsClearForm}
             />
-            <MealIngredientsForm
-              meal={mealToEdit}
+            <FoodIngredientsForm
+              food={foodToEdit}
               dispatch={dispatch}
               needsClearForm={needsClearForm}
             />
           </>
 
           <Button onClick={handleClearForm}>Clear</Button>
-          <Button onClick={handleMealAction}>{isEditMode ? "Update" : "Add"}</Button>
+          <Button onClick={handleFoodAction}>{isEditMode ? "Update" : "Add"}</Button>
           {isEditMode && <Button onClick={() => dispatch({ type: "SET_CONFIRMATION_DIALOG", payload: true })}>Delete</Button>}
         </Collapse>
       </Paper>
@@ -211,11 +211,11 @@ function MealForm({ mealToEditData }) {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseConfirmationDialog}>Cancel</Button>
-          <Button onClick={handleMealDelete}>Delete</Button>
+          <Button onClick={handleFoodDelete}>Delete</Button>
         </DialogActions>
       </Dialog>
     </div>
   );
 }
 
-export default MealForm;
+export default FoodForm;

@@ -5,53 +5,53 @@ import { vi } from "vitest";
 import App from "../App";
 
 var mockIngredientData;
-var mockMealData;
+var mockFoodData;
 
 vi.mock("../components/data/ingredient/IngredientData", () => ({
   __esModule: true,
   default: (...args) => mockIngredientData(...args),
 }));
 
-vi.mock("../components/data/meal/MealData", () => ({
+vi.mock("../components/data/food/FoodData", () => ({
   __esModule: true,
-  default: (...args) => mockMealData(...args),
+  default: (...args) => mockFoodData(...args),
 }));
 
 mockIngredientData = vi.fn(() => <div>IngredientDataComponent</div>);
-mockMealData = vi.fn(() => <div>MealDataComponent</div>);
+mockFoodData = vi.fn(() => <div>FoodDataComponent</div>);
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-test("renders tabs and switches between Meals and Ingredients views", async () => {
+test("renders tabs and switches between Foods and Ingredients views", async () => {
   render(<App />);
 
-  const mealsTab = screen.getByRole("tab", { name: /Meals/i });
+  const foodsTab = screen.getByRole("tab", { name: /Foods/i });
   const ingredientsTab = screen.getByRole("tab", { name: /Ingredients/i });
 
-  expect(mealsTab).toBeInTheDocument();
+  expect(foodsTab).toBeInTheDocument();
   expect(ingredientsTab).toBeInTheDocument();
 
-  expect(mockMealData).toHaveBeenCalledTimes(1);
+  expect(mockFoodData).toHaveBeenCalledTimes(1);
   expect(mockIngredientData).not.toHaveBeenCalled();
 
   await userEvent.click(ingredientsTab);
   expect(mockIngredientData).toHaveBeenCalledTimes(1);
-  expect(mockMealData).toHaveBeenCalledTimes(1);
+  expect(mockFoodData).toHaveBeenCalledTimes(1);
 
-  await userEvent.click(mealsTab);
-  expect(mockMealData).toHaveBeenCalledTimes(2);
+  await userEvent.click(foodsTab);
+  expect(mockFoodData).toHaveBeenCalledTimes(2);
   expect(mockIngredientData).toHaveBeenCalledTimes(1);
 });
 
 test("provides handleAddIngredientToPlan only to IngredientData", async () => {
   render(<App />);
 
-  // initial render shows MealData without the prop
+  // initial render shows FoodData without the prop
   expect(mockIngredientData).not.toHaveBeenCalled();
-  expect(mockMealData).toHaveBeenCalled();
-  expect(mockMealData.mock.calls[0][0].handleAddIngredientToPlan).toBeUndefined();
+  expect(mockFoodData).toHaveBeenCalled();
+  expect(mockFoodData.mock.calls[0][0].handleAddIngredientToPlan).toBeUndefined();
 
   await userEvent.click(screen.getByRole("tab", { name: /Ingredients/i }));
 
