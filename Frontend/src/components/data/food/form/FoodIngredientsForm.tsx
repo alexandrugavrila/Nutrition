@@ -6,7 +6,7 @@ import IngredientTable from "@/components/data/ingredient/IngredientTable";
 
 import { formatCellNumber } from "@/utils/utils";
 
-function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
+function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
   //#region States
   const { ingredients } = useData();
   const [openIngredientsDialog, setOpenIngredientsDialog] = useState(false);
@@ -30,14 +30,14 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
   };
 
   const handleAddIngredient = (ingredient) => {
-    dispatch({ type: "SET_MEAL", payload: { ...meal, ingredients: [...meal.ingredients, buildMealIngredient(ingredient)] } });
+    dispatch({ type: "SET_FOOD", payload: { ...food, ingredients: [...food.ingredients, buildFoodIngredient(ingredient)] } });
     handleCloseIngredientsDialog();
   };
 
-  const buildMealIngredient = (ingredient) => {
+  const buildFoodIngredient = (ingredient) => {
     return {
       ingredient_id: ingredient.id,
-      meal_id: meal.id,
+      food_id: food.id,
       unit_id: ingredient.selectedUnitId ? ingredient.selectedUnitId : null,
       unit_quantity: 1,
     };
@@ -58,32 +58,32 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
   };
 
   const handleUpdateIngredientUnitQuantity = (index, value) => {
-    const updatedIngredients = [...meal.ingredients];
+    const updatedIngredients = [...food.ingredients];
     updatedIngredients[index] = {
       ...updatedIngredients[index],
       unit_quantity: parseFloat(value),
     };
     if (!isNaN(updatedIngredients[index].unit_quantity)) {
       // Don't update if the field is empty
-      dispatch({ type: "SET_MEAL", payload: { ...meal, ingredients: updatedIngredients } });
+      dispatch({ type: "SET_FOOD", payload: { ...food, ingredients: updatedIngredients } });
     }
   };
 
   const calculateTotalIngredientMacros = useCallback(
-    (meal_ingredient) => {
-      if (!meal_ingredient) return;
+    (food_ingredient) => {
+      if (!food_ingredient) return;
 
-      const dataIngredient = ingredients.find((item) => item.id === meal_ingredient.ingredient_id);
+      const dataIngredient = ingredients.find((item) => item.id === food_ingredient.ingredient_id);
 
-      const unitId = meal_ingredient.unit_id ?? 0; // If meal_ingredient.unit_id is undefined or null, use 0
+      const unitId = food_ingredient.unit_id ?? 0; // If food_ingredient.unit_id is undefined or null, use 0
       const dataUnit = dataIngredient.units.find((unit) => unit.id === unitId) || dataIngredient.units[0]; // Fallback to the first unit if not found
 
       return {
-        calories: dataIngredient.nutrition.calories ? dataIngredient.nutrition.calories * dataUnit.grams * meal_ingredient.unit_quantity : 0,
-        protein: dataIngredient.nutrition.protein ? dataIngredient.nutrition.protein * dataUnit.grams * meal_ingredient.unit_quantity : 0,
-        fat: dataIngredient.nutrition.fat ? dataIngredient.nutrition.fat * dataUnit.grams * meal_ingredient.unit_quantity : 0,
-        carbs: dataIngredient.nutrition.carbohydrates ? dataIngredient.nutrition.carbohydrates * dataUnit.grams * meal_ingredient.unit_quantity : 0,
-        fiber: dataIngredient.nutrition.fiber ? dataIngredient.nutrition.fiber * dataUnit.grams * meal_ingredient.unit_quantity : 0,
+        calories: dataIngredient.nutrition.calories ? dataIngredient.nutrition.calories * dataUnit.grams * food_ingredient.unit_quantity : 0,
+        protein: dataIngredient.nutrition.protein ? dataIngredient.nutrition.protein * dataUnit.grams * food_ingredient.unit_quantity : 0,
+        fat: dataIngredient.nutrition.fat ? dataIngredient.nutrition.fat * dataUnit.grams * food_ingredient.unit_quantity : 0,
+        carbs: dataIngredient.nutrition.carbohydrates ? dataIngredient.nutrition.carbohydrates * dataUnit.grams * food_ingredient.unit_quantity : 0,
+        fiber: dataIngredient.nutrition.fiber ? dataIngredient.nutrition.fiber * dataUnit.grams * food_ingredient.unit_quantity : 0,
       };
     },
     [ingredients]
@@ -91,32 +91,32 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
 
   const handleUnitChange = (event, ingredientIndex) => {
     const newUnitId = event.target.value;
-    const updatedIngredients = [...meal.ingredients];
+    const updatedIngredients = [...food.ingredients];
     updatedIngredients[ingredientIndex] = {
       ...updatedIngredients[ingredientIndex],
       unit_id: newUnitId,
     };
-    dispatch({ type: "SET_MEAL", payload: { ...meal, ingredients: updatedIngredients } });
+    dispatch({ type: "SET_FOOD", payload: { ...food, ingredients: updatedIngredients } });
   };
   //#endregion Handles
 
   //#region Effects
   useEffect(() => {
     if (needsClearForm) {
-      dispatch({ type: "SET_MEAL", payload: { ...meal, ingredients: [] } });
+      dispatch({ type: "SET_FOOD", payload: { ...food, ingredients: [] } });
     }
-  }, [needsClearForm, dispatch, meal]); // Clear ingredients when needsClearForm is true
+  }, [needsClearForm, dispatch, food]); // Clear ingredients when needsClearForm is true
 
   useEffect(() => {
-    const initialUnitQuantities = meal.ingredients.reduce((acc, ingredient, index) => {
+    const initialUnitQuantities = food.ingredients.reduce((acc, ingredient, index) => {
       acc[index] = ingredient.unit_quantity.toString();
       return acc;
     }, {});
     setUnitQuantities(initialUnitQuantities);
-  }, [meal]); // Initialize or reset the unit quantities when meal changes, ensuring inputs are up-to-date
+  }, [food]); // Initialize or reset the unit quantities when food changes, ensuring inputs are up-to-date
 
   useEffect(() => {
-    const totals = meal.ingredients.reduce(
+    const totals = food.ingredients.reduce(
       (acc, ingredient) => {
         const macros = calculateTotalIngredientMacros(ingredient);
         acc.calories += macros.calories;
@@ -130,7 +130,7 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
     );
 
     setTotalMacros(totals);
-  }, [meal.ingredients, ingredients, calculateTotalIngredientMacros]); // Update totals when meal ingredients or ingredients change
+  }, [food.ingredients, ingredients, calculateTotalIngredientMacros]); // Update totals when food ingredients or ingredients change
   //#endregion Effects
 
   return (
@@ -161,7 +161,7 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
           </TableHead>
 
           <TableBody>
-            {meal.ingredients.map((ingredient, index) => {
+            {food.ingredients.map((ingredient, index) => {
               const dataIngredient = ingredients.find((item) => item.id === ingredient.ingredient_id);
 
               return (
@@ -225,4 +225,4 @@ function MealIngredientsForm({ meal, dispatch, needsClearForm }) {
   );
 }
 
-export default MealIngredientsForm;
+export default FoodIngredientsForm;

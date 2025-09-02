@@ -41,41 +41,41 @@ export interface paths {
      */
     delete: operations["delete_ingredient_api_ingredients__ingredient_id__delete"];
   };
-  "/api/meals/": {
+  "/api/foods/": {
     /**
-     * Get All Meals
-     * @description Return all meals.
+     * Get All Foods
+     * @description Return all foods.
      */
-    get: operations["get_all_meals_api_meals__get"];
+    get: operations["get_all_foods_api_foods__get"];
     /**
-     * Add Meal
-     * @description Create a new meal.
+     * Add Food
+     * @description Create a new food.
      */
-    post: operations["add_meal_api_meals__post"];
+    post: operations["add_food_api_foods__post"];
   };
-  "/api/meals/possible_tags": {
+  "/api/foods/possible_tags": {
     /**
-     * Get Possible Meal Tags
-     * @description Return all possible meal tags ordered by name.
+     * Get Possible Food Tags
+     * @description Return all possible food tags ordered by name.
      */
-    get: operations["get_possible_meal_tags_api_meals_possible_tags_get"];
+    get: operations["get_possible_food_tags_api_foods_possible_tags_get"];
   };
-  "/api/meals/{meal_id}": {
+  "/api/foods/{food_id}": {
     /**
-     * Get Meal
-     * @description Retrieve a single meal by ID.
+     * Get Food
+     * @description Retrieve a single food by ID.
      */
-    get: operations["get_meal_api_meals__meal_id__get"];
+    get: operations["get_food_api_foods__food_id__get"];
     /**
-     * Update Meal
-     * @description Update an existing meal.
+     * Update Food
+     * @description Update an existing food.
      */
-    put: operations["update_meal_api_meals__meal_id__put"];
+    put: operations["update_food_api_foods__food_id__put"];
     /**
-     * Delete Meal
-     * @description Delete a meal.
+     * Delete Food
+     * @description Delete a food.
      */
-    delete: operations["delete_meal_api_meals__meal_id__delete"];
+    delete: operations["delete_food_api_foods__food_id__delete"];
   };
 }
 
@@ -154,36 +154,36 @@ export interface components {
       tags?: components["schemas"]["TagRef"][];
     };
     /**
-     * MealCreate
-     * @description Schema for creating a meal.
+     * FoodCreate
+     * @description Schema for creating a food.
      */
-    MealCreate: {
+    FoodCreate: {
       /** Name */
       name: string;
       /** Ingredients */
-      ingredients?: components["schemas"]["MealIngredientCreate"][];
+      ingredients?: components["schemas"]["FoodIngredientCreate"][];
       /** Tags */
       tags?: components["schemas"]["TagRef"][];
     };
     /**
-     * MealIngredient
-     * @description Link between a meal and an ingredient with quantity information.
+     * FoodIngredient
+     * @description Link between a food and an ingredient with quantity information.
      */
-    MealIngredient: {
+    FoodIngredient: {
       /** Ingredient Id */
       ingredient_id?: number | null;
-      /** Meal Id */
-      meal_id?: number | null;
+      /** Food Id */
+      food_id?: number | null;
       /** Unit Id */
       unit_id?: number | null;
       /** Unit Quantity */
       unit_quantity?: number | null;
     };
     /**
-     * MealIngredientCreate
-     * @description Schema for creating meal ingredient linkage.
+     * FoodIngredientCreate
+     * @description Schema for creating food ingredient linkage.
      */
-    MealIngredientCreate: {
+    FoodIngredientCreate: {
       /** Ingredient Id */
       ingredient_id: number;
       /** Unit Id */
@@ -192,28 +192,28 @@ export interface components {
       unit_quantity?: number | null;
     };
     /**
-     * MealRead
-     * @description Schema for reading meal data.
+     * FoodRead
+     * @description Schema for reading food data.
      */
-    MealRead: {
+    FoodRead: {
       /** Id */
       id: number;
       /** Name */
       name: string;
       /** Ingredients */
-      ingredients?: components["schemas"]["MealIngredient"][];
+      ingredients?: components["schemas"]["FoodIngredient"][];
       /** Tags */
-      tags?: components["schemas"]["PossibleMealTag"][];
+      tags?: components["schemas"]["PossibleFoodTag"][];
     };
     /**
-     * MealUpdate
-     * @description Schema for updating a meal.
+     * FoodUpdate
+     * @description Schema for updating a food.
      */
-    MealUpdate: {
+    FoodUpdate: {
       /** Name */
       name: string;
       /** Ingredients */
-      ingredients?: components["schemas"]["MealIngredientCreate"][];
+      ingredients?: components["schemas"]["FoodIngredientCreate"][];
       /** Tags */
       tags?: components["schemas"]["TagRef"][];
     };
@@ -264,10 +264,10 @@ export interface components {
       name: string;
     };
     /**
-     * PossibleMealTag
-     * @description Tag that can be associated with a meal.
+     * PossibleFoodTag
+     * @description Tag that can be associated with a food.
      */
-    PossibleMealTag: {
+    PossibleFoodTag: {
       /** Id */
       id?: number | null;
       /** Name */
@@ -440,34 +440,34 @@ export interface operations {
     };
   };
   /**
-   * Get All Meals
-   * @description Return all meals.
+   * Get All Foods
+   * @description Return all foods.
    */
-  get_all_meals_api_meals__get: {
+  get_all_foods_api_foods__get: {
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": components["schemas"]["MealRead"][];
+          "application/json": components["schemas"]["FoodRead"][];
         };
       };
     };
   };
   /**
-   * Add Meal
-   * @description Create a new meal.
+   * Add Food
+   * @description Create a new food.
    */
-  add_meal_api_meals__post: {
+  add_food_api_foods__post: {
     requestBody: {
       content: {
-        "application/json": components["schemas"]["MealCreate"];
+        "application/json": components["schemas"]["FoodCreate"];
       };
     };
     responses: {
       /** @description Successful Response */
       201: {
         content: {
-          "application/json": components["schemas"]["MealRead"];
+          "application/json": components["schemas"]["FoodRead"];
         };
       };
       /** @description Validation Error */
@@ -479,34 +479,34 @@ export interface operations {
     };
   };
   /**
-   * Get Possible Meal Tags
-   * @description Return all possible meal tags ordered by name.
+   * Get Possible Food Tags
+   * @description Return all possible food tags ordered by name.
    */
-  get_possible_meal_tags_api_meals_possible_tags_get: {
+  get_possible_food_tags_api_foods_possible_tags_get: {
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": components["schemas"]["PossibleMealTag"][];
+          "application/json": components["schemas"]["PossibleFoodTag"][];
         };
       };
     };
   };
   /**
-   * Get Meal
-   * @description Retrieve a single meal by ID.
+   * Get Food
+   * @description Retrieve a single food by ID.
    */
-  get_meal_api_meals__meal_id__get: {
+  get_food_api_foods__food_id__get: {
     parameters: {
       path: {
-        meal_id: number;
+        food_id: number;
       };
     };
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": components["schemas"]["MealRead"];
+          "application/json": components["schemas"]["FoodRead"];
         };
       };
       /** @description Validation Error */
@@ -518,25 +518,25 @@ export interface operations {
     };
   };
   /**
-   * Update Meal
-   * @description Update an existing meal.
+   * Update Food
+   * @description Update an existing food.
    */
-  update_meal_api_meals__meal_id__put: {
+  update_food_api_foods__food_id__put: {
     parameters: {
       path: {
-        meal_id: number;
+        food_id: number;
       };
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["MealUpdate"];
+        "application/json": components["schemas"]["FoodUpdate"];
       };
     };
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": components["schemas"]["MealRead"];
+          "application/json": components["schemas"]["FoodRead"];
         };
       };
       /** @description Validation Error */
@@ -548,13 +548,13 @@ export interface operations {
     };
   };
   /**
-   * Delete Meal
-   * @description Delete a meal.
+   * Delete Food
+   * @description Delete a food.
    */
-  delete_meal_api_meals__meal_id__delete: {
+  delete_food_api_foods__food_id__delete: {
     parameters: {
       path: {
-        meal_id: number;
+        food_id: number;
       };
     };
     responses: {
