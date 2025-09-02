@@ -83,6 +83,70 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
+    /**
+     * FoodCreate
+     * @description Schema for creating a food.
+     */
+    FoodCreate: {
+      /** Name */
+      name: string;
+      /** Ingredients */
+      ingredients?: components["schemas"]["FoodIngredientCreate"][];
+      /** Tags */
+      tags?: components["schemas"]["TagRef"][];
+    };
+    /**
+     * FoodIngredient
+     * @description Link between a food and an ingredient with quantity information.
+     */
+    FoodIngredient: {
+      /** Ingredient Id */
+      ingredient_id?: number | null;
+      /** Food Id */
+      food_id?: number | null;
+      /** Unit Id */
+      unit_id?: number | null;
+      /** Unit Quantity */
+      unit_quantity?: number | null;
+    };
+    /**
+     * FoodIngredientCreate
+     * @description Schema for creating food ingredient linkage.
+     */
+    FoodIngredientCreate: {
+      /** Ingredient Id */
+      ingredient_id: number;
+      /** Unit Id */
+      unit_id?: number | null;
+      /** Unit Quantity */
+      unit_quantity?: number | null;
+    };
+    /**
+     * FoodRead
+     * @description Schema for reading food data.
+     */
+    FoodRead: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      /** Ingredients */
+      ingredients?: components["schemas"]["FoodIngredient"][];
+      /** Tags */
+      tags?: components["schemas"]["PossibleFoodTag"][];
+    };
+    /**
+     * FoodUpdate
+     * @description Schema for updating a food.
+     */
+    FoodUpdate: {
+      /** Name */
+      name: string;
+      /** Ingredients */
+      ingredients?: components["schemas"]["FoodIngredientCreate"][];
+      /** Tags */
+      tags?: components["schemas"]["TagRef"][];
+    };
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
@@ -154,70 +218,6 @@ export interface components {
       tags?: components["schemas"]["TagRef"][];
     };
     /**
-     * FoodCreate
-     * @description Schema for creating a food.
-     */
-    FoodCreate: {
-      /** Name */
-      name: string;
-      /** Ingredients */
-      ingredients?: components["schemas"]["FoodIngredientCreate"][];
-      /** Tags */
-      tags?: components["schemas"]["TagRef"][];
-    };
-    /**
-     * FoodIngredient
-     * @description Link between a food and an ingredient with quantity information.
-     */
-    FoodIngredient: {
-      /** Ingredient Id */
-      ingredient_id?: number | null;
-      /** Food Id */
-      food_id?: number | null;
-      /** Unit Id */
-      unit_id?: number | null;
-      /** Unit Quantity */
-      unit_quantity?: number | null;
-    };
-    /**
-     * FoodIngredientCreate
-     * @description Schema for creating food ingredient linkage.
-     */
-    FoodIngredientCreate: {
-      /** Ingredient Id */
-      ingredient_id: number;
-      /** Unit Id */
-      unit_id?: number | null;
-      /** Unit Quantity */
-      unit_quantity?: number | null;
-    };
-    /**
-     * FoodRead
-     * @description Schema for reading food data.
-     */
-    FoodRead: {
-      /** Id */
-      id: number;
-      /** Name */
-      name: string;
-      /** Ingredients */
-      ingredients?: components["schemas"]["FoodIngredient"][];
-      /** Tags */
-      tags?: components["schemas"]["PossibleFoodTag"][];
-    };
-    /**
-     * FoodUpdate
-     * @description Schema for updating a food.
-     */
-    FoodUpdate: {
-      /** Name */
-      name: string;
-      /** Ingredients */
-      ingredients?: components["schemas"]["FoodIngredientCreate"][];
-      /** Tags */
-      tags?: components["schemas"]["TagRef"][];
-    };
-    /**
      * Nutrition
      * @description Nutritional information for a single ingredient.
      */
@@ -254,20 +254,20 @@ export interface components {
       fiber: number;
     };
     /**
-     * PossibleIngredientTag
-     * @description Tag that can be associated with an ingredient.
+     * PossibleFoodTag
+     * @description Tag that can be associated with a food.
      */
-    PossibleIngredientTag: {
+    PossibleFoodTag: {
       /** Id */
       id?: number | null;
       /** Name */
       name: string;
     };
     /**
-     * PossibleFoodTag
-     * @description Tag that can be associated with a food.
+     * PossibleIngredientTag
+     * @description Tag that can be associated with an ingredient.
      */
-    PossibleFoodTag: {
+    PossibleIngredientTag: {
       /** Id */
       id?: number | null;
       /** Name */
