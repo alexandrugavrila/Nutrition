@@ -92,8 +92,8 @@ class TestIngredientRoutes:
 
 
 @pytest.mark.e2e
-class TestMealRoutes:
-    def test_crud_meal(self):
+class TestFoodRoutes:
+    def test_crud_food(self):
         print()
         # First create an ingredient to reference
         unique_ing_name = f"_test_e2e_ingredient_{uuid4().hex[:8]}"
@@ -108,55 +108,55 @@ class TestMealRoutes:
         ingredient_id = resp.json()["id"]
         _ok(f"Seeded ingredient '{unique_ing_name}' id={ingredient_id}")
 
-        unique_meal_name = f"_test_e2e_meal_{uuid4().hex[:8]}"
-        meal_payload = {
-            "name": unique_meal_name,
+        unique_food_name = f"_test_e2e_food_{uuid4().hex[:8]}"
+        food_payload = {
+            "name": unique_food_name,
             "ingredients": [{"ingredient_id": ingredient_id, "unit_quantity": 1}],
         }
 
         # Create
-        resp = httpx.post(f"{BASE_URL}/meals/", json=meal_payload)
+        resp = httpx.post(f"{BASE_URL}/foods/", json=food_payload)
         assert (
             resp.status_code == 201
-        ), f"create meal expected 201, got {resp.status_code}: {resp.text}"
-        meal = resp.json()
-        meal_id = meal["id"]
+        ), f"create food expected 201, got {resp.status_code}: {resp.text}"
+        food = resp.json()
+        food_id = food["id"]
         assert (
-            meal["name"] == unique_meal_name
-        ), "created meal name should match request"
-        _ok(f"Created meal '{unique_meal_name}' with id={meal_id}")
+            food["name"] == unique_food_name
+        ), "created food name should match request"
+        _ok(f"Created food '{unique_food_name}' with id={food_id}")
 
         # Read
-        resp = httpx.get(f"{BASE_URL}/meals/{meal_id}")
+        resp = httpx.get(f"{BASE_URL}/foods/{food_id}")
         assert (
             resp.status_code == 200
-        ), f"read meal expected 200, got {resp.status_code}: {resp.text}"
+        ), f"read food expected 200, got {resp.status_code}: {resp.text}"
         assert (
-            resp.json()["name"] == unique_meal_name
-        ), "fetched meal name should equal created name"
-        _ok("Fetched meal by id with expected name")
+            resp.json()["name"] == unique_food_name
+        ), "fetched food name should equal created name"
+        _ok("Fetched food by id with expected name")
 
         # Update
-        updated_meal_name = f"{unique_meal_name}_updated"
-        update_payload = meal_payload | {"name": updated_meal_name}
-        resp = httpx.put(f"{BASE_URL}/meals/{meal_id}", json=update_payload)
+        updated_food_name = f"{unique_food_name}_updated"
+        update_payload = food_payload | {"name": updated_food_name}
+        resp = httpx.put(f"{BASE_URL}/foods/{food_id}", json=update_payload)
         assert (
             resp.status_code == 200
-        ), f"update meal expected 200, got {resp.status_code}: {resp.text}"
+        ), f"update food expected 200, got {resp.status_code}: {resp.text}"
         assert (
-            resp.json()["name"] == updated_meal_name
-        ), "updated meal name should be persisted"
-        _ok("Updated meal name persisted")
+            resp.json()["name"] == updated_food_name
+        ), "updated food name should be persisted"
+        _ok("Updated food name persisted")
 
         # Delete
-        resp = httpx.delete(f"{BASE_URL}/meals/{meal_id}")
+        resp = httpx.delete(f"{BASE_URL}/foods/{food_id}")
         assert (
             resp.status_code == 200
-        ), f"delete meal expected 200, got {resp.status_code}: {resp.text}"
+        ), f"delete food expected 200, got {resp.status_code}: {resp.text}"
         assert (
-            resp.json()["message"] == "Meal deleted successfully"
+            resp.json()["message"] == "Food deleted successfully"
         ), "delete response should include success message"
-        _ok("Deleted meal successfully")
+        _ok("Deleted food successfully")
 
         # Clean up ingredient
         httpx.delete(f"{BASE_URL}/ingredients/{ingredient_id}")

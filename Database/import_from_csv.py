@@ -18,12 +18,12 @@ from Backend.models import (
     Ingredient,
     IngredientTagLink,
     IngredientUnit,
-    Meal,
-    MealIngredient,
-    MealTagLink,
+    Food,
+    FoodIngredient,
+    FoodTagLink,
     Nutrition,
     PossibleIngredientTag,
-    PossibleMealTag,
+    PossibleFoodTag,
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -106,10 +106,10 @@ MODEL_MAP = {
     "nutrition": Nutrition,
     "possible_ingredient_tags": PossibleIngredientTag,
     "ingredient_tags": IngredientTagLink,
-    "meals": Meal,
-    "meal_ingredients": MealIngredient,
-    "possible_meal_tags": PossibleMealTag,
-    "meal_tags": MealTagLink,
+    "foods": Food,
+    "food_ingredients": FoodIngredient,
+    "possible_food_tags": PossibleFoodTag,
+    "food_tags": FoodTagLink,
 }
 
 
@@ -206,14 +206,14 @@ def main():
         if not ordered_tables:
             static_order = [
                 "ingredients",
-                "meals",
+                "foods",
                 "possible_ingredient_tags",
-                "possible_meal_tags",
+                "possible_food_tags",
                 "ingredient_units",
                 "nutrition",
                 "ingredient_tags",
-                "meal_tags",
-                "meal_ingredients",
+                "food_tags",
+                "food_ingredients",
             ]
             # Verify tables actually exist before proceeding
             existing = []
