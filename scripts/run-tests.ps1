@@ -5,16 +5,35 @@
 
 .PARAMETER e2e
     Also run end-to-end API tests via scripts/tests/run-e2e-tests.ps1
+.PARAMETER sync
+    Run model/API sync (OpenAPI schema + frontend TS types + migration drift) before tests.
+.PARAMETER full
+    Equivalent to -sync and -e2e; runs sync then all tests including e2e.
 #>
 [CmdletBinding()]
 param(
-    [switch]$e2e
+    [switch]$e2e,
+    [switch]$sync,
+    [switch]$full
 )
 
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Resolve-Path "$PSScriptRoot/.."
 Set-Location $RepoRoot
+
+# Resolve composite flags
+if ($full) {
+    $sync = $true
+    $e2e  = $true
+}
+
+# Optional: synchronize OpenAPI + migrations (non-interactive)
+if ($sync) {
+    Write-Host "Synchronizing API schema and database migrations..."
+    & "$RepoRoot/scripts/db/sync-api-and-migrations.ps1" -Auto
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 
 # Ensure virtual environment is active (activate only if not already)
 if (-not $env:VIRTUAL_ENV) {

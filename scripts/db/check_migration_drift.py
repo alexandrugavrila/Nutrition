@@ -46,7 +46,8 @@ def _err(msg: str) -> None:
 # Paths and configuration
 # ---------------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parent
+# The repo root is two levels up from this script (scripts/db/.. -> scripts/.. -> repo root)
+REPO_ROOT = SCRIPT_DIR.parent.parent
 os.chdir(REPO_ROOT)
 
 ALEMBIC_INI = REPO_ROOT / "Backend" / "alembic.ini"

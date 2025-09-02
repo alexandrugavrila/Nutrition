@@ -165,7 +165,10 @@ npm --prefix Frontend run preview # preview build
 - Run backend and frontend unit tests:
   - Bash: `./scripts/run-tests.sh`
   - PowerShell: `pwsh ./scripts/run-tests.ps1`
-  - Add `--e2e` to also run the end-to-end API suite.
+  - Flags:
+    - Include e2e: `--e2e` (Bash) or `-e2e` (PowerShell)
+    - Sync models/API (OpenAPI + types + migration drift): `--sync` (Bash) or `-sync` (PowerShell)
+    - Full (sync + e2e): `--full` (Bash) or `-full` (PowerShell)
 
 - End-to-end API tests only (require Docker stack):
   - Auto-skip: The e2e module skips itself when `DEV_BACKEND_PORT` is missing or the backend is unreachable.
@@ -311,8 +314,8 @@ Before opening a PR:
   `alembic upgrade head` (or rely on the sync/drift script outcome)
 * [ ] **Tests pass?**
   `./scripts/run-tests.sh` (or `pwsh ./scripts/run-tests.ps1`)
-  - These exclude e2e tests by default.
-  - To include e2e tests, pass the flag: `./scripts/run-tests.sh --e2e` or `pwsh ./scripts/run-tests.ps1 -e2e`.
+  - Excludes e2e by default. Include with `--e2e`/`-e2e`.
+  - Run model/API sync first with `--sync`/`-sync`, or do both with `--full`/`-full`.
 * [ ] **Lint/build ok?**
   `npm --prefix Frontend run lint` and `npm --prefix Frontend run build`
 
