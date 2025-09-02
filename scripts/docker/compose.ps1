@@ -122,7 +122,8 @@ function Invoke-Up {
   }
 
     Write-Host "Applying database migrations..."
-    docker compose -p $proj exec -T backend python -m alembic upgrade head
+    # Ensure Alembic resolves relative paths from Backend/ where alembic.ini lives
+    docker compose -p $proj exec -T backend sh -lc "cd /app/Backend && python -m alembic -c alembic.ini upgrade head"
     if ($LASTEXITCODE -ne 0) {
       Write-Error "Database migration failed with exit code $LASTEXITCODE."
       exit $LASTEXITCODE
