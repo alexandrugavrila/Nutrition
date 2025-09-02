@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from Backend.models import PossibleIngredientTag, PossibleMealTag
+from Backend.models import PossibleIngredientTag, PossibleFoodTag
 
 
 def test_full_ingredient_crud(client: TestClient, engine) -> None:
@@ -87,10 +87,10 @@ def test_full_ingredient_crud(client: TestClient, engine) -> None:
     assert response.status_code == 404
 
 
-def test_full_meal_crud(client: TestClient, engine) -> None:
+def test_full_food_crud(client: TestClient, engine) -> None:
     with Session(engine) as session:
-        meal_tag1 = PossibleMealTag(name="Breakfast")
-        meal_tag2 = PossibleMealTag(name="Healthy")
+        meal_tag1 = PossibleFoodTag(name="Breakfast")
+        meal_tag2 = PossibleFoodTag(name="Healthy")
         ing_tag = PossibleIngredientTag(name="Vegetable")
         session.add_all([meal_tag1, meal_tag2, ing_tag])
         session.commit()
@@ -117,7 +117,7 @@ def test_full_meal_crud(client: TestClient, engine) -> None:
     ingredient_id = ingredient["id"]
     unit_id = ingredient["units"][0]["id"]
 
-    meal_payload = {
+    food_payload = {
         "name": "Onion Omelette",
         "ingredients": [
             {
@@ -129,14 +129,14 @@ def test_full_meal_crud(client: TestClient, engine) -> None:
         "tags": [{"id": meal_tag1_id}, {"id": meal_tag2_id}],
     }
 
-    response = client.post("/api/meals", json=meal_payload)
+    response = client.post("/api/foods", json=food_payload)
     assert response.status_code == 201
-    meal = response.json()
-    meal_id = meal["id"]
-    assert meal["ingredients"][0]["unit_quantity"] == pytest.approx(2.0)
-    assert {t["name"] for t in meal["tags"]} == {"Breakfast", "Healthy"}
+    food = response.json()
+    meal_id = food["id"]
+    assert food["ingredients"][0]["unit_quantity"] == pytest.approx(2.0)
+    assert {t["name"] for t in food["tags"]} == {"Breakfast", "Healthy"}
 
-    response = client.get(f"/api/meals/{meal_id}")
+    response = client.get(f"/api/foods/{meal_id}")
     assert response.status_code == 200
     fetched = response.json()
 
@@ -146,7 +146,7 @@ def test_full_meal_crud(client: TestClient, engine) -> None:
         "ingredients": [
             {
                 "ingredient_id": ingredient_id,
-                "meal_id": meal_id,
+                "food_id": meal_id,
                 "unit_id": unit_id,
                 "unit_quantity": 3.0,
             }
@@ -154,14 +154,14 @@ def test_full_meal_crud(client: TestClient, engine) -> None:
         "tags": [{"id": meal_tag1_id}],
     }
 
-    response = client.put(f"/api/meals/{meal_id}", json=update_payload)
+    response = client.put(f"/api/foods/{meal_id}", json=update_payload)
     assert response.status_code == 200
     updated = response.json()
     assert updated["name"] == "Onion Omelette Deluxe"
     assert updated["ingredients"][0]["unit_quantity"] == pytest.approx(3.0)
     assert len(updated["tags"]) == 1 and updated["tags"][0]["name"] == "Breakfast"
 
-    response = client.delete(f"/api/meals/{meal_id}")
+    response = client.delete(f"/api/foods/{meal_id}")
     assert response.status_code == 200
-    response = client.get(f"/api/meals/{meal_id}")
+    response = client.get(f"/api/foods/{meal_id}")
     assert response.status_code == 404

@@ -38,37 +38,37 @@ def test_ingredient_crud(client: TestClient) -> None:
     assert response.status_code == 404
 
 
-def test_meal_crud(client: TestClient) -> None:
+def test_food_crud(client: TestClient) -> None:
     response = client.post(
-        "/api/meals",
-        json={"name": "Test Meal", "ingredients": [], "tags": []},
+        "/api/foods",
+        json={"name": "Test Food", "ingredients": [], "tags": []},
     )
     assert response.status_code == 201
-    meal = response.json()
-    meal_id = meal["id"]
-    assert meal["name"] == "Test Meal"
+    food = response.json()
+    food_id = food["id"]
+    assert food["name"] == "Test Food"
 
-    response = client.get("/api/meals")
+    response = client.get("/api/foods")
     assert response.status_code == 200
-    assert any(item["id"] == meal_id for item in response.json())
+    assert any(item["id"] == food_id for item in response.json())
 
-    response = client.get(f"/api/meals/{meal_id}")
+    response = client.get(f"/api/foods/{food_id}")
     assert response.status_code == 200
-    assert response.json()["name"] == "Test Meal"
+    assert response.json()["name"] == "Test Food"
 
     response = client.put(
-        f"/api/meals/{meal_id}",
+        f"/api/foods/{food_id}",
         json={
-            "id": meal_id,
-            "name": "Updated Meal",
+            "id": food_id,
+            "name": "Updated Food",
             "ingredients": [],
             "tags": [],
         },
     )
     assert response.status_code == 200
-    assert response.json()["name"] == "Updated Meal"
+    assert response.json()["name"] == "Updated Food"
 
-    response = client.delete(f"/api/meals/{meal_id}")
+    response = client.delete(f"/api/foods/{food_id}")
     assert response.status_code == 200
-    response = client.get(f"/api/meals/{meal_id}")
+    response = client.get(f"/api/foods/{food_id}")
     assert response.status_code == 404

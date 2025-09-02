@@ -2,22 +2,22 @@ from .ingredient import Ingredient
 from .ingredient_unit import IngredientUnit
 from .nutrition import Nutrition
 from .possible_ingredient_tag import PossibleIngredientTag
-from .possible_meal_tag import PossibleMealTag
-from .meal import Meal
-from .meal_ingredient import MealIngredient
+from .possible_food_tag import PossibleFoodTag
+from .food import Food
+from .food_ingredient import FoodIngredient
 from .ingredient_tag import IngredientTagLink
-from .meal_tag import MealTagLink
+from .food_tag import FoodTagLink
 from .schemas import (
     NutritionCreate,
     IngredientUnitCreate,
-    MealIngredientCreate,
+    FoodIngredientCreate,
     TagRef,
     IngredientCreate,
     IngredientUpdate,
     IngredientRead,
-    MealCreate,
-    MealUpdate,
-    MealRead,
+    FoodCreate,
+    FoodUpdate,
+    FoodRead,
 )
 
 __all__ = [
@@ -25,19 +25,19 @@ __all__ = [
     "IngredientUnit",
     "Nutrition",
     "PossibleIngredientTag",
-    "PossibleMealTag",
-    "Meal",
-    "MealIngredient",
+    "PossibleFoodTag",
+    "Food",
+    "FoodIngredient",
     "IngredientTagLink",
-    "MealTagLink",
+    "FoodTagLink",
     "NutritionCreate",
     "IngredientUnitCreate",
-    "MealIngredientCreate",
+    "FoodIngredientCreate",
     "TagRef",
     "IngredientCreate",
     "IngredientUpdate",
     "IngredientRead",
-    "MealCreate",
-    "MealUpdate",
-    "MealRead",
+    "FoodCreate",
+    "FoodUpdate",
+    "FoodRead",
 ]
