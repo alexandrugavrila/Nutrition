@@ -7,6 +7,7 @@ import { handleFetchRequest } from "@/utils/utils";
 
 import MealNameForm from "./MealNameForm";
 import MealIngredientsForm from "./MealIngredientsForm";
+import TagEdit from "./TagEdit";
 
 /**
  * @typedef {import("../../../../api-types").operations["add_meal_api_meals_post"]["requestBody"]["content"]["application/json"]} MealRequest
@@ -190,6 +191,11 @@ function MealForm({ mealToEditData }) {
               needsClearForm={needsClearForm}
             />
             <MealIngredientsForm
+              meal={mealToEdit}
+              dispatch={dispatch}
+              needsClearForm={needsClearForm}
+            />
+            <TagEdit
               meal={mealToEdit}
               dispatch={dispatch}
               needsClearForm={needsClearForm}
