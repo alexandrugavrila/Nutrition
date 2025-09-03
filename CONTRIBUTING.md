@@ -98,6 +98,13 @@ activate the virtual environment if needed.
 Notes:
 - The CSV importer detects an empty schema and will automatically run `alembic upgrade head` using the current `DATABASE_URL` before importing data.
 - When no tables are present it skips the TRUNCATE step to avoid SQL errors, then re-checks table order post-migration.
+- If there is a version mismatch between the imported backup and the current db migration
+  Clean restore of the latest dump for this branch:
+    PowerShell: pwsh ./scripts/db/restore.ps1 -ResetSchema
+    Bash: ./scripts/db/restore.sh --reset-schema
+  Clean restore then migrate to head:
+    PowerShell: pwsh ./scripts/db/restore.ps1 -ResetSchema -UpgradeAfter
+    Bash: ./scripts/db/restore.sh --reset-schema --upgrade-after
 
 ---
 
