@@ -266,7 +266,7 @@ function Planning() {
                 setSelectedIngredientId(id);
                 const ing = ingredients.find((i) => i.id === id);
                 const defaultUnit =
-                  ing?.units.find((u) => u.name === "1g") || ing?.units[0];
+                  ing?.units.find((u) => u.grams === 1) || ing?.units[0];
                 setSelectedIngredientUnitId(defaultUnit?.id || 0);
               }}
               sx={{ minWidth: 200 }}

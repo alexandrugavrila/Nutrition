@@ -96,7 +96,7 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
 
     const dataUnit =
       dataIngredient.units.find((u) => u.id === ingredient.unit_id) ||
-      dataIngredient.units.find((u) => u.name === "1g") ||
+      dataIngredient.units.find((u) => u.grams === 1) ||
       dataIngredient.units[0];
 
     if (!dataUnit) {
@@ -287,7 +287,7 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
                                 dataIngredient?.units.find(
                                   (u) => u.id === ingredient.unit_id
                                 ) ||
-                                dataIngredient?.units.find((u) => u.name === "1g") ||
+                                dataIngredient?.units.find((u) => u.grams === 1) ||
                                 dataIngredient?.units[0];
 
                               // Render the TableRow with TableCell containing the ingredient name
