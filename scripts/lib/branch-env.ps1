@@ -22,7 +22,15 @@ function Set-BranchEnv {
   $branch   = (git -C $repoRoot rev-parse --abbrev-ref HEAD).Trim()
   $sanitized = Get-SanitizedBranch $branch
   $project  = "nutrition-$sanitized"
-  $offset   = [math]::Abs($branch.GetHashCode()) % 100
+  # Stable per-branch offset (use SHA1 first byte, like bash version)
+  $sha1    = [System.Security.Cryptography.SHA1]::Create()
+  try {
+    $bytes  = [System.Text.Encoding]::UTF8.GetBytes($branch)
+    $hash   = $sha1.ComputeHash($bytes)
+  } finally {
+    $sha1.Dispose()
+  }
+  $offset  = [int]($hash[0] % 100)
 
   $env:REPO_ROOT       = $repoRoot
   $env:BRANCH_NAME     = $branch
