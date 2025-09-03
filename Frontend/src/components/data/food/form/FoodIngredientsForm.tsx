@@ -75,8 +75,11 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
 
       const dataIngredient = ingredients.find((item) => item.id === food_ingredient.ingredient_id);
 
-      const unitId = food_ingredient.unit_id ?? 0; // If food_ingredient.unit_id is undefined or null, use 0
-      const dataUnit = dataIngredient.units.find((unit) => unit.id === unitId) || dataIngredient.units[0]; // Fallback to the first unit if not found
+      const unitId = food_ingredient.unit_id ?? 0; // If undefined or null, use synthetic 0 for display fallback
+      const dataUnit =
+        dataIngredient.units.find((unit) => unit.id === unitId) ||
+        dataIngredient.units.find((unit) => unit.grams === 1) ||
+        dataIngredient.units[0];
 
       return {
         calories: dataIngredient.nutrition.calories ? dataIngredient.nutrition.calories * dataUnit.grams * food_ingredient.unit_quantity : 0,
@@ -163,6 +166,7 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
           <TableBody>
             {food.ingredients.map((ingredient, index) => {
               const dataIngredient = ingredients.find((item) => item.id === ingredient.ingredient_id);
+              const defaultUnitId = dataIngredient?.units.find((u) => u.grams === 1)?.id || dataIngredient?.units[0]?.id || 0;
 
               return (
                 <TableRow key={index}>
@@ -171,7 +175,7 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
                     <div>
                       <Select
                         style={{ textAlign: "center" }}
-                        value={ingredient.unit_id || 0}
+                        value={ingredient.unit_id ?? defaultUnitId}
                         onChange={(event) => handleUnitChange(event, index)}
                         inputProps={{ "aria-label": "Without label" }}>
                         {dataIngredient.units.map((unit) => (

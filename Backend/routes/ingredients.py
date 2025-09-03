@@ -24,13 +24,29 @@ router = APIRouter(prefix="/ingredients", tags=["ingredients"])
 
 
 def ingredient_to_read(ingredient: Ingredient) -> IngredientRead:
-    """Convert an Ingredient to IngredientRead ensuring a 1 g unit exists."""
-    ingredient_read = IngredientRead.model_validate(ingredient)
-    if not any(unit.name == "1g" for unit in ingredient_read.units):
-        ingredient_read.units.append(
-            IngredientUnit(id=0, ingredient_id=ingredient.id, name="1g", grams=1)
-        )
-    return ingredient_read
+    """Convert an Ingredient to IngredientRead without mutating units.
+
+    We no longer append synthetic units. A proper base unit of name 'g' and grams == 1
+    is enforced on create/update and via a data migration for existing records.
+    """
+    return IngredientRead.model_validate(ingredient)
+
+
+def ensure_g_unit_present(ingredient_obj: Ingredient) -> None:
+    """Ensure a 'g' unit with grams == 1 exists on the Ingredient's units.
+
+    Checks both name and grams to satisfy the strict requirement.
+    """
+    units = list(ingredient_obj.units or [])
+    for u in units:
+        if u.name == "g":
+            # If a 'g' unit exists but grams != 1, correct it to 1
+            if getattr(u, "grams", None) != 1:
+                u.grams = 1
+            return
+    # No 'g' unit found; append one with grams == 1
+    units.append(IngredientUnit(name="g", grams=1))
+    ingredient_obj.units = units
 
 
 @router.get("/", response_model=List[IngredientRead])
@@ -83,6 +99,8 @@ def add_ingredient(
 ) -> IngredientRead:
     """Create a new ingredient."""
     ingredient_obj = Ingredient.from_create(ingredient)
+    # Force inclusion of base unit 'g' with grams == 1
+    ensure_g_unit_present(ingredient_obj)
     if ingredient.tags:
         ingredient_obj.tags = [
             db.get(PossibleIngredientTag, t.id) for t in ingredient.tags if t.id
@@ -142,6 +160,8 @@ def update_ingredient(
     ingredient.units = [
         IngredientUnit.model_validate(u.model_dump()) for u in ingredient_data.units
     ]
+    # Force inclusion of base unit 'g' with grams == 1
+    ensure_g_unit_present(ingredient)
 
     with db.no_autoflush:
         if ingredient_data.tags:

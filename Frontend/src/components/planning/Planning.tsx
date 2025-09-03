@@ -98,7 +98,9 @@ function Planning() {
       return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
     }
     const unit =
-      dataIngredient.units.find((u) => u.id === ingredient.unit_id) || dataIngredient.units[0];
+      dataIngredient.units.find((u) => u.id === ingredient.unit_id) ||
+      dataIngredient.units.find((u) => u.name === "1g") ||
+      dataIngredient.units[0];
     const grams = unit ? unit.grams : 0;
     return {
       calories: (dataIngredient.nutrition.calories || 0) * grams * ingredient.unit_quantity,
@@ -263,7 +265,9 @@ function Planning() {
                 const id = e.target.value;
                 setSelectedIngredientId(id);
                 const ing = ingredients.find((i) => i.id === id);
-                setSelectedIngredientUnitId(ing?.units[0]?.id || 0);
+                const defaultUnit =
+                  ing?.units.find((u) => u.grams === 1) || ing?.units[0];
+                setSelectedIngredientUnitId(defaultUnit?.id || 0);
               }}
               sx={{ minWidth: 200 }}
             >
@@ -404,10 +408,12 @@ function Planning() {
                               const dataIngredient = ingredients.find(
                                 (i) => i.id === ingredient.ingredient_id
                               );
-                              const unit =
+              const unit =
                                 dataIngredient?.units.find(
                                   (u) => u.id === ingredient.unit_id
-                                ) || dataIngredient?.units[0];
+                                ) ||
+                                dataIngredient?.units.find((u) => u.name === "1g") ||
+                                dataIngredient?.units[0];
                               const ingMacros = calculateIngredientMacros(ingredient);
                               return (
                                 <TableRow key={ingredient.ingredient_id}>

@@ -125,7 +125,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             grams: parseFloat(String(unit.grams)),
           })) ?? [];
         const defaultUnit =
-          unitsWithFloatGrams.find((unit) => unit.name === "1g") ||
+          unitsWithFloatGrams.find((unit) => unit.name === "g" && unit.grams === 1) ||
           unitsWithFloatGrams.find((unit) => unit.grams === 1) ||
           unitsWithFloatGrams[0];
         return {

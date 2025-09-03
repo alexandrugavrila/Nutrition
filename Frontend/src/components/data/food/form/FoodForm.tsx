@@ -86,7 +86,8 @@ function FoodForm({ foodToEditData }) {
         )
         .map(({ ingredient_id, unit_id, unit_quantity }) => ({
           ingredient_id,
-          unit_id,
+          // Normalize synthetic 1g selection (id 0) to null for DB
+          unit_id: unit_id === 0 ? null : unit_id,
           unit_quantity,
         })),
       tags: foodToEdit.tags
