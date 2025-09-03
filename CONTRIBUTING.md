@@ -232,14 +232,15 @@ This orchestrates:
 #### Alembic (Database Migrations)
 
 ```bash
-# Create a migration after editing models
-alembic revision --autogenerate -m "describe change"
+# Create a migration after editing models (local)
+alembic -c Backend/alembic.ini revision --autogenerate -m "describe change"
 
-# Apply migrations
-alembic upgrade head
+# Apply migrations (local)
+alembic -c Backend/alembic.ini upgrade head
 
-# Reset database
-alembic downgrade base && alembic upgrade head
+# Reset database (local)
+alembic -c Backend/alembic.ini downgrade base && \
+alembic -c Backend/alembic.ini upgrade head
 ```
 
 #### Drift Check Only

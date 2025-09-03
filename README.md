@@ -52,7 +52,17 @@ npm --prefix Frontend run preview # preview build
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full contributor workflow details.
 
-### 6. Run Tests
+### 6. Database Migrations (local)
+
+When running Alembic locally (outside Docker), point it at the backend config:
+
+```bash
+alembic -c Backend/alembic.ini upgrade head
+```
+
+This ensures Alembic finds the migration scripts under `Backend/migrations/`.
+
+### 7. Run Tests
 
 ```bash
 ./scripts/run-tests.sh        # Bash
@@ -61,7 +71,7 @@ pwsh ./scripts/run-tests.ps1  # PowerShell
 
 Pass `--e2e` to also run the end-to-end API suite. The e2e runner stands up a dedicated test stack (on TEST ports) and tears it down after tests.
 
-### 7. Database Backups
+### 8. Database Backups
 
 ```bash
 ./scripts/db/backup.sh        # Bash
@@ -131,7 +141,7 @@ Nutrition/
 - `PUT /ingredients/{id}` – update
 - `DELETE /ingredients/{id}` – remove
 
-Every ingredient response automatically includes a synthetic `1g` unit for convenience.
+Each ingredient persists a base unit named `g` with `grams == 1`.
 
 **Foods**
 
