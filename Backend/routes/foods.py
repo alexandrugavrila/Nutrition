@@ -65,7 +65,17 @@ def get_food(food_id: int, db: Session = Depends(get_db)) -> FoodRead:
 @router.post("/", response_model=FoodRead, status_code=201)
 def add_food(food: FoodCreate, db: Session = Depends(get_db)) -> FoodRead:
     """Create a new food."""
-    food_obj = Food.from_create(food)
+    # Normalize unit_id values: treat 0 (synthetic 1g) as None for DB FK integrity
+    normalized_ingredients = []
+    for fi in food.ingredients:
+        fi_dict = fi.model_dump()
+        if fi_dict.get("unit_id") == 0:
+            fi_dict["unit_id"] = None
+        normalized_ingredients.append(fi_dict)
+
+    food_obj = Food.from_create(
+        FoodCreate(name=food.name, ingredients=normalized_ingredients, tags=food.tags)
+    )
     if food.tags:
         food_obj.tags = [db.get(PossibleFoodTag, t.id) for t in food.tags if t.id]
     db.add(food_obj)
@@ -102,7 +112,11 @@ def update_food(
     db.exec(delete(FoodIngredient).where(FoodIngredient.food_id == food_id))
     food.ingredients = []
     for fi_data in food_data.ingredients:
-        fi_obj = FoodIngredient.model_validate(fi_data.model_dump())
+        fi_payload = fi_data.model_dump()
+        # Normalize synthetic unit id 0 to None
+        if fi_payload.get("unit_id") == 0:
+            fi_payload["unit_id"] = None
+        fi_obj = FoodIngredient.model_validate(fi_payload)
         fi_obj.food_id = food_id
         food.ingredients.append(fi_obj)
 

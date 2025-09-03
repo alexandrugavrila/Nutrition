@@ -75,8 +75,11 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
 
       const dataIngredient = ingredients.find((item) => item.id === food_ingredient.ingredient_id);
 
-      const unitId = food_ingredient.unit_id ?? 0; // If food_ingredient.unit_id is undefined or null, use 0
-      const dataUnit = dataIngredient.units.find((unit) => unit.id === unitId) || dataIngredient.units[0]; // Fallback to the first unit if not found
+      const unitId = food_ingredient.unit_id ?? 0; // If undefined or null, use synthetic 0 (1g)
+      const dataUnit =
+        dataIngredient.units.find((unit) => unit.id === unitId) ||
+        dataIngredient.units.find((unit) => unit.name === "1g") ||
+        dataIngredient.units[0];
 
       return {
         calories: dataIngredient.nutrition.calories ? dataIngredient.nutrition.calories * dataUnit.grams * food_ingredient.unit_quantity : 0,
