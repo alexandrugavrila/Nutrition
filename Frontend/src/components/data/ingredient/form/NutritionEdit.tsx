@@ -62,14 +62,24 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
 
   useEffect(() => {
     if (needsClearForm) {
-      const newNutrition = {
+      // Clear input fields visually
+      setDisplayedNutrition({
         calories: "",
         protein: "",
         carbohydrates: "",
         fat: "",
         fiber: "",
+      });
+
+      // Keep underlying state numeric to avoid type issues elsewhere
+      const clearedNutrition = {
+        calories: 0,
+        protein: 0,
+        carbohydrates: 0,
+        fat: 0,
+        fiber: 0,
       };
-      dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, nutrition: newNutrition } });
+      dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, nutrition: clearedNutrition } });
     }
   }, [needsClearForm, dispatch, ingredient]); // Clears the form on needsClearForm
 
