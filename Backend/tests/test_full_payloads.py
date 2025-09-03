@@ -7,8 +7,8 @@ from Backend.models import PossibleIngredientTag, PossibleMealTag
 
 def test_full_ingredient_crud(client: TestClient, engine) -> None:
     with Session(engine) as session:
-        spicy = PossibleIngredientTag(name="Spicy")
-        sweet = PossibleIngredientTag(name="Sweet")
+        spicy = PossibleIngredientTag(name="Spicy", group="Flavor")
+        sweet = PossibleIngredientTag(name="Sweet", group="Flavor")
         session.add(spicy)
         session.add(sweet)
         session.commit()
@@ -89,9 +89,9 @@ def test_full_ingredient_crud(client: TestClient, engine) -> None:
 
 def test_full_meal_crud(client: TestClient, engine) -> None:
     with Session(engine) as session:
-        meal_tag1 = PossibleMealTag(name="Breakfast")
-        meal_tag2 = PossibleMealTag(name="Healthy")
-        ing_tag = PossibleIngredientTag(name="Vegetable")
+        meal_tag1 = PossibleMealTag(name="Breakfast", group="Time")
+        meal_tag2 = PossibleMealTag(name="Healthy", group="Health")
+        ing_tag = PossibleIngredientTag(name="Vegetable", group="Category")
         session.add_all([meal_tag1, meal_tag2, ing_tag])
         session.commit()
         meal_tag1_id = meal_tag1.id

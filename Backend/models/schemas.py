@@ -41,6 +41,34 @@ class TagRef(SQLModel):
     id: int
 
 
+class PossibleIngredientTagCreate(SQLModel):
+    """Schema for creating a possible ingredient tag."""
+
+    name: str
+    group: str
+
+
+class PossibleIngredientTagUpdate(SQLModel):
+    """Schema for updating a possible ingredient tag."""
+
+    name: Optional[str] = None
+    group: Optional[str] = None
+
+
+class PossibleMealTagCreate(SQLModel):
+    """Schema for creating a possible meal tag."""
+
+    name: str
+    group: str
+
+
+class PossibleMealTagUpdate(SQLModel):
+    """Schema for updating a possible meal tag."""
+
+    name: Optional[str] = None
+    group: Optional[str] = None
+
+
 class IngredientCreate(SQLModel):
     """Schema for creating an ingredient."""
 
@@ -98,6 +126,10 @@ __all__ = [
     "IngredientUnitCreate",
     "MealIngredientCreate",
     "TagRef",
+    "PossibleIngredientTagCreate",
+    "PossibleIngredientTagUpdate",
+    "PossibleMealTagCreate",
+    "PossibleMealTagUpdate",
     "IngredientCreate",
     "IngredientUpdate",
     "IngredientRead",

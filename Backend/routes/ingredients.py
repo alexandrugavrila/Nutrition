@@ -7,7 +7,13 @@ from sqlmodel import Session, select
 
 from ..db import get_db
 from ..models import Ingredient, IngredientUnit, Nutrition, PossibleIngredientTag
-from ..models.schemas import IngredientCreate, IngredientRead, IngredientUpdate
+from ..models.schemas import (
+    IngredientCreate,
+    IngredientRead,
+    IngredientUpdate,
+    PossibleIngredientTagCreate,
+    PossibleIngredientTagUpdate,
+)
 
 router = APIRouter(prefix="/ingredients", tags=["ingredients"])
 
@@ -36,6 +42,59 @@ def get_all_possible_tags(
     """Return all possible ingredient tags ordered by name."""
     statement = select(PossibleIngredientTag).order_by(PossibleIngredientTag.name)
     return db.exec(statement).all()
+
+
+@router.post("/possible_tags", response_model=PossibleIngredientTag, status_code=201)
+def create_possible_tag(
+    tag: PossibleIngredientTagCreate, db: Session = Depends(get_db)
+) -> PossibleIngredientTag:
+    """Create a new possible ingredient tag."""
+    tag_obj = PossibleIngredientTag.model_validate(tag.model_dump())
+    db.add(tag_obj)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Tag already exists")
+    db.refresh(tag_obj)
+    return tag_obj
+
+
+@router.put("/possible_tags/{tag_id}", response_model=PossibleIngredientTag)
+def update_possible_tag(
+    tag_id: int, tag_data: PossibleIngredientTagUpdate, db: Session = Depends(get_db)
+) -> PossibleIngredientTag:
+    """Update an existing possible ingredient tag."""
+    tag = db.get(PossibleIngredientTag, tag_id)
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    if tag_data.name is not None:
+        tag.name = tag_data.name
+    if tag_data.group is not None:
+        tag.group = tag_data.group
+    db.add(tag)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Tag already exists")
+    db.refresh(tag)
+    return tag
+
+
+@router.delete("/possible_tags/{tag_id}")
+def delete_possible_tag(tag_id: int, db: Session = Depends(get_db)) -> dict:
+    """Delete a possible ingredient tag if not linked."""
+    tag = db.get(PossibleIngredientTag, tag_id)
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    if tag.ingredients:
+        raise HTTPException(
+            status_code=400, detail="Tag is linked to ingredients and cannot be deleted"
+        )
+    db.delete(tag)
+    db.commit()
+    return {"message": "Tag deleted successfully"}
 
 
 @router.get("/{ingredient_id}", response_model=IngredientRead)

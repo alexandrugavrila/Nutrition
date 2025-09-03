@@ -23,6 +23,23 @@ export interface paths {
      * @description Return all possible ingredient tags ordered by name.
      */
     get: operations["get_all_possible_tags_api_ingredients_possible_tags_get"];
+    /**
+     * Create Possible Tag
+     * @description Create a new possible ingredient tag.
+     */
+    post: operations["create_possible_tag_api_ingredients_possible_tags_post"];
+  };
+  "/api/ingredients/possible_tags/{tag_id}": {
+    /**
+     * Update Possible Tag
+     * @description Update an existing possible ingredient tag.
+     */
+    put: operations["update_possible_tag_api_ingredients_possible_tags__tag_id__put"];
+    /**
+     * Delete Possible Tag
+     * @description Delete a possible ingredient tag if not linked.
+     */
+    delete: operations["delete_possible_tag_api_ingredients_possible_tags__tag_id__delete"];
   };
   "/api/ingredients/{ingredient_id}": {
     /**
@@ -59,6 +76,23 @@ export interface paths {
      * @description Return all possible meal tags ordered by name.
      */
     get: operations["get_possible_meal_tags_api_meals_possible_tags_get"];
+    /**
+     * Create Possible Meal Tag
+     * @description Create a new possible meal tag.
+     */
+    post: operations["create_possible_meal_tag_api_meals_possible_tags_post"];
+  };
+  "/api/meals/possible_tags/{tag_id}": {
+    /**
+     * Update Possible Meal Tag
+     * @description Update an existing possible meal tag.
+     */
+    put: operations["update_possible_meal_tag_api_meals_possible_tags__tag_id__put"];
+    /**
+     * Delete Possible Meal Tag
+     * @description Delete a possible meal tag if not linked.
+     */
+    delete: operations["delete_possible_meal_tag_api_meals_possible_tags__tag_id__delete"];
   };
   "/api/meals/{meal_id}": {
     /**
@@ -262,6 +296,28 @@ export interface components {
       id?: number | null;
       /** Name */
       name: string;
+      /** Group */
+      group: string;
+    };
+    /**
+     * PossibleIngredientTagCreate
+     * @description Schema for creating a possible ingredient tag.
+     */
+    PossibleIngredientTagCreate: {
+      /** Name */
+      name: string;
+      /** Group */
+      group: string;
+    };
+    /**
+     * PossibleIngredientTagUpdate
+     * @description Schema for updating a possible ingredient tag.
+     */
+    PossibleIngredientTagUpdate: {
+      /** Name */
+      name?: string | null;
+      /** Group */
+      group?: string | null;
     };
     /**
      * PossibleMealTag
@@ -272,6 +328,28 @@ export interface components {
       id?: number | null;
       /** Name */
       name: string;
+      /** Group */
+      group: string;
+    };
+    /**
+     * PossibleMealTagCreate
+     * @description Schema for creating a possible meal tag.
+     */
+    PossibleMealTagCreate: {
+      /** Name */
+      name: string;
+      /** Group */
+      group: string;
+    };
+    /**
+     * PossibleMealTagUpdate
+     * @description Schema for updating a possible meal tag.
+     */
+    PossibleMealTagUpdate: {
+      /** Name */
+      name?: string | null;
+      /** Group */
+      group?: string | null;
     };
     /**
      * TagRef
@@ -353,6 +431,88 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["PossibleIngredientTag"][];
+        };
+      };
+    };
+  };
+  /**
+   * Create Possible Tag
+   * @description Create a new possible ingredient tag.
+   */
+  create_possible_tag_api_ingredients_possible_tags_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PossibleIngredientTagCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        content: {
+          "application/json": components["schemas"]["PossibleIngredientTag"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Update Possible Tag
+   * @description Update an existing possible ingredient tag.
+   */
+  update_possible_tag_api_ingredients_possible_tags__tag_id__put: {
+    parameters: {
+      path: {
+        tag_id: number;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PossibleIngredientTagUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["PossibleIngredientTag"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Delete Possible Tag
+   * @description Delete a possible ingredient tag if not linked.
+   */
+  delete_possible_tag_api_ingredients_possible_tags__tag_id__delete: {
+    parameters: {
+      path: {
+        tag_id: number;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -488,6 +648,88 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["PossibleMealTag"][];
+        };
+      };
+    };
+  };
+  /**
+   * Create Possible Meal Tag
+   * @description Create a new possible meal tag.
+   */
+  create_possible_meal_tag_api_meals_possible_tags_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PossibleMealTagCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        content: {
+          "application/json": components["schemas"]["PossibleMealTag"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Update Possible Meal Tag
+   * @description Update an existing possible meal tag.
+   */
+  update_possible_meal_tag_api_meals_possible_tags__tag_id__put: {
+    parameters: {
+      path: {
+        tag_id: number;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PossibleMealTagUpdate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["PossibleMealTag"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Delete Possible Meal Tag
+   * @description Delete a possible meal tag if not linked.
+   */
+  delete_possible_meal_tag_api_meals_possible_tags__tag_id__delete: {
+    parameters: {
+      path: {
+        tag_id: number;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
