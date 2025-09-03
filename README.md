@@ -68,11 +68,27 @@ Pass `--e2e` to also run the end-to-end API suite. The e2e runner stands up a de
 pwsh ./scripts/db/backup.ps1  # PowerShell
 ```
 
-Backups are written to `Database/backups/` with timestamped filenames. Restore one with:
+Backups are written to `Database/backups/` with timestamped filenames.
+
+Restore the most recent dump for the current branch:
+
+```bash
+./scripts/db/restore.sh
+pwsh ./scripts/db/restore.ps1
+```
+
+Or restore a specific file:
 
 ```bash
 ./scripts/db/restore.sh Database/backups/<file>
 pwsh ./scripts/db/restore.ps1 Database/backups/<file>
+```
+
+If your local schema has drifted and restore fails with dependency errors, reset the schema first:
+
+```bash
+./scripts/db/restore.sh --reset-schema
+pwsh ./scripts/db/restore.ps1 -ResetSchema
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.

@@ -1,21 +1,37 @@
 <#
   scripts/db/restore.ps1
   Restores a PostgreSQL custom-format dump into the branch-local database.
-  Falls back to running pg_restore inside the db container if client tools are not on PATH.
+  If no dump path is provided, picks the most recent backup for the current branch
+  from Database/backups/. Falls back to running pg_restore inside the db container
+  if client tools are not on PATH.
 #>
 [CmdletBinding()]
 param(
-  [Parameter(Mandatory=$true, Position=0)]
+  [Parameter(Mandatory=$false, Position=0)]
   [string]$DumpPath,
   [switch]$UpgradeAfter,
-  [switch]$FailOnMismatch
+  [switch]$FailOnMismatch,
+  [switch]$ResetSchema
 )
 
 $ErrorActionPreference = 'Stop'
 
-if (-not (Test-Path $DumpPath)) {
-  Write-Error "Dump file '$DumpPath' not found"
-  exit 1
+. "$PSScriptRoot/../lib/branch-env.ps1"
+. "$PSScriptRoot/../lib/compose-utils.ps1"
+$envInfo = Set-BranchEnv
+Set-Location $envInfo.RepoRoot
+
+# Auto-select latest dump for this branch if none specified
+if (-not $DumpPath) {
+  $backupDir = Join-Path $envInfo.RepoRoot "Database/backups"
+  $pattern = "$($envInfo.Sanitized)-*.dump"
+  $latest = Get-ChildItem -Path $backupDir -Filter $pattern -File -ErrorAction SilentlyContinue | Sort-Object Name | Select-Object -Last 1
+  if (-not $latest) {
+    Write-Error "No dump files found for branch '$($envInfo.Branch)' in '$backupDir'"
+    exit 1
+  }
+  Write-Host "No dump specified; using latest for branch '$($envInfo.Branch)': $($latest.FullName)"
+  $DumpPath = $latest.FullName
 }
 
 # If a .meta.json file was passed by mistake, try the matching .dump file
@@ -35,10 +51,10 @@ if ($DumpPath -like '*.meta.json') {
   }
 }
 
-. "$PSScriptRoot/../lib/branch-env.ps1"
-. "$PSScriptRoot/../lib/compose-utils.ps1"
-$envInfo = Set-BranchEnv
-Set-Location $envInfo.RepoRoot
+if (-not (Test-Path $DumpPath)) {
+  Write-Error "Dump file '$DumpPath' not found"
+  exit 1
+}
 
 if ($env:DATABASE_URL -notlike "postgresql://*localhost*") {
   Write-Error "Refusing to restore to non-localhost database"
@@ -47,6 +63,22 @@ if ($env:DATABASE_URL -notlike "postgresql://*localhost*") {
 
 # Ensure containers are running for this branch
 Ensure-BranchContainers | Out-Null
+
+# Optionally reset the 'public' schema to avoid dependency conflicts during restore
+if ($ResetSchema) {
+  Write-Host "Resetting schema 'public' (DROP CASCADE; CREATE SCHEMA public)..."
+  if (Get-Command psql -ErrorAction SilentlyContinue) {
+    & psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
+    if ($LASTEXITCODE -ne 0) { throw "psql schema reset failed with exit code $LASTEXITCODE" }
+  } else {
+    $project = $envInfo.Project
+    $containerId = (docker compose -p $project ps -q db)
+    if (-not $containerId) { throw "Could not resolve db container id for project '$project'" }
+    docker compose -p $project exec -T -e PGPASSWORD=nutrition_pass db `
+      psql -h localhost -U nutrition_user -d nutrition -v ON_ERROR_STOP=1 -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
+    if ($LASTEXITCODE -ne 0) { throw "container schema reset failed with exit code $LASTEXITCODE" }
+  }
+}
 
 # Print backup Alembic version and compare with repo head(s) if possible
 $backupVersion = 'unknown'
@@ -92,10 +124,17 @@ if (Get-Command pg_restore -ErrorAction SilentlyContinue) {
 }
 
 if ($UpgradeAfter) {
+  $ran = $false
   if (Get-Command alembic -ErrorAction SilentlyContinue) {
     Write-Host "Running 'alembic -c Backend/alembic.ini upgrade head' after restore..."
-    alembic -c Backend/alembic.ini upgrade head
-  } else {
+    try {
+      alembic -c Backend/alembic.ini upgrade head
+      if ($LASTEXITCODE -eq 0) { $ran = $true }
+    } catch {
+      Write-Warning "Host alembic failed: $($_.Exception.Message)"
+    }
+  }
+  if (-not $ran) {
     # Try running inside backend container if available
     $project = $envInfo.Project
     $backendId = (docker compose -p $project ps -q backend)
@@ -103,7 +142,7 @@ if ($UpgradeAfter) {
       Write-Host "Running Alembic inside backend container..."
       docker compose -p $project exec -T backend alembic -c /app/Backend/alembic.ini upgrade head
     } else {
-      Write-Warning "Alembic not found on PATH and backend container not running; skipping upgrade."
+      Write-Warning "Could not run Alembic on host and backend container not running; skipping upgrade."
     }
   }
 }

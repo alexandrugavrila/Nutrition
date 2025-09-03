@@ -275,6 +275,11 @@ This writes a custom-format dump and a sidecar JSON metadata file containing the
 Restore a dump into the branch-local database (containers must be running):
 
 ```bash
+# Auto-selects the most recent dump for the current branch
+./scripts/db/restore.sh [--upgrade-after] [--fail-on-mismatch]
+pwsh ./scripts/db/restore.ps1 [-UpgradeAfter] [-FailOnMismatch]
+
+# Or target a specific file
 ./scripts/db/restore.sh [--upgrade-after] [--fail-on-mismatch] Database/backups/<file>
 pwsh ./scripts/db/restore.ps1 [-UpgradeAfter] [-FailOnMismatch] Database/backups/<file>
 ```
@@ -286,6 +291,8 @@ Behavior notes:
 - On restore, if the metadata file exists, the script prints the backup's Alembic revision and compares it to the repo head(s) when Alembic is available.
 - Add `--fail-on-mismatch`/`-FailOnMismatch` to abort when the backup revision does not match the repo head(s).
 - Add `--upgrade-after`/`-UpgradeAfter` to run `alembic upgrade head` after the restore (recommended when restoring an older dump).
+ - If no dump file is provided, the scripts select the latest `Database/backups/<branch>-<timestamp>.dump` for the current Git branch.
+ - If restore fails due to existing objects/constraints (schema drift), use `--reset-schema` (Bash) or `-ResetSchema` (PowerShell) to drop and recreate the `public` schema before restoring. This is safe in dev and ensures a clean restore.
 
 ---
 
