@@ -114,7 +114,7 @@ export interface components {
       /** Units */
       units?: components["schemas"]["IngredientUnit"][];
       /** Tags */
-      tags?: components["schemas"]["PossibleIngredientTag"][];
+      tags?: components["schemas"]["PossibleIngredientTagRead"][];
     };
     /**
      * IngredientUnit
@@ -203,7 +203,7 @@ export interface components {
       /** Ingredients */
       ingredients?: components["schemas"]["MealIngredient"][];
       /** Tags */
-      tags?: components["schemas"]["PossibleMealTag"][];
+      tags?: components["schemas"]["PossibleMealTagRead"][];
     };
     /**
      * MealUpdate
@@ -254,24 +254,28 @@ export interface components {
       fiber: number;
     };
     /**
-     * PossibleIngredientTag
+     * PossibleIngredientTagRead
      * @description Tag that can be associated with an ingredient.
      */
-    PossibleIngredientTag: {
+    PossibleIngredientTagRead: {
       /** Id */
       id?: number | null;
       /** Name */
       name: string;
+      /** Group */
+      group: string;
     };
     /**
-     * PossibleMealTag
+     * PossibleMealTagRead
      * @description Tag that can be associated with a meal.
      */
-    PossibleMealTag: {
+    PossibleMealTagRead: {
       /** Id */
       id?: number | null;
       /** Name */
       name: string;
+      /** Group */
+      group: string;
     };
     /**
      * TagRef
@@ -352,7 +356,7 @@ export interface operations {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": components["schemas"]["PossibleIngredientTag"][];
+          "application/json": components["schemas"]["PossibleIngredientTagRead"][];
         };
       };
     };
@@ -487,7 +491,7 @@ export interface operations {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": components["schemas"]["PossibleMealTag"][];
+          "application/json": components["schemas"]["PossibleMealTagRead"][];
         };
       };
     };

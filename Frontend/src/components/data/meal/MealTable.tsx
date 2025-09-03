@@ -1,24 +1,31 @@
 // MealTable.js
 
-import React, { useState } from "react";
-import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, Collapse, Typography, TablePagination } from "@mui/material";
-import { KeyboardArrowDown, KeyboardArrowRight } from "@mui/icons-material";
+import React, { useState } from 'react';
+import {
+  Box,
+  TextField,
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Paper,
+  Collapse,
+  Typography,
+  TablePagination,
+} from '@mui/material';
+import { KeyboardArrowDown, KeyboardArrowRight } from '@mui/icons-material';
 
-import { useData } from "@/contexts/DataContext";
-import { formatCellNumber } from "@/utils/utils";
-import TagFilter from "@/components/common/TagFilter";
+import { useData } from '@/contexts/DataContext';
+import { formatCellNumber } from '@/utils/utils';
+import TagFilter from '@/components/common/TagFilter';
 
 function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} }) {
   //#region States
-  const {
-    meals,
-    ingredients,
-    mealDietTags,
-    mealTypeTags,
-    mealOtherTags,
-  } = useData();
+  const { meals, ingredients, mealTagsByGroup } = useData();
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const [open, setOpen] = React.useState({});
   const [currentPage, setCurrentPage] = useState(1);
@@ -38,7 +45,7 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
       return false;
     }
     return selectedTags.some((selectedTag) =>
-      meal.tags.some(({ name }) => name === selectedTag.name)
+      meal.tags.some(({ name }) => name === selectedTag.name),
     );
   };
 
@@ -71,16 +78,10 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
     .filter(handleTagFilter);
   const currentMeals = filteredMeals.slice(indexOfFirstItem, indexOfLastItem);
 
-  const allMealTags = [
-    ...mealDietTags.map((tag) => ({ ...tag, group: "Diet" })),
-    ...mealTypeTags.map((tag) => ({ ...tag, group: "Type" })),
-    ...mealOtherTags.map((tag) => ({ ...tag, group: "Other" })),
-  ];
+  const allMealTags = Object.values(mealTagsByGroup).flat();
 
   const calculateIngredientMacros = (ingredient) => {
-    const dataIngredient = ingredients.find(
-      (item) => item.id === ingredient.ingredient_id
-    );
+    const dataIngredient = ingredients.find((item) => item.id === ingredient.ingredient_id);
     if (!dataIngredient) {
       return {
         calories: 0,
@@ -92,8 +93,7 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
     }
 
     const dataUnit =
-      dataIngredient.units.find((u) => u.id === ingredient.unit_id) ||
-      dataIngredient.units[0];
+      dataIngredient.units.find((u) => u.id === ingredient.unit_id) || dataIngredient.units[0];
 
     if (!dataUnit) {
       return {
@@ -154,15 +154,10 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
 
   return (
     <div>
-      <h1 style={{ textAlign: "center" }}>Meals</h1>
+      <h1 style={{ textAlign: 'center' }}>Meals</h1>
 
-      <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
-        <TextField
-          type="text"
-          label="Search by name"
-          value={search}
-          onChange={handleSearch}
-        />
+      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+        <TextField type="text" label="Search by name" value={search} onChange={handleSearch} />
       </Box>
 
       <TagFilter
@@ -187,114 +182,100 @@ function MealTable({ onMealDoubleClick = () => {}, onMealCtrlClick = () => {} })
           </TableHead>
           <TableBody>
             {currentMeals.map((meal) => (
-                <React.Fragment key={meal.id}>
-                  <TableRow
-                    onDoubleClick={() => handleMealDoubleClick(meal)}
-                    onClick={(event) => handleMealClick(event, meal)}>
-                    <TableCell>{open[meal.id] ? <KeyboardArrowDown /> : <KeyboardArrowRight />}</TableCell>
-                    <TableCell>{meal.name}</TableCell>
-                    <TableCell>{formatCellNumber(calculateMealMacros(meal).totalCalories)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateMealMacros(meal).totalProtein)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateMealMacros(meal).totalFat)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateMealMacros(meal).totalCarbs)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateMealMacros(meal).totalFiber)}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell
-                      style={{ paddingBottom: 0, paddingTop: 0 }}
-                      colSpan={6}>
-                      <Collapse
-                        in={open[meal.id]}
-                        timeout="auto"
-                        unmountOnExit>
-                        <Typography
-                          variant="h6"
-                          gutterBottom
-                          component="div">
-                          Ingredients
-                        </Typography>
-                        <Table
-                          size="small"
-                          aria-label="purchases">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>Name</TableCell>
-                              <TableCell>Unit</TableCell>
-                              <TableCell>Amount</TableCell>
-                              <TableCell>Calories</TableCell>
-                              <TableCell>Protein</TableCell>
-                              <TableCell>Fat</TableCell>
-                              <TableCell>Carbs</TableCell>
-                              <TableCell>Fiber</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {meal.ingredients.map((ingredient) => {
-                              const dataIngredient = ingredients.find(
-                                (item) => item.id === ingredient.ingredient_id
-                              );
-                              const unit =
-                                dataIngredient?.units.find(
-                                  (u) => u.id === ingredient.unit_id
-                                ) || dataIngredient?.units[0];
+              <React.Fragment key={meal.id}>
+                <TableRow
+                  onDoubleClick={() => handleMealDoubleClick(meal)}
+                  onClick={(event) => handleMealClick(event, meal)}
+                >
+                  <TableCell>
+                    {open[meal.id] ? <KeyboardArrowDown /> : <KeyboardArrowRight />}
+                  </TableCell>
+                  <TableCell>{meal.name}</TableCell>
+                  <TableCell>{formatCellNumber(calculateMealMacros(meal).totalCalories)}</TableCell>
+                  <TableCell>{formatCellNumber(calculateMealMacros(meal).totalProtein)}</TableCell>
+                  <TableCell>{formatCellNumber(calculateMealMacros(meal).totalFat)}</TableCell>
+                  <TableCell>{formatCellNumber(calculateMealMacros(meal).totalCarbs)}</TableCell>
+                  <TableCell>{formatCellNumber(calculateMealMacros(meal).totalFiber)}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+                    <Collapse in={open[meal.id]} timeout="auto" unmountOnExit>
+                      <Typography variant="h6" gutterBottom component="div">
+                        Ingredients
+                      </Typography>
+                      <Table size="small" aria-label="purchases">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Name</TableCell>
+                            <TableCell>Unit</TableCell>
+                            <TableCell>Amount</TableCell>
+                            <TableCell>Calories</TableCell>
+                            <TableCell>Protein</TableCell>
+                            <TableCell>Fat</TableCell>
+                            <TableCell>Carbs</TableCell>
+                            <TableCell>Fiber</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {meal.ingredients.map((ingredient) => {
+                            const dataIngredient = ingredients.find(
+                              (item) => item.id === ingredient.ingredient_id,
+                            );
+                            const unit =
+                              dataIngredient?.units.find((u) => u.id === ingredient.unit_id) ||
+                              dataIngredient?.units[0];
 
-                              // Render the TableRow with TableCell containing the ingredient name
-                              return (
-                                <TableRow key={ingredient.ingredient_id}>
-                                  <TableCell>
-                                    {dataIngredient
-                                      ? dataIngredient.name
-                                      : "Unknown Ingredient"}
-                                  </TableCell>
-                                  <TableCell>{unit ? unit.name : ""}</TableCell>
-                                  <TableCell>
-                                    {formatCellNumber(ingredient.unit_quantity)}
-                                  </TableCell>
-                                  <TableCell>
-                                    {formatCellNumber(
-                                      dataIngredient
-                                        ? calculateIngredientMacros(ingredient).calories
-                                        : 0
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {formatCellNumber(
-                                      dataIngredient
-                                        ? calculateIngredientMacros(ingredient).protein
-                                        : 0
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {formatCellNumber(
-                                      dataIngredient
-                                        ? calculateIngredientMacros(ingredient).fat
-                                        : 0
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {formatCellNumber(
-                                      dataIngredient
-                                        ? calculateIngredientMacros(ingredient).carbs
-                                        : 0
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {formatCellNumber(
-                                      dataIngredient
-                                        ? calculateIngredientMacros(ingredient).fiber
-                                        : 0
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </Collapse>
-                    </TableCell>
-                  </TableRow>
-                </React.Fragment>
-              ))}
+                            // Render the TableRow with TableCell containing the ingredient name
+                            return (
+                              <TableRow key={ingredient.ingredient_id}>
+                                <TableCell>
+                                  {dataIngredient ? dataIngredient.name : 'Unknown Ingredient'}
+                                </TableCell>
+                                <TableCell>{unit ? unit.name : ''}</TableCell>
+                                <TableCell>{formatCellNumber(ingredient.unit_quantity)}</TableCell>
+                                <TableCell>
+                                  {formatCellNumber(
+                                    dataIngredient
+                                      ? calculateIngredientMacros(ingredient).calories
+                                      : 0,
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {formatCellNumber(
+                                    dataIngredient
+                                      ? calculateIngredientMacros(ingredient).protein
+                                      : 0,
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {formatCellNumber(
+                                    dataIngredient ? calculateIngredientMacros(ingredient).fat : 0,
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {formatCellNumber(
+                                    dataIngredient
+                                      ? calculateIngredientMacros(ingredient).carbs
+                                      : 0,
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {formatCellNumber(
+                                    dataIngredient
+                                      ? calculateIngredientMacros(ingredient).fiber
+                                      : 0,
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </Collapse>
+                  </TableCell>
+                </TableRow>
+              </React.Fragment>
+            ))}
           </TableBody>
         </Table>
       </TableContainer>

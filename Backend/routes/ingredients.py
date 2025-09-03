@@ -6,7 +6,13 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from ..db import get_db
-from ..models import Ingredient, IngredientUnit, Nutrition, PossibleIngredientTag
+from ..models import (
+    Ingredient,
+    IngredientUnit,
+    Nutrition,
+    PossibleIngredientTag,
+    PossibleIngredientTagRead,
+)
 from ..models.schemas import IngredientCreate, IngredientRead, IngredientUpdate
 
 router = APIRouter(prefix="/ingredients", tags=["ingredients"])
@@ -29,10 +35,10 @@ def get_all_ingredients(db: Session = Depends(get_db)) -> List[IngredientRead]:
     return [ingredient_to_read(ing) for ing in ingredients]
 
 
-@router.get("/possible_tags", response_model=List[PossibleIngredientTag])
+@router.get("/possible_tags", response_model=List[PossibleIngredientTagRead])
 def get_all_possible_tags(
     db: Session = Depends(get_db),
-) -> List[PossibleIngredientTag]:
+) -> List[PossibleIngredientTagRead]:
     """Return all possible ingredient tags ordered by name."""
     statement = select(PossibleIngredientTag).order_by(PossibleIngredientTag.name)
     return db.exec(statement).all()
@@ -48,15 +54,11 @@ def get_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> Ingredi
 
 
 @router.post("/", response_model=IngredientRead, status_code=201)
-def add_ingredient(
-    ingredient: IngredientCreate, db: Session = Depends(get_db)
-) -> IngredientRead:
+def add_ingredient(ingredient: IngredientCreate, db: Session = Depends(get_db)) -> IngredientRead:
     """Create a new ingredient."""
     ingredient_obj = Ingredient.from_create(ingredient)
     if ingredient.tags:
-        ingredient_obj.tags = [
-            db.get(PossibleIngredientTag, t.id) for t in ingredient.tags if t.id
-        ]
+        ingredient_obj.tags = [db.get(PossibleIngredientTag, t.id) for t in ingredient.tags if t.id]
     db.add(ingredient_obj)
 
     try:
@@ -103,9 +105,7 @@ def update_ingredient(
     ingredient.name = ingredient_data.name
 
     if ingredient_data.nutrition:
-        ingredient.nutrition = Nutrition.model_validate(
-            ingredient_data.nutrition.model_dump()
-        )
+        ingredient.nutrition = Nutrition.model_validate(ingredient_data.nutrition.model_dump())
     else:
         ingredient.nutrition = None
 
@@ -116,9 +116,7 @@ def update_ingredient(
     with db.no_autoflush:
         if ingredient_data.tags:
             ingredient.tags = [
-                db.get(PossibleIngredientTag, t.id)
-                for t in ingredient_data.tags
-                if t.id
+                db.get(PossibleIngredientTag, t.id) for t in ingredient_data.tags if t.id
             ]
         else:
             ingredient.tags = []

@@ -1,31 +1,60 @@
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
-from Backend.models import PossibleIngredientTag, PossibleMealTag
+from Backend.models import (
+    PossibleIngredientTag,
+    PossibleIngredientTagRead,
+    PossibleMealTag,
+    PossibleMealTagRead,
+)
 
 
 def test_get_possible_ingredient_tags(client: TestClient, engine) -> None:
     with Session(engine) as session:
-        session.add(PossibleIngredientTag(name="Spicy"))
-        session.add(PossibleIngredientTag(name="Sweet"))
+        session.add(PossibleIngredientTag(name="Spicy", group="Flavor"))
+        session.add(PossibleIngredientTag(name="Sweet", group="Flavor"))
         session.commit()
 
     response = client.get("/api/ingredients/possible_tags")
     assert response.status_code == 200
-    names = [tag["name"] for tag in response.json()]
-    assert names == ["Spicy", "Sweet"]
+    tags = [PossibleIngredientTagRead.model_validate(t) for t in response.json()]
+    assert [(t.name, t.group) for t in tags] == [
+        ("Spicy", "Flavor"),
+        ("Sweet", "Flavor"),
+    ]
 
 
 def test_get_possible_meal_tags(client: TestClient, engine) -> None:
     with Session(engine) as session:
-        session.add(PossibleMealTag(name="Breakfast"))
-        session.add(PossibleMealTag(name="Dinner"))
+        session.add(PossibleMealTag(name="Breakfast", group="Type"))
+        session.add(PossibleMealTag(name="Dinner", group="Type"))
         session.commit()
 
     response = client.get("/api/meals/possible_tags")
     assert response.status_code == 200
-    names = [tag["name"] for tag in response.json()]
-    assert names == ["Breakfast", "Dinner"]
+    tags = [PossibleMealTagRead.model_validate(t) for t in response.json()]
+    assert [(t.name, t.group) for t in tags] == [
+        ("Breakfast", "Type"),
+        ("Dinner", "Type"),
+    ]
+
+
+def test_possible_ingredient_tag_uniqueness(engine) -> None:
+    with Session(engine) as session:
+        session.add(PossibleIngredientTag(name="Spicy", group="Flavor"))
+        session.add(PossibleIngredientTag(name="Spicy", group="Flavor"))
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+
+def test_possible_meal_tag_uniqueness(engine) -> None:
+    with Session(engine) as session:
+        session.add(PossibleMealTag(name="Breakfast", group="Type"))
+        session.add(PossibleMealTag(name="Breakfast", group="Type"))
+        with pytest.raises(IntegrityError):
+            session.commit()
 
 
 def test_update_nonexistent_ingredient_returns_404(client: TestClient) -> None:

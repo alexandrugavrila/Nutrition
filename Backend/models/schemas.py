@@ -1,13 +1,11 @@
 from typing import List, Optional
 
 from pydantic import ConfigDict
-from sqlmodel import SQLModel, Field
+from sqlmodel import Field, SQLModel
 
 from .ingredient_unit import IngredientUnit
-from .nutrition import Nutrition
 from .meal_ingredient import MealIngredient
-from .possible_ingredient_tag import PossibleIngredientTag
-from .possible_meal_tag import PossibleMealTag
+from .nutrition import Nutrition
 
 
 class NutritionCreate(SQLModel):
@@ -41,6 +39,26 @@ class TagRef(SQLModel):
     id: int
 
 
+class PossibleIngredientTagRead(SQLModel):
+    """Schema for reading a possible ingredient tag."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    group: str
+
+
+class PossibleMealTagRead(SQLModel):
+    """Schema for reading a possible meal tag."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    group: str
+
+
 class IngredientCreate(SQLModel):
     """Schema for creating an ingredient."""
 
@@ -65,7 +83,7 @@ class IngredientRead(SQLModel):
     name: str
     nutrition: Optional[Nutrition] = None
     units: List[IngredientUnit] = Field(default_factory=list)
-    tags: List[PossibleIngredientTag] = Field(default_factory=list)
+    tags: List[PossibleIngredientTagRead] = Field(default_factory=list)
 
 
 class MealCreate(SQLModel):
@@ -90,7 +108,7 @@ class MealRead(SQLModel):
     id: int
     name: str
     ingredients: List[MealIngredient] = Field(default_factory=list)
-    tags: List[PossibleMealTag] = Field(default_factory=list)
+    tags: List[PossibleMealTagRead] = Field(default_factory=list)
 
 
 __all__ = [
@@ -104,4 +122,6 @@ __all__ = [
     "MealCreate",
     "MealUpdate",
     "MealRead",
+    "PossibleIngredientTagRead",
+    "PossibleMealTagRead",
 ]

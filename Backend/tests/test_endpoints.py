@@ -27,19 +27,19 @@ def test_ingredient_endpoints(client: TestClient, engine, case: str) -> None:
     """Test ingredient API endpoints for various cases."""
     with Session(engine) as session:
         if case in {"list", "get", "put", "delete"}:
-            tag = PossibleIngredientTag(name="Spicy")
+            tag = PossibleIngredientTag(name="Spicy", group="Flavor")
             ingredient = Ingredient(name="Pepper", units=[], tags=[tag])
             session.add(tag)
             session.add(ingredient)
             session.commit()
             ingredient_id = ingredient.id
         elif case == "post":
-            tag = PossibleIngredientTag(name="Sweet")
+            tag = PossibleIngredientTag(name="Sweet", group="Flavor")
             session.add(tag)
             session.commit()
             tag_id = tag.id
         elif case == "possible_tags":
-            session.add(PossibleIngredientTag(name="Savory"))
+            session.add(PossibleIngredientTag(name="Savory", group="Flavor"))
             session.commit()
 
     if case == "list":
@@ -101,7 +101,7 @@ def test_meal_endpoints(client: TestClient, engine, case: str) -> None:
                 name="Rice",
                 units=[IngredientUnit(name="g", grams=1)],
             )
-            tag = PossibleMealTag(name="Dinner")
+            tag = PossibleMealTag(name="Dinner", group="Type")
             session.add_all([ingredient, tag])
             session.commit()
             ingredient_id = ingredient.id
@@ -125,14 +125,14 @@ def test_meal_endpoints(client: TestClient, engine, case: str) -> None:
                 name="Beans",
                 units=[IngredientUnit(name="g", grams=1)],
             )
-            tag = PossibleMealTag(name="Lunch")
+            tag = PossibleMealTag(name="Lunch", group="Type")
             session.add_all([ingredient, tag])
             session.commit()
             ingredient_id = ingredient.id
             unit_id = ingredient.units[0].id
             tag_id = tag.id
         elif case == "possible_tags":
-            session.add(PossibleMealTag(name="Snack"))
+            session.add(PossibleMealTag(name="Snack", group="Type"))
             session.commit()
 
     if case == "list":

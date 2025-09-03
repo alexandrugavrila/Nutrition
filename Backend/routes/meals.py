@@ -1,12 +1,18 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
-from sqlalchemy.orm import selectinload
-
 from sqlalchemy import delete
+from sqlalchemy.orm import selectinload
+from sqlmodel import Session, select
+
 from ..db import get_db
-from ..models import Meal, PossibleMealTag, Ingredient, MealIngredient
+from ..models import (
+    Ingredient,
+    Meal,
+    MealIngredient,
+    PossibleMealTag,
+    PossibleMealTagRead,
+)
 from ..models.schemas import MealCreate, MealRead, MealUpdate
 
 router = APIRouter(prefix="/meals", tags=["meals"])
@@ -19,8 +25,10 @@ def get_all_meals(db: Session = Depends(get_db)) -> List[MealRead]:
     return [MealRead.model_validate(m) for m in meals]
 
 
-@router.get("/possible_tags", response_model=List[PossibleMealTag])
-def get_possible_meal_tags(db: Session = Depends(get_db)) -> List[PossibleMealTag]:
+@router.get("/possible_tags", response_model=List[PossibleMealTagRead])
+def get_possible_meal_tags(
+    db: Session = Depends(get_db),
+) -> List[PossibleMealTagRead]:
     """Return all possible meal tags ordered by name."""
     statement = select(PossibleMealTag).order_by(PossibleMealTag.name)
     return db.exec(statement).all()
@@ -63,9 +71,7 @@ def add_meal(meal: MealCreate, db: Session = Depends(get_db)) -> MealRead:
 
 
 @router.put("/{meal_id}", response_model=MealRead)
-def update_meal(
-    meal_id: int, meal_data: MealUpdate, db: Session = Depends(get_db)
-) -> MealRead:
+def update_meal(meal_id: int, meal_data: MealUpdate, db: Session = Depends(get_db)) -> MealRead:
     """Update an existing meal."""
     meal = db.get(Meal, meal_id)
     if not meal:
@@ -81,9 +87,7 @@ def update_meal(
 
     with db.no_autoflush:
         if meal_data.tags:
-            meal.tags = [
-                db.get(PossibleMealTag, t.id) for t in meal_data.tags if t.id
-            ]
+            meal.tags = [db.get(PossibleMealTag, t.id) for t in meal_data.tags if t.id]
         else:
             meal.tags = []
 
@@ -120,4 +124,3 @@ def delete_meal(meal_id: int, db: Session = Depends(get_db)) -> dict:
 
 
 __all__ = ["router"]
-
