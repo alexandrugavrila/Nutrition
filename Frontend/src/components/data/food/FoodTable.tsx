@@ -1,7 +1,7 @@
 // FoodTable.js
 
 import React, { useState } from "react";
-import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, Collapse, Typography, TablePagination } from "@mui/material";
+import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, Collapse, Typography, TablePagination, Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowRight } from "@mui/icons-material";
 
 import { useData } from "@/contexts/DataContext";
@@ -16,10 +16,13 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
     foodDietTags,
     foodTypeTags,
     foodOtherTags,
+    addPossibleFoodTag,
   } = useData();
 
   const [search, setSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
+  const [newTag, setNewTag] = useState("");
+  const [openAddTag, setOpenAddTag] = useState(false);
   const [open, setOpen] = React.useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -165,12 +168,58 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
         />
       </Box>
 
-      <TagFilter
-        tags={allFoodTags}
-        selectedTags={selectedTags}
-        onChange={setSelectedTags}
-        label="Filter tags"
-      />
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+        <Box sx={{ flex: 1 }}>
+          <TagFilter
+            tags={allFoodTags}
+            selectedTags={selectedTags}
+            onChange={setSelectedTags}
+            label="Filter tags"
+          />
+        </Box>
+        <Button variant="outlined" onClick={() => setOpenAddTag(true)}>Add Tag</Button>
+      </Box>
+
+      <Dialog open={openAddTag} onClose={() => setOpenAddTag(false)}>
+        <DialogTitle>Add Food Tag</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Tag name"
+            fullWidth
+            value={newTag}
+            onChange={(e) => setNewTag(e.target.value)}
+            onKeyDown={async (e) => {
+              if (e.key === "Enter" && newTag.trim()) {
+                const created = await addPossibleFoodTag(newTag);
+                if (created) {
+                  setSelectedTags((prev) => [...prev, created]);
+                  setNewTag("");
+                  setOpenAddTag(false);
+                }
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenAddTag(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              const created = await addPossibleFoodTag(newTag);
+              if (created) {
+                setSelectedTags((prev) => [...prev, created]);
+                setNewTag("");
+                setOpenAddTag(false);
+              }
+            }}
+            disabled={!newTag.trim()}
+          >
+            Add
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <TableContainer component={Paper}>
         <Table>

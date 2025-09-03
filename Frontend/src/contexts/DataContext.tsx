@@ -33,6 +33,8 @@ interface DataContextValue {
   fetching: boolean;
   startRequest: () => void;
   endRequest: () => void;
+  addPossibleIngredientTag: (name: string) => Promise<PossibleIngredientTag | null>;
+  addPossibleFoodTag: (name: string) => Promise<PossibleFoodTag | null>;
 }
 
 const DataContext = createContext<DataContextValue | undefined>(undefined);
@@ -156,6 +158,66 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [startRequest, endRequest]);
 
+  const addPossibleIngredientTag = useCallback(
+    async (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return null;
+      const existing = possibleIngredientTags.find(
+        (t) => t.name.toLowerCase() === trimmed.toLowerCase(),
+      );
+      if (existing) return existing;
+      startRequest();
+      try {
+        const { data } = (await apiClient
+          .path("/api/ingredients/possible_tags")
+          .method("post")
+          .create()({ body: { name: trimmed } })) as {
+          data: PossibleIngredientTag;
+        };
+        setPossibleIngredientTags((prev) =>
+          prev.some((t) => t.id === data.id) ? prev : [...prev, data],
+        );
+        return data;
+      } catch (error) {
+        console.error("Error adding ingredient tag:", error);
+        return null;
+      } finally {
+        endRequest();
+      }
+    },
+    [possibleIngredientTags, startRequest, endRequest],
+  );
+
+  const addPossibleFoodTag = useCallback(
+    async (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return null;
+      const existing = possibleFoodTags.find(
+        (t) => t.name.toLowerCase() === trimmed.toLowerCase(),
+      );
+      if (existing) return existing;
+      startRequest();
+      try {
+        const { data } = (await apiClient
+          .path("/api/foods/possible_tags")
+          .method("post")
+          .create()({ body: { name: trimmed } })) as {
+          data: PossibleFoodTag;
+        };
+        setPossibleFoodTags((prev) =>
+          prev.some((t) => t.id === data.id) ? prev : [...prev, data],
+        );
+        return data;
+      } catch (error) {
+        console.error("Error adding food tag:", error);
+        return null;
+      } finally {
+        endRequest();
+      }
+    },
+    [possibleFoodTags, startRequest, endRequest],
+  );
+
   const fetchFoods = useCallback(async () => {
     startRequest();
     try {
@@ -242,6 +304,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     fetching,
     startRequest,
     endRequest,
+    addPossibleIngredientTag,
+    addPossibleFoodTag,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

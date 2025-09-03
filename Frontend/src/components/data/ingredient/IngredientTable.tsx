@@ -1,7 +1,7 @@
 // IngredientTable.js
 
 import React, { useState } from "react";
-import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, MenuItem, Select, TablePagination } from "@mui/material";
+import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, MenuItem, Select, TablePagination, Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 
 import { useData } from "@/contexts/DataContext";
 import { formatCellNumber } from "@/utils/utils";
@@ -15,12 +15,15 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
     ingredientProcessingTags,
     ingredientGroupTags,
     ingredientOtherTags,
+    addPossibleIngredientTag,
   } = useData();
 
   const [search, setSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [newTag, setNewTag] = useState("");
+  const [openAddTag, setOpenAddTag] = useState(false);
   //#endregion States
 
   //#region Handles
@@ -98,12 +101,58 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
         />
       </Box>
 
-      <TagFilter
-        tags={allIngredientTags}
-        selectedTags={selectedTags}
-        onChange={setSelectedTags}
-        label="Filter tags"
-      />
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+        <Box sx={{ flex: 1 }}>
+          <TagFilter
+            tags={allIngredientTags}
+            selectedTags={selectedTags}
+            onChange={setSelectedTags}
+            label="Filter tags"
+          />
+        </Box>
+        <Button variant="outlined" onClick={() => setOpenAddTag(true)}>Add Tag</Button>
+      </Box>
+
+      <Dialog open={openAddTag} onClose={() => setOpenAddTag(false)}>
+        <DialogTitle>Add Ingredient Tag</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Tag name"
+            fullWidth
+            value={newTag}
+            onChange={(e) => setNewTag(e.target.value)}
+            onKeyDown={async (e) => {
+              if (e.key === "Enter" && newTag.trim()) {
+                const created = await addPossibleIngredientTag(newTag);
+                if (created) {
+                  setSelectedTags((prev) => [...prev, created]);
+                  setNewTag("");
+                  setOpenAddTag(false);
+                }
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenAddTag(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              const created = await addPossibleIngredientTag(newTag);
+              if (created) {
+                setSelectedTags((prev) => [...prev, created]);
+                setNewTag("");
+                setOpenAddTag(false);
+              }
+            }}
+            disabled={!newTag.trim()}
+          >
+            Add
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <TableContainer component={Paper}>
         <Table>

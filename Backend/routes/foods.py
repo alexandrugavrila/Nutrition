@@ -1,13 +1,14 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
+from sqlmodel import Session, select, SQLModel
 from sqlalchemy.orm import selectinload
 
 from sqlalchemy import delete
 from ..db import get_db
 from ..models import Food, PossibleFoodTag, Ingredient, FoodIngredient
 from ..models.schemas import FoodCreate, FoodRead, FoodUpdate
+from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(prefix="/foods", tags=["foods"])
 
@@ -24,6 +25,32 @@ def get_possible_food_tags(db: Session = Depends(get_db)) -> List[PossibleFoodTa
     """Return all possible food tags ordered by name."""
     statement = select(PossibleFoodTag).order_by(PossibleFoodTag.name)
     return db.exec(statement).all()
+
+
+class TagCreate(SQLModel):
+    """Schema for creating a new possible tag by name."""
+
+    name: str
+
+
+@router.post("/possible_tags", response_model=PossibleFoodTag, status_code=201)
+def add_possible_food_tag(
+    tag: TagCreate, db: Session = Depends(get_db)
+) -> PossibleFoodTag:
+    """Create a new possible food tag, or return existing on duplicate name."""
+    obj = PossibleFoodTag(name=tag.name.strip())
+    db.add(obj)
+    try:
+        db.commit()
+        db.refresh(obj)
+        return obj
+    except IntegrityError:
+        db.rollback()
+        statement = select(PossibleFoodTag).where(
+            PossibleFoodTag.name == tag.name.strip()
+        )
+        existing = db.exec(statement).one()
+        return existing
 
 
 @router.get("/{food_id}", response_model=FoodRead)
