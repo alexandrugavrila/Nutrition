@@ -2,13 +2,10 @@ import React, { useEffect } from "react";
 
 import TagFilter from "@/components/common/TagFilter";
 import { useData } from "@/contexts/DataContext";
+import { Box } from "@mui/material";
 
 function TagEdit({ ingredient, dispatch, needsClearForm }) {
-  const {
-    ingredientProcessingTags,
-    ingredientGroupTags,
-    ingredientOtherTags,
-  } = useData();
+  const { ingredientProcessingTags, ingredientGroupTags, ingredientOtherTags } = useData();
 
   const allIngredientTags = [
     ...ingredientProcessingTags,
@@ -19,6 +16,8 @@ function TagEdit({ ingredient, dispatch, needsClearForm }) {
   const handleTagsChange = (newTags) => {
     dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, tags: newTags } });
   };
+
+  // Tag creation handled in IngredientTable; editor provides selection only.
 
   useEffect(() => {
     if (needsClearForm) {
@@ -32,12 +31,16 @@ function TagEdit({ ingredient, dispatch, needsClearForm }) {
     <div>
       {
         <div>
-          <TagFilter
-            tags={allIngredientTags}
-            selectedTags={ingredient.tags || []}
-            onChange={handleTagsChange}
-            label="Tags"
-          />
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box sx={{ flex: 1 }}>
+              <TagFilter
+                tags={allIngredientTags}
+                selectedTags={ingredient.tags || []}
+                onChange={handleTagsChange}
+                label="Tags"
+              />
+            </Box>
+          </Box>
         </div>
       }
     </div>

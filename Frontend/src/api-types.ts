@@ -23,6 +23,11 @@ export interface paths {
      * @description Return all possible ingredient tags ordered by name.
      */
     get: operations["get_all_possible_tags_api_ingredients_possible_tags_get"];
+    /**
+     * Add Possible Tag
+     * @description Create a new possible ingredient tag, or return existing on duplicate name.
+     */
+    post: operations["add_possible_tag_api_ingredients_possible_tags_post"];
   };
   "/api/ingredients/{ingredient_id}": {
     /**
@@ -59,6 +64,11 @@ export interface paths {
      * @description Return all possible food tags ordered by name.
      */
     get: operations["get_possible_food_tags_api_foods_possible_tags_get"];
+    /**
+     * Add Possible Food Tag
+     * @description Create a new possible food tag, or return existing on duplicate name.
+     */
+    post: operations["add_possible_food_tag_api_foods_possible_tags_post"];
   };
   "/api/foods/{food_id}": {
     /**
@@ -274,6 +284,14 @@ export interface components {
       name: string;
     };
     /**
+     * TagCreate
+     * @description Schema for creating a new possible tag by name.
+     */
+    TagCreate: {
+      /** Name */
+      name: string;
+    };
+    /**
      * TagRef
      * @description Reference to an existing tag by ID.
      */
@@ -353,6 +371,31 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["PossibleIngredientTag"][];
+        };
+      };
+    };
+  };
+  /**
+   * Add Possible Tag
+   * @description Create a new possible ingredient tag, or return existing on duplicate name.
+   */
+  add_possible_tag_api_ingredients_possible_tags_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TagCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        content: {
+          "application/json": components["schemas"]["PossibleIngredientTag"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -488,6 +531,31 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["PossibleFoodTag"][];
+        };
+      };
+    };
+  };
+  /**
+   * Add Possible Food Tag
+   * @description Create a new possible food tag, or return existing on duplicate name.
+   */
+  add_possible_food_tag_api_foods_possible_tags_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TagCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        content: {
+          "application/json": components["schemas"]["PossibleFoodTag"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

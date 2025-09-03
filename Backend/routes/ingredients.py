@@ -7,7 +7,18 @@ from sqlmodel import Session, select
 
 from ..db import get_db
 from ..models import Ingredient, IngredientUnit, Nutrition, PossibleIngredientTag
-from ..models.schemas import IngredientCreate, IngredientRead, IngredientUpdate
+from ..models.schemas import (
+    IngredientCreate,
+    IngredientRead,
+    IngredientUpdate,
+)
+from sqlmodel import SQLModel
+
+
+class TagCreate(SQLModel):
+    """Schema for creating a new possible tag by name."""
+
+    name: str
 
 router = APIRouter(prefix="/ingredients", tags=["ingredients"])
 
@@ -36,6 +47,25 @@ def get_all_possible_tags(
     """Return all possible ingredient tags ordered by name."""
     statement = select(PossibleIngredientTag).order_by(PossibleIngredientTag.name)
     return db.exec(statement).all()
+
+
+@router.post("/possible_tags", response_model=PossibleIngredientTag, status_code=201)
+def add_possible_tag(tag: TagCreate, db: Session = Depends(get_db)) -> PossibleIngredientTag:
+    """Create a new possible ingredient tag, or return existing on duplicate name."""
+    obj = PossibleIngredientTag(name=tag.name.strip())
+    db.add(obj)
+    try:
+        db.commit()
+        db.refresh(obj)
+        return obj
+    except IntegrityError:
+        db.rollback()
+        # Return the existing tag with the same name
+        statement = select(PossibleIngredientTag).where(
+            PossibleIngredientTag.name == tag.name.strip()
+        )
+        existing = db.exec(statement).one()
+        return existing
 
 
 @router.get("/{ingredient_id}", response_model=IngredientRead)
