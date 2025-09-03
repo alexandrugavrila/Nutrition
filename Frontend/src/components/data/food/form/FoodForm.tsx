@@ -84,10 +84,10 @@ function FoodForm({ foodToEditData }) {
             typeof ingredient_id === "number" &&
             (unit_id === null || typeof unit_id === "number")
         )
-        .map(({ ingredient_id, unit_id, amount }) => ({
+        .map(({ ingredient_id, unit_id, unit_quantity }) => ({
           ingredient_id,
           unit_id,
-          unit_quantity: amount,
+          unit_quantity,
         })),
       tags: foodToEdit.tags
         .filter((tag) => typeof tag.id === "number")
