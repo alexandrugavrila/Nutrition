@@ -27,6 +27,14 @@ class IngredientUnitCreate(SQLModel):
     grams: float
 
 
+class IngredientUnitUpdate(SQLModel):
+    """Schema for updating ingredient unit data (allows id for upsert)."""
+
+    id: Optional[int] = None
+    name: str
+    grams: float
+
+
 class FoodIngredientCreate(SQLModel):
     """Schema for creating food ingredient linkage."""
 
@@ -50,10 +58,14 @@ class IngredientCreate(SQLModel):
     tags: List[TagRef] = Field(default_factory=list)
 
 
-class IngredientUpdate(IngredientCreate):
+class IngredientUpdate(SQLModel):
     """Schema for updating an ingredient."""
 
-    pass
+    name: str
+    nutrition: Optional[NutritionCreate] = None
+    # Accept units with optional id for proper upsert behavior
+    units: List[IngredientUnitUpdate] = Field(default_factory=list)
+    tags: List[TagRef] = Field(default_factory=list)
 
 
 class IngredientRead(SQLModel):
