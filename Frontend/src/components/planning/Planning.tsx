@@ -14,11 +14,14 @@ import {
   TextField,
   Collapse,
   Typography,
+  Tooltip,
 } from "@mui/material";
-import { KeyboardArrowDown, KeyboardArrowRight, Add, Remove } from "@mui/icons-material";
+import { KeyboardArrowDown, KeyboardArrowRight, Add, Remove, Edit as EditIcon } from "@mui/icons-material";
 
 import { useData } from "@/contexts/DataContext";
 import { formatCellNumber } from "@/utils/utils";
+import IngredientEditModal from "@/components/common/IngredientEditModal";
+import useHoverable from "@/hooks/useHoverable";
 
 // Plan item types
 type FoodOverride = {
@@ -42,6 +45,27 @@ type IngredientPlanItem = {
 
 type PlanItem = FoodPlanItem | IngredientPlanItem;
 
+type NameWithEditProps = {
+  name: string;
+  onEdit: () => void;
+};
+
+const NameWithEdit: React.FC<NameWithEditProps> = ({ name, onEdit }) => {
+  const { hovered, bind } = useHoverable();
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }} {...bind}>
+      <span>{name}</span>
+      {hovered && (
+        <Tooltip title="Edit ingredient (add units, nutrition, tags)">
+          <IconButton size="small" aria-label="edit ingredient" onClick={onEdit}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      )}
+    </Box>
+  );
+};
+
 function Planning() {
   const { foods, ingredients } = useData();
 
@@ -63,6 +87,14 @@ function Planning() {
   const [selectedIngredientUnitId, setSelectedIngredientUnitId] = useState(0);
   const [selectedIngredientAmount, setSelectedIngredientAmount] = useState(1);
   const [open, setOpen] = useState({});
+  const [openIngredientEditModal, setOpenIngredientEditModal] = useState(false);
+  const [editorIngredient, setEditorIngredient] = useState<any>(null);
+
+  const handleOpenIngredientEditor = (ingredientId: string) => {
+    const dataIngredient = ingredients.find((i) => i.id === ingredientId) || null;
+    setEditorIngredient(dataIngredient);
+    if (dataIngredient) setOpenIngredientEditModal(true);
+  };
 
   // Change unit while preserving total grams
   const handleUnitChange = (
@@ -427,23 +459,27 @@ function Planning() {
                 </MenuItem>
               ))}
             </TextField>
-            <TextField
-              select
-              label="Unit"
-              value={selectedIngredientUnitId}
-              onChange={(e) =>
-                setSelectedIngredientUnitId(parseInt(e.target.value, 10))
-              }
-              sx={{ minWidth: 120 }}
-            >
-              {(ingredients.find((i) => i.id === selectedIngredientId)?.units || []).map(
-                (unit) => (
-                  <MenuItem key={unit.id} value={unit.id}>
-                    {unit.name}
-                  </MenuItem>
-                )
-              )}
-            </TextField>
+                <TextField
+                  select
+                  label="Unit"
+                  value={selectedIngredientUnitId}
+                  onChange={(e) =>
+                    setSelectedIngredientUnitId(parseInt(e.target.value, 10))
+                  }
+                  sx={{ minWidth: 120 }}
+                  key={`add-unit-${
+                    (ingredients.find((i) => i.id === selectedIngredientId)?.units
+                      ?.length) ?? 0
+                  }`}
+                >
+                  {(ingredients.find((i) => i.id === selectedIngredientId)?.units || []).map(
+                    (unit) => (
+                      <MenuItem key={unit.id} value={unit.id}>
+                        {unit.name}
+                      </MenuItem>
+                    )
+                  )}
+                </TextField>
             <TextField
               type="number"
               label="Amount"
@@ -590,7 +626,10 @@ function Planning() {
                               return (
                                 <TableRow key={ingredient.ingredient_id}>
                                   <TableCell>
-                                    {dataIngredient ? dataIngredient.name : ""}
+                                    <NameWithEdit
+                                      name={dataIngredient ? dataIngredient.name : ""}
+                                      onEdit={() => handleOpenIngredientEditor(ingredient.ingredient_id)}
+                                    />
                                   </TableCell>
                                   <TableCell>
                                     <TextField
@@ -604,6 +643,9 @@ function Planning() {
                                         )
                                       }
                                       sx={{ minWidth: 120 }}
+                                      key={`food-item-unit-${ingredient.ingredient_id}-${
+                                        (dataIngredient?.units?.length) ?? 0
+                                      }`}
                                     >
                                       {(dataIngredient?.units || []).map((u) => (
                                         <MenuItem key={u.id} value={u.id}>
@@ -694,7 +736,10 @@ function Planning() {
                 <TableRow key={`ingredient-${index}`}>
                   <TableCell />
                   <TableCell>
-                    {ingredient ? ingredient.name : ""}
+                    <NameWithEdit
+                      name={ingredient ? ingredient.name : ""}
+                      onEdit={() => ingredient && handleOpenIngredientEditor(ingredient.id)}
+                    />
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -729,6 +774,9 @@ function Planning() {
                           handleUnitChange(index, parseInt(e.target.value, 10))
                         }
                         sx={{ minWidth: 120 }}
+                        key={`single-item-unit-${item.ingredientId}-${
+                          (ingredient?.units?.length) ?? 0
+                        }`}
                       >
                         {(ingredient?.units || []).map((u) => (
                           <MenuItem key={u.id} value={u.id}>
@@ -799,6 +847,11 @@ function Planning() {
           </Table>
         </TableContainer>
       </Box>
+      <IngredientEditModal
+        open={openIngredientEditModal}
+        ingredient={editorIngredient}
+        onClose={() => setOpenIngredientEditModal(false)}
+      />
     </Box>
   );
 }
