@@ -64,6 +64,73 @@ function Planning() {
   const [selectedIngredientAmount, setSelectedIngredientAmount] = useState(1);
   const [open, setOpen] = useState({});
 
+  // Change unit while preserving total grams
+  const handleUnitChange = (
+    index: number,
+    newUnitId: number,
+    opts?: { ingredientId?: string }
+  ) => {
+    const updated = [...plan];
+    const item = updated[index];
+    if (!item) return;
+
+    // Helper to get grams for a unit of an ingredient
+    const getUnitGrams = (ingredientId: string, unitId: number) => {
+      const ing = ingredients.find((i) => i.id === ingredientId);
+      const unit =
+        ing?.units.find((u) => u.id === unitId) ||
+        ing?.units.find((u) => u.name === "1g") ||
+        ing?.units[0];
+      return unit?.grams ?? 0;
+    };
+
+    if (item.type === "food" && opts?.ingredientId) {
+      const foodItem = item as FoodPlanItem;
+      const ingredientId = opts.ingredientId;
+      const dataIng = ingredients.find((i) => i.id === ingredientId);
+      if (!dataIng) return;
+
+      const currentOverride = foodItem.overrides[ingredientId];
+      const currentUnitId = currentOverride?.unitId ?? 0;
+      const currentQuantity = currentOverride?.quantity ?? 0;
+
+      const currentGrams = getUnitGrams(ingredientId, currentUnitId) * currentQuantity;
+      const newUnitGrams = getUnitGrams(ingredientId, newUnitId);
+
+      // Avoid division by zero
+      const newQuantity = newUnitGrams > 0 ? currentGrams / newUnitGrams : currentQuantity;
+
+      foodItem.overrides = {
+        ...foodItem.overrides,
+        [ingredientId]: {
+          unitId: newUnitId,
+          quantity: newQuantity,
+        },
+      };
+      updated[index] = { ...foodItem };
+      setPlan(updated);
+      return;
+    }
+
+    if (item.type === "ingredient") {
+      const ingredientId = (item as IngredientPlanItem).ingredientId;
+      const currentUnitId = (item as IngredientPlanItem).unitId;
+      const currentAmount = (item as IngredientPlanItem).amount;
+
+      const currentGrams = getUnitGrams(ingredientId, currentUnitId) * currentAmount;
+      const newUnitGrams = getUnitGrams(ingredientId, newUnitId);
+      const newAmount = newUnitGrams > 0 ? currentGrams / newUnitGrams : currentAmount;
+
+      updated[index] = {
+        ...(item as IngredientPlanItem),
+        unitId: newUnitId,
+        amount: newAmount,
+      } as IngredientPlanItem;
+      setPlan(updated);
+      return;
+    }
+  };
+
   const handleAddItem = () => {
     if (selectedType === "food") {
       if (!selectedFoodId || selectedPortions <= 0) return;
@@ -525,7 +592,26 @@ function Planning() {
                                   <TableCell>
                                     {dataIngredient ? dataIngredient.name : ""}
                                   </TableCell>
-                                  <TableCell>{unit ? unit.name : ""}</TableCell>
+                                  <TableCell>
+                                    <TextField
+                                      select
+                                      value={unitId}
+                                      onChange={(e) =>
+                                        handleUnitChange(
+                                          index,
+                                          parseInt(e.target.value, 10),
+                                          { ingredientId: ingredient.ingredient_id }
+                                        )
+                                      }
+                                      sx={{ minWidth: 120 }}
+                                    >
+                                      {(dataIngredient?.units || []).map((u) => (
+                                        <MenuItem key={u.id} value={u.id}>
+                                          {u.name}
+                                        </MenuItem>
+                                      ))}
+                                    </TextField>
+                                  </TableCell>
                                   <TableCell>
                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                                       <IconButton
@@ -636,7 +722,20 @@ function Planning() {
                       >
                         <Add fontSize="small" />
                       </IconButton>
-                      <Box component="span">{unit ? unit.name : ""}</Box>
+                      <TextField
+                        select
+                        value={item.unitId}
+                        onChange={(e) =>
+                          handleUnitChange(index, parseInt(e.target.value, 10))
+                        }
+                        sx={{ minWidth: 120 }}
+                      >
+                        {(ingredient?.units || []).map((u) => (
+                          <MenuItem key={u.id} value={u.id}>
+                            {u.name}
+                          </MenuItem>
+                        ))}
+                      </TextField>
                     </Box>
                   </TableCell>
                   <TableCell>{formatCellNumber(macros.calories)}</TableCell>
