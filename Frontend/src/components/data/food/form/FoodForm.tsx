@@ -1,9 +1,11 @@
 // @ts-check
-import React, { useEffect, useCallback, useReducer } from "react";
-import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import React, { useEffect, useCallback, useReducer, useMemo, useRef, useState } from "react";
+import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Box } from "@mui/material";
+import SaveStatusChip from "@/components/common/SaveStatusChip";
 
 import { useData } from "@/contexts/DataContext";
 import { handleFetchRequest } from "@/utils/utils";
+import apiClient from "@/apiClient";
 
 import FoodNameForm from "./FoodNameForm";
 import FoodIngredientsForm from "./FoodIngredientsForm";
@@ -57,6 +59,14 @@ function FoodForm({ foodToEditData }) {
   const [state, dispatch] = useReducer(reducer, intitalState);
 
   const { isOpen, openConfirmationDialog, isEditMode, foodToEdit, needsClearForm, needsFillForm } = state;
+  const [isSaving, setIsSaving] = useState(false);
+  const saveTimerRef = useRef(/** @type {any} */ (null));
+
+  const hasContent = useMemo(() => {
+    const hasName = (foodToEdit?.name || "").trim().length > 0;
+    const hasIngredients = Array.isArray(foodToEdit?.ingredients) && foodToEdit.ingredients.length > 0;
+    return hasName || hasIngredients;
+  }, [foodToEdit]);
 
   const initializeEmptyFood = () => ({
     name: "",
@@ -76,24 +86,7 @@ function FoodForm({ foodToEditData }) {
   const handleFoodAction = () => {
     startRequest();
 
-    const toDatabaseFood = {
-      name: foodToEdit.name,
-      ingredients: foodToEdit.ingredients
-        .filter(
-          ({ ingredient_id, unit_id }) =>
-            typeof ingredient_id === "number" &&
-            (unit_id === null || typeof unit_id === "number")
-        )
-        .map(({ ingredient_id, unit_id, unit_quantity }) => ({
-          ingredient_id,
-          // Normalize synthetic 1g selection (id 0) to null for DB
-          unit_id: unit_id === 0 ? null : unit_id,
-          unit_quantity,
-        })),
-      tags: foodToEdit.tags
-        .filter((tag) => typeof tag.id === "number")
-        .map((tag) => ({ id: tag.id })),
-    };
+    const toDatabaseFood = buildFoodPayload(foodToEdit);
 
     const url = isEditMode ? `/api/foods/${foodToEdit.id}` : "/api/foods/";
     const method = isEditMode ? "PUT" : "POST";
@@ -110,6 +103,53 @@ function FoodForm({ foodToEditData }) {
       })
       .finally(endRequest);
   };
+
+  const buildFoodPayload = (food) => ({
+    name: food.name,
+    ingredients: food.ingredients
+      .filter(({ ingredient_id, unit_id }) => typeof ingredient_id === "number" && (unit_id === null || typeof unit_id === "number"))
+      .map(({ ingredient_id, unit_id, unit_quantity }) => ({
+        ingredient_id,
+        // Normalize synthetic 1g selection (id 0) to null for DB
+        unit_id: unit_id === 0 ? null : unit_id,
+        unit_quantity,
+      })),
+    tags: (food.tags || [])
+      .filter((tag) => typeof tag.id === "number")
+      .map((tag) => ({ id: tag.id })),
+  });
+
+  // Debounced autosave for edit mode only
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!isEditMode) return; // avoid creating drafts implicitly for new foods
+    if (!hasContent) return; // nothing meaningful to save
+    if (typeof foodToEdit.id !== "number") return; // need a persisted id
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      setIsSaving(true);
+      startRequest();
+      try {
+        const payload = buildFoodPayload(foodToEdit);
+        await apiClient
+          .path("/api/foods/{food_id}")
+          .method("put")
+          .create()({ path: { food_id: foodToEdit.id }, body: payload });
+        setFoodsNeedsRefetch(true);
+      } catch (e) {
+        console.error("Autosave error:", e);
+      } finally {
+        endRequest();
+        setIsSaving(false);
+      }
+    }, 600);
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [foodToEdit, isOpen, isEditMode, hasContent]);
 
   const handleFoodDelete = () => {
     if (foodToEdit) {
@@ -176,7 +216,8 @@ function FoodForm({ foodToEditData }) {
 
   return (
     <div>
-      <Paper>
+      <Paper sx={{ position: "relative" }}>
+        <SaveStatusChip show={isOpen && isEditMode && hasContent} saving={isSaving} />
         <Button
           sx={{ display: "block", mx: "auto" }}
           onClick={() => dispatch({ type: "OPEN_FORM", payload: !isOpen })}
