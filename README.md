@@ -52,7 +52,32 @@ npm --prefix Frontend run preview # preview build
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full contributor workflow details.
 
-### 6. Database Migrations (local)
+### 6. Per-Branch Containers (Isolated Code Paths)
+
+You can run isolated containers per Git branch using separate worktrees. Each stack mounts the code from the current branch’s working-tree directory via `BRANCH_WORKTREE_DIR`.
+
+Example with Git worktrees:
+
+```bash
+# From your main clone
+git worktree add ../Nutrition-feature feature/my-feature
+
+# In the new worktree
+cd ../Nutrition-feature
+
+# Start containers for this branch (uses isolated code path)
+./scripts/docker/compose.sh up data -test   # or data -prod
+```
+
+What this does:
+- Sets `BRANCH_WORKTREE_DIR` to the current worktree root and mounts:
+  - `${BRANCH_WORKTREE_DIR}/Backend` → container `/app/Backend`
+  - `${BRANCH_WORKTREE_DIR}/Frontend` → container `/app`
+- Uses branch-derived project and port names so multiple branches can run concurrently.
+
+Tip: If you prefer PowerShell, use `pwsh ./scripts/docker/compose.ps1 up data -test` from inside each worktree.
+
+### 7. Database Migrations (local)
 
 When running Alembic locally (outside Docker), point it at the backend config:
 
@@ -62,7 +87,7 @@ alembic -c Backend/alembic.ini upgrade head
 
 This ensures Alembic finds the migration scripts under `Backend/migrations/`.
 
-### 7. Run Tests
+### 8. Run Tests
 
 ```bash
 ./scripts/run-tests.sh        # Bash
@@ -71,7 +96,7 @@ pwsh ./scripts/run-tests.ps1  # PowerShell
 
 Pass `--e2e` to also run the end-to-end API suite. The e2e runner stands up a dedicated test stack (on TEST ports) and tears it down after tests.
 
-### 8. Database Backups
+### 9. Database Backups
 
 ```bash
 ./scripts/db/backup.sh        # Bash
