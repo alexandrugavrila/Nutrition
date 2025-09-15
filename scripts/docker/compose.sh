@@ -13,8 +13,10 @@ Subcommands:
 USAGE
 }
 
-# Load branch-specific environment variables
+# Load branch-specific environment variables and ensure a dedicated worktree
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/branch-env.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/worktree.sh"
+ensure_worktree
 branch_env_load
 
 # If a path is provided, export resolved ports for downstream scripts.
