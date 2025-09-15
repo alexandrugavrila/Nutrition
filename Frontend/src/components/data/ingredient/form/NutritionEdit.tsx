@@ -20,36 +20,32 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
   };
 
   const handleFieldEdit = (key, value) => {
-    if (value === "") {
-      setDisplayedNutrition({
-        ...displayNutrition,
-        [key]: "",
-      });
-    } else if (!isNaN(value)) {
-      const newValue = parseFloat(value); // Validation: Check if value is numeric
-      setDisplayedNutrition({
-        ...displayNutrition,
-        [key]: newValue,
-      });
-    }
+    // Allow empty, integers, and decimals while typing (e.g. "1.")
+    const isValidPartialNumber = value === "" || /^(\d+)?([\.,]\d*)?$/.test(value);
+    if (!isValidPartialNumber) return;
+
+    setDisplayedNutrition({
+      ...displayNutrition,
+      [key]: value,
+    });
   };
   const handleFieldEditFinish = () => {
-    // Ensure that any blank fields are set to 0
-    const updatedDisplayNutrition = Object.keys(displayNutrition).reduce((acc, key) => {
-      return {
-        ...acc,
-        [key]: displayNutrition[key] === "" ? 0 : displayNutrition[key],
-      };
+    // Normalize blanks and parse to numbers (support ',' as decimal)
+    const normalized = Object.keys(displayNutrition).reduce((acc, key) => {
+      const raw = displayNutrition[key];
+      const parsed = parseFloat(String(raw).replace(",", "."));
+      return { ...acc, [key]: isNaN(parsed) ? 0 : parsed };
     }, {});
-    setDisplayedNutrition(updatedDisplayNutrition);
+
+    setDisplayedNutrition(normalized);
 
     // Calculate nutrition per gram
     const updatedNutrition = {
-      calories: updatedDisplayNutrition.calories / multiplier,
-      protein: updatedDisplayNutrition.protein / multiplier,
-      carbohydrates: updatedDisplayNutrition.carbohydrates / multiplier,
-      fat: updatedDisplayNutrition.fat / multiplier,
-      fiber: updatedDisplayNutrition.fiber / multiplier,
+      calories: normalized.calories / multiplier,
+      protein: normalized.protein / multiplier,
+      carbohydrates: normalized.carbohydrates / multiplier,
+      fat: normalized.fat / multiplier,
+      fiber: normalized.fiber / multiplier,
     };
     dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, nutrition: updatedNutrition } });
   };
@@ -106,6 +102,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
         sx={inputStyle}
         inputProps={{
           sx: inputStyle["& input"],
+          inputMode: "decimal",
         }}
       />
       <TextField
@@ -117,6 +114,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
         sx={inputStyle}
         inputProps={{
           sx: inputStyle["& input"],
+          inputMode: "decimal",
         }}
       />
       <TextField
@@ -128,6 +126,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
         sx={inputStyle}
         inputProps={{
           sx: inputStyle["& input"],
+          inputMode: "decimal",
         }}
       />
       <TextField
@@ -139,6 +138,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
         sx={inputStyle}
         inputProps={{
           sx: inputStyle["& input"],
+          inputMode: "decimal",
         }}
       />
       <TextField
@@ -150,6 +150,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
         sx={inputStyle}
         inputProps={{
           sx: inputStyle["& input"],
+          inputMode: "decimal",
         }}
       />
     </div>

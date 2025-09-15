@@ -1,8 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Button, TextField, Select, MenuItem, Dialog, TableContainer, Table, TableHead, TableRow, TableCell, Paper, TableBody } from "@mui/material";
+import { Button, TextField, Select, MenuItem, Dialog, TableContainer, Table, TableHead, TableRow, TableCell, Paper, TableBody, IconButton, Stack } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
 
 import { useData } from "@/contexts/DataContext";
 import IngredientTable from "@/components/data/ingredient/IngredientTable";
+import IngredientEditModal from "@/components/common/IngredientEditModal";
+import IngredientAddModal from "@/components/common/IngredientAddModal";
 
 import { formatCellNumber } from "@/utils/utils";
 
@@ -10,6 +13,9 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
   //#region States
   const { ingredients } = useData();
   const [openIngredientsDialog, setOpenIngredientsDialog] = useState(false);
+  const [openEditModal, setOpenEditModal] = useState(false);
+  const [openAddModal, setOpenAddModal] = useState(false);
+  const [editorIngredient, setEditorIngredient] = useState(null);
   const [unitQuantities, setUnitQuantities] = useState({}); // Use an object to track unit quantities by ingredient index
   const [totalMacros, setTotalMacros] = useState({
     calories: 0,
@@ -32,6 +38,16 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
   const handleAddIngredient = (ingredient) => {
     dispatch({ type: "SET_FOOD", payload: { ...food, ingredients: [...food.ingredients, buildFoodIngredient(ingredient)] } });
     handleCloseIngredientsDialog();
+  };
+
+  const handleOpenIngredientEditor = (ingredientId) => {
+    const dataIngredient = ingredients.find((i) => i.id === ingredientId) || null;
+    setEditorIngredient(dataIngredient);
+    if (dataIngredient) {
+      setOpenEditModal(true);
+    } else {
+      setOpenAddModal(true);
+    }
   };
 
   const buildFoodIngredient = (ingredient) => {
@@ -172,21 +188,27 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
                 <TableRow key={index}>
                   <TableCell>{dataIngredient ? dataIngredient.name : "Unknown Ingredient"}</TableCell>
                   <TableCell>
-                    <div>
+                    <Stack direction="row" spacing={1} alignItems="center">
                       <Select
                         style={{ textAlign: "center" }}
                         value={ingredient.unit_id ?? defaultUnitId}
                         onChange={(event) => handleUnitChange(event, index)}
                         inputProps={{ "aria-label": "Without label" }}>
                         {dataIngredient.units.map((unit) => (
-                          <MenuItem
-                            key={unit.id}
-                            value={unit.id}>
+                          <MenuItem key={unit.id} value={unit.id}>
                             {unit.name}
                           </MenuItem>
                         ))}
                       </Select>
-                    </div>
+                      <IconButton
+                        aria-label="Edit ingredient"
+                        size="small"
+                        onClick={() => handleOpenIngredientEditor(ingredient.ingredient_id)}
+                        title="Edit ingredient (add units, nutrition, tags)"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
                   </TableCell>
                   <TableCell>
                     <TextField
@@ -197,7 +219,7 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
                       onKeyDown={(event) => {
                         if (event.key === "Enter") event.target.blur();
                       }}
-                      InputProps={{ inputProps: { min: 0 } }}
+                      inputProps={{ min: 0, step: "any", inputMode: "decimal" }}
                     />
                   </TableCell>
                   <TableCell>{formatCellNumber(calculateTotalIngredientMacros(ingredient).calories)}</TableCell>
@@ -211,11 +233,21 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
           </TableBody>
         </Table>
       </TableContainer>
-      <Button
-        variant="contained"
-        onClick={handleOpenIngredientsDialog}>
-        Add Ingredients
-      </Button>
+      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+        <Button variant="contained" onClick={handleOpenIngredientsDialog}>
+          Add Ingredients
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={() => {
+            setEditorMode("add");
+            setEditorIngredient(null);
+            setOpenEditor(true);
+          }}
+        >
+          New Ingredient
+        </Button>
+      </Stack>
 
       <Dialog
         open={openIngredientsDialog}
@@ -223,8 +255,24 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
         maxWidth="lg"
         scroll="body"
         fullWidth>
-        <IngredientTable onIngredientDoubleClick={handleAddIngredient} />
+        <IngredientTable
+          onIngredientDoubleClick={handleAddIngredient}
+          onIngredientCtrlClick={(ing) => {
+            setEditorIngredient(ing);
+            setOpenEditModal(true);
+          }}
+        />
       </Dialog>
+
+      <IngredientEditModal
+        open={openEditModal}
+        ingredient={editorIngredient}
+        onClose={() => setOpenEditModal(false)}
+      />
+      <IngredientAddModal
+        open={openAddModal}
+        onClose={() => setOpenAddModal(false)}
+      />
     </div>
   );
 }
