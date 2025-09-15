@@ -24,12 +24,18 @@ router = APIRouter(prefix="/ingredients", tags=["ingredients"])
 
 
 def ingredient_to_read(ingredient: Ingredient) -> IngredientRead:
-    """Convert an Ingredient to IngredientRead without mutating units.
+    """Convert an Ingredient to IngredientRead and ensure base 'g' unit is visible.
 
-    We no longer append synthetic units. A proper base unit of name 'g' and grams == 1
-    is enforced on create/update and via a data migration for existing records.
+    - Do not mutate the database here.
+    - If the ingredient has no 'g' unit yet, include a synthetic 'g' (grams == 1)
+      in the response so the UI always sees it on initial load.
     """
-    return IngredientRead.model_validate(ingredient)
+    read = IngredientRead.model_validate(ingredient)
+    has_g = any((getattr(u, "name", None) == "g") for u in (read.units or []))
+    if not has_g:
+        # Append a synthetic base unit; id is None since it may not exist yet in DB
+        read.units.append(IngredientUnit(name="g", grams=1))
+    return read
 
 
 def ensure_g_unit_present(ingredient_obj: Ingredient) -> None:
@@ -143,13 +149,30 @@ def update_ingredient(
     ingredient_data: IngredientUpdate,
     db: Session = Depends(get_db),
 ) -> IngredientRead:
-    """Update an existing ingredient."""
-    ingredient = db.get(Ingredient, ingredient_id)
+    """Update an existing ingredient.
+
+    Important: Avoid deleting existing units on update to preserve referential
+    integrity for rows in food_ingredients that reference them. Instead,
+    upsert provided units (update by id or insert new). Existing units not in
+    the payload are left unchanged.
+    """
+    # Load ingredient with related collections for safe updates
+    statement = (
+        select(Ingredient)
+        .options(
+            selectinload(Ingredient.nutrition),
+            selectinload(Ingredient.units),
+            selectinload(Ingredient.tags),
+        )
+        .where(Ingredient.id == ingredient_id)
+    )
+    ingredient = db.exec(statement).one_or_none()
     if not ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
 
     ingredient.name = ingredient_data.name
 
+    # Upsert nutrition
     if ingredient_data.nutrition:
         ingredient.nutrition = Nutrition.model_validate(
             ingredient_data.nutrition.model_dump()
@@ -157,12 +180,38 @@ def update_ingredient(
     else:
         ingredient.nutrition = None
 
-    ingredient.units = [
-        IngredientUnit.model_validate(u.model_dump()) for u in ingredient_data.units
-    ]
-    # Force inclusion of base unit 'g' with grams == 1
+    # Upsert units without deleting existing ones
+    existing_units = list(ingredient.units or [])
+    existing_by_id = {u.id: u for u in existing_units if u.id is not None}
+    existing_by_name = {u.name.lower(): u for u in existing_units if u.name}
+
+    for u_in in ingredient_data.units:
+        # Materialize to ORM model (may include id if provided by schema)
+        incoming = IngredientUnit.model_validate(u_in.model_dump())
+
+        # Prefer ID-based update when present
+        if getattr(incoming, "id", None) and incoming.id in existing_by_id:
+            ex = existing_by_id[incoming.id]
+            ex.name = incoming.name
+            ex.grams = incoming.grams
+            continue
+
+        # Otherwise try name-based update (case-insensitive) to avoid duplicates
+        key = (incoming.name or "").lower()
+        if key in existing_by_name:
+            ex = existing_by_name[key]
+            # Update grams; keep existing name casing
+            ex.grams = incoming.grams
+        else:
+            # New unit
+            ingredient.units.append(
+                IngredientUnit(name=incoming.name, grams=incoming.grams)
+            )
+
+    # Ensure base 'g' unit exists and is correct
     ensure_g_unit_present(ingredient)
 
+    # Update tags
     with db.no_autoflush:
         if ingredient_data.tags:
             ingredient.tags = [
@@ -173,9 +222,14 @@ def update_ingredient(
         else:
             ingredient.tags = []
 
-    db.add(ingredient)
-    db.commit()
+    try:
+        db.add(ingredient)
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc))
 
+    # Re-load to include related fields
     statement = (
         select(Ingredient)
         .options(

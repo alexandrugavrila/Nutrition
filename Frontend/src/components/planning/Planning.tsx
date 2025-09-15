@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import {
   Box,
   Button,
+  IconButton,
   MenuItem,
   Paper,
   Table,
@@ -13,11 +14,57 @@ import {
   TextField,
   Collapse,
   Typography,
+  Tooltip,
 } from "@mui/material";
-import { KeyboardArrowDown, KeyboardArrowRight } from "@mui/icons-material";
+import { KeyboardArrowDown, KeyboardArrowRight, Add, Remove, Edit as EditIcon } from "@mui/icons-material";
 
 import { useData } from "@/contexts/DataContext";
 import { formatCellNumber } from "@/utils/utils";
+import IngredientEditModal from "@/components/common/IngredientEditModal";
+import useHoverable from "@/hooks/useHoverable";
+
+// Plan item types
+type FoodOverride = {
+  unitId: number;
+  quantity: number; // quantity in selected unit per portion
+};
+
+type FoodPlanItem = {
+  type: "food";
+  foodId: string;
+  portions: number;
+  overrides: Record<string, FoodOverride>; // ingredientId -> override
+};
+
+type IngredientPlanItem = {
+  type: "ingredient";
+  ingredientId: string;
+  unitId: number;
+  amount: number;
+};
+
+type PlanItem = FoodPlanItem | IngredientPlanItem;
+
+type NameWithEditProps = {
+  name: string;
+  onEdit: () => void;
+};
+
+const NameWithEdit: React.FC<NameWithEditProps> = ({ name, onEdit }) => {
+  const { hovered, bind } = useHoverable();
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }} {...bind}>
+      <span>{name}</span>
+      {hovered && (
+        <Tooltip title="Edit ingredient (add units, nutrition, tags)">
+          <IconButton size="small" aria-label="edit ingredient" onClick={onEdit}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      )}
+    </Box>
+  );
+};
 
 function Planning() {
   const { foods, ingredients } = useData();
@@ -31,7 +78,7 @@ function Planning() {
     fat: 0,
     fiber: 0,
   });
-  const [plan, setPlan] = useState([]); // [{type:'food', foodId, portions} or {type:'ingredient', ingredientId, unitId, amount}]
+  const [plan, setPlan] = useState<PlanItem[]>([]); // FoodPlanItem or IngredientPlanItem
 
   const [selectedType, setSelectedType] = useState("food");
   const [selectedFoodId, setSelectedFoodId] = useState("");
@@ -40,6 +87,81 @@ function Planning() {
   const [selectedIngredientUnitId, setSelectedIngredientUnitId] = useState(0);
   const [selectedIngredientAmount, setSelectedIngredientAmount] = useState(1);
   const [open, setOpen] = useState({});
+  const [openIngredientEditModal, setOpenIngredientEditModal] = useState(false);
+  const [editorIngredient, setEditorIngredient] = useState<any>(null);
+
+  const handleOpenIngredientEditor = (ingredientId: string) => {
+    const dataIngredient = ingredients.find((i) => i.id === ingredientId) || null;
+    setEditorIngredient(dataIngredient);
+    if (dataIngredient) setOpenIngredientEditModal(true);
+  };
+
+  // Change unit while preserving total grams
+  const handleUnitChange = (
+    index: number,
+    newUnitId: number,
+    opts?: { ingredientId?: string }
+  ) => {
+    const updated = [...plan];
+    const item = updated[index];
+    if (!item) return;
+
+    // Helper to get grams for a unit of an ingredient
+    const getUnitGrams = (ingredientId: string, unitId: number) => {
+      const ing = ingredients.find((i) => i.id === ingredientId);
+      const unit =
+        ing?.units.find((u) => u.id === unitId) ||
+        ing?.units.find((u) => u.name === "1g") ||
+        ing?.units[0];
+      return unit?.grams ?? 0;
+    };
+
+    if (item.type === "food" && opts?.ingredientId) {
+      const foodItem = item as FoodPlanItem;
+      const ingredientId = opts.ingredientId;
+      const dataIng = ingredients.find((i) => i.id === ingredientId);
+      if (!dataIng) return;
+
+      const currentOverride = foodItem.overrides[ingredientId];
+      const currentUnitId = currentOverride?.unitId ?? 0;
+      const currentQuantity = currentOverride?.quantity ?? 0;
+
+      const currentGrams = getUnitGrams(ingredientId, currentUnitId) * currentQuantity;
+      const newUnitGrams = getUnitGrams(ingredientId, newUnitId);
+
+      // Avoid division by zero
+      const newQuantity = newUnitGrams > 0 ? currentGrams / newUnitGrams : currentQuantity;
+
+      foodItem.overrides = {
+        ...foodItem.overrides,
+        [ingredientId]: {
+          unitId: newUnitId,
+          quantity: newQuantity,
+        },
+      };
+      updated[index] = { ...foodItem };
+      setPlan(updated);
+      return;
+    }
+
+    if (item.type === "ingredient") {
+      const ingredientId = (item as IngredientPlanItem).ingredientId;
+      const currentUnitId = (item as IngredientPlanItem).unitId;
+      const currentAmount = (item as IngredientPlanItem).amount;
+
+      const currentGrams = getUnitGrams(ingredientId, currentUnitId) * currentAmount;
+      const newUnitGrams = getUnitGrams(ingredientId, newUnitId);
+      const newAmount = newUnitGrams > 0 ? currentGrams / newUnitGrams : currentAmount;
+
+      updated[index] = {
+        ...(item as IngredientPlanItem),
+        unitId: newUnitId,
+        amount: newAmount,
+      } as IngredientPlanItem;
+      setPlan(updated);
+      return;
+    }
+  };
 
   const handleAddItem = () => {
     if (selectedType === "food") {
@@ -49,13 +171,29 @@ function Planning() {
       );
       if (existingIndex >= 0) {
         const updated = [...plan];
-        updated[existingIndex].portions += selectedPortions;
+        const existing = updated[existingIndex] as FoodPlanItem;
+        updated[existingIndex] = {
+          ...existing,
+          portions: existing.portions + selectedPortions,
+        };
         setPlan(updated);
       } else {
-        setPlan([
-          ...plan,
-          { type: "food", foodId: selectedFoodId, portions: selectedPortions },
-        ]);
+        // Build default overrides from the selected food's ingredients
+        const food = foods.find((f) => f.id === selectedFoodId);
+        const overrides: Record<string, FoodOverride> = {};
+        food?.ingredients.forEach((ing) => {
+          overrides[ing.ingredient_id] = {
+            unitId: ing.unit_id,
+            quantity: ing.unit_quantity ?? 0,
+          };
+        });
+        const newItem: FoodPlanItem = {
+          type: "food",
+          foodId: selectedFoodId,
+          portions: selectedPortions,
+          overrides,
+        };
+        setPlan([...plan, newItem]);
       }
       setSelectedFoodId("");
       setSelectedPortions(1);
@@ -76,13 +214,34 @@ function Planning() {
     }
   };
 
-  const handleQuantityChange = (index, value) => {
+  const handleQuantityChange = (
+    index: number,
+    value: number,
+    opts?: { ingredientId?: string }
+  ) => {
     if (value <= 0) return;
     const updated = [...plan];
-    if (updated[index].type === "food") {
-      updated[index].portions = value;
+    const item = updated[index];
+    if (!item) return;
+    if (item.type === "food") {
+      if (opts?.ingredientId) {
+        const ingredientId = opts.ingredientId;
+        const foodItem = item as FoodPlanItem;
+        const current = foodItem.overrides[ingredientId];
+        // Only update quantity for the specific ingredient override
+        foodItem.overrides = {
+          ...foodItem.overrides,
+          [ingredientId]: {
+            unitId: current?.unitId ?? 0,
+            quantity: value,
+          },
+        };
+        updated[index] = { ...foodItem };
+      } else {
+        updated[index] = { ...item, portions: value } as FoodPlanItem;
+      }
     } else {
-      updated[index].amount = value;
+      updated[index] = { ...(item as IngredientPlanItem), amount: value };
     }
     setPlan(updated);
   };
@@ -92,59 +251,82 @@ function Planning() {
     setPlan(updated);
   };
 
-  const calculateIngredientMacros = useCallback((ingredient) => {
-    const dataIngredient = ingredients.find((i) => i.id === ingredient.ingredient_id);
-    if (!dataIngredient) {
-      return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
-    }
-    const unit =
-      dataIngredient.units.find((u) => u.id === ingredient.unit_id) ||
-      dataIngredient.units.find((u) => u.name === "1g") ||
-      dataIngredient.units[0];
-    const grams = unit ? unit.grams : 0;
-    return {
-      calories: (dataIngredient.nutrition.calories || 0) * grams * ingredient.unit_quantity,
-      protein: (dataIngredient.nutrition.protein || 0) * grams * ingredient.unit_quantity,
-      fat: (dataIngredient.nutrition.fat || 0) * grams * ingredient.unit_quantity,
-      carbs: (dataIngredient.nutrition.carbohydrates || 0) * grams * ingredient.unit_quantity,
-      fiber: (dataIngredient.nutrition.fiber || 0) * grams * ingredient.unit_quantity,
-    };
-  }, [ingredients]);
+  const calculateIngredientMacros = useCallback(
+    (
+      ingredient,
+      override?: FoodOverride,
+    ) => {
+      const dataIngredient = ingredients.find(
+        (i) => i.id === ingredient.ingredient_id,
+      );
+      if (!dataIngredient) {
+        return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
+      }
+      const effectiveUnitId = override?.unitId ?? ingredient.unit_id;
+      const effectiveQuantity = override?.quantity ?? ingredient.unit_quantity;
+      const unit =
+        dataIngredient.units.find((u) => u.id === effectiveUnitId) ||
+        dataIngredient.units.find((u) => u.name === "1g") ||
+        dataIngredient.units[0];
+      const grams = unit ? unit.grams : 0;
+      return {
+        calories:
+          (dataIngredient.nutrition.calories || 0) * grams * effectiveQuantity,
+        protein:
+          (dataIngredient.nutrition.protein || 0) * grams * effectiveQuantity,
+        fat: (dataIngredient.nutrition.fat || 0) * grams * effectiveQuantity,
+        carbs:
+          (dataIngredient.nutrition.carbohydrates || 0) * grams * effectiveQuantity,
+        fiber: (dataIngredient.nutrition.fiber || 0) * grams * effectiveQuantity,
+      };
+    },
+    [ingredients],
+  );
 
-  const calculateFoodMacros = useCallback((food) => {
-    if (!food) return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
-    return food.ingredients.reduce(
-      (totals, ingredient) => {
-        const macros = calculateIngredientMacros(ingredient);
-        totals.calories += macros.calories;
-        totals.protein += macros.protein;
-        totals.fat += macros.fat;
-        totals.carbs += macros.carbs;
-        totals.fiber += macros.fiber;
-        return totals;
-      },
+  const calculateFoodMacros = useCallback(
+    (
+      food,
+      overrides?: Record<string, FoodOverride>,
+    ) => {
+      if (!food) return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
+      return food.ingredients.reduce(
+        (totals, ingredient) => {
+          const override = overrides?.[ingredient.ingredient_id];
+          const macros = calculateIngredientMacros(ingredient, override);
+          totals.calories += macros.calories;
+          totals.protein += macros.protein;
+          totals.fat += macros.fat;
+          totals.carbs += macros.carbs;
+          totals.fiber += macros.fiber;
+          return totals;
+        },
         { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 }
       );
-  }, [calculateIngredientMacros]);
+    },
+    [calculateIngredientMacros]
+  );
 
-  const calculateItemMacros = useCallback((item) => {
-    if (item.type === "food") {
-      const food = foods.find((m) => m.id === item.foodId);
-      const macros = calculateFoodMacros(food);
-      return {
-        calories: macros.calories * item.portions,
-        protein: macros.protein * item.portions,
-        fat: macros.fat * item.portions,
-        carbs: macros.carbs * item.portions,
-        fiber: macros.fiber * item.portions,
-      };
-    }
-    return calculateIngredientMacros({
-      ingredient_id: item.ingredientId,
-      unit_id: item.unitId,
-      unit_quantity: item.amount,
-    });
-  }, [foods, calculateFoodMacros, calculateIngredientMacros]);
+  const calculateItemMacros = useCallback(
+    (item: PlanItem) => {
+      if (item.type === "food") {
+        const food = foods.find((m) => m.id === item.foodId);
+        const macros = calculateFoodMacros(food, item.overrides);
+        return {
+          calories: macros.calories * item.portions,
+          protein: macros.protein * item.portions,
+          fat: macros.fat * item.portions,
+          carbs: macros.carbs * item.portions,
+          fiber: macros.fiber * item.portions,
+        };
+      }
+      return calculateIngredientMacros({
+        ingredient_id: item.ingredientId,
+        unit_id: item.unitId,
+        unit_quantity: item.amount,
+      });
+    },
+    [foods, calculateFoodMacros, calculateIngredientMacros]
+  );
 
   const totalMacros = useMemo(() => {
     return plan.reduce(
@@ -277,23 +459,27 @@ function Planning() {
                 </MenuItem>
               ))}
             </TextField>
-            <TextField
-              select
-              label="Unit"
-              value={selectedIngredientUnitId}
-              onChange={(e) =>
-                setSelectedIngredientUnitId(parseInt(e.target.value, 10))
-              }
-              sx={{ minWidth: 120 }}
-            >
-              {(ingredients.find((i) => i.id === selectedIngredientId)?.units || []).map(
-                (unit) => (
-                  <MenuItem key={unit.id} value={unit.id}>
-                    {unit.name}
-                  </MenuItem>
-                )
-              )}
-            </TextField>
+                <TextField
+                  select
+                  label="Unit"
+                  value={selectedIngredientUnitId}
+                  onChange={(e) =>
+                    setSelectedIngredientUnitId(parseInt(e.target.value, 10))
+                  }
+                  sx={{ minWidth: 120 }}
+                  key={`add-unit-${
+                    (ingredients.find((i) => i.id === selectedIngredientId)?.units
+                      ?.length) ?? 0
+                  }`}
+                >
+                  {(ingredients.find((i) => i.id === selectedIngredientId)?.units || []).map(
+                    (unit) => (
+                      <MenuItem key={unit.id} value={unit.id}>
+                        {unit.name}
+                      </MenuItem>
+                    )
+                  )}
+                </TextField>
             <TextField
               type="number"
               label="Amount"
@@ -345,7 +531,7 @@ function Planning() {
           {plan.map((item, index) => {
             if (item.type === "food") {
               const food = foods.find((m) => m.id === item.foodId);
-              const macros = calculateFoodMacros(food);
+              const macros = calculateFoodMacros(food, item.overrides);
               return (
                 <React.Fragment key={`food-${item.foodId}`}>
                   <TableRow>
@@ -354,14 +540,32 @@ function Planning() {
                     </TableCell>
                     <TableCell>{food ? food.name : ""}</TableCell>
                     <TableCell>
-                      <TextField
-                        type="number"
-                        value={item.portions}
-                        onChange={(e) =>
-                          handleQuantityChange(index, parseFloat(e.target.value) || 0)
-                        }
-                        sx={{ width: 80 }}
-                      />
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <IconButton
+                          size="small"
+                          aria-label="decrement portions"
+                          onClick={() =>
+                            handleQuantityChange(index, Math.max(1, item.portions - 1))
+                          }
+                        >
+                          <Remove fontSize="small" />
+                        </IconButton>
+                        <TextField
+                          type="number"
+                          value={item.portions}
+                          onChange={(e) =>
+                            handleQuantityChange(index, parseFloat(e.target.value) || 0)
+                          }
+                          sx={{ width: 80 }}
+                        />
+                        <IconButton
+                          size="small"
+                          aria-label="increment portions"
+                          onClick={() => handleQuantityChange(index, item.portions + 1)}
+                        >
+                          <Add fontSize="small" />
+                        </IconButton>
+                      </Box>
                     </TableCell>
                     <TableCell>
                       {formatCellNumber(macros.calories * item.portions)}
@@ -408,21 +612,90 @@ function Planning() {
                               const dataIngredient = ingredients.find(
                                 (i) => i.id === ingredient.ingredient_id
                               );
-              const unit =
-                                dataIngredient?.units.find(
-                                  (u) => u.id === ingredient.unit_id
-                                ) ||
+                              const override = item.overrides[ingredient.ingredient_id];
+                              const unitId = override?.unitId ?? ingredient.unit_id;
+                              const unit =
+                                dataIngredient?.units.find((u) => u.id === unitId) ||
                                 dataIngredient?.units.find((u) => u.name === "1g") ||
                                 dataIngredient?.units[0];
-                              const ingMacros = calculateIngredientMacros(ingredient);
+                              const quantity = override?.quantity ?? ingredient.unit_quantity;
+                              const ingMacros = calculateIngredientMacros(
+                                ingredient,
+                                { unitId, quantity },
+                              );
                               return (
                                 <TableRow key={ingredient.ingredient_id}>
                                   <TableCell>
-                                    {dataIngredient ? dataIngredient.name : ""}
+                                    <NameWithEdit
+                                      name={dataIngredient ? dataIngredient.name : ""}
+                                      onEdit={() => handleOpenIngredientEditor(ingredient.ingredient_id)}
+                                    />
                                   </TableCell>
-                                  <TableCell>{unit ? unit.name : ""}</TableCell>
                                   <TableCell>
-                                    {formatCellNumber(ingredient.unit_quantity * item.portions)}
+                                    <TextField
+                                      select
+                                      value={unitId}
+                                      onChange={(e) =>
+                                        handleUnitChange(
+                                          index,
+                                          parseInt(e.target.value, 10),
+                                          { ingredientId: ingredient.ingredient_id }
+                                        )
+                                      }
+                                      sx={{ minWidth: 120 }}
+                                      key={`food-item-unit-${ingredient.ingredient_id}-${
+                                        (dataIngredient?.units?.length) ?? 0
+                                      }`}
+                                    >
+                                      {(dataIngredient?.units || []).map((u) => (
+                                        <MenuItem key={u.id} value={u.id}>
+                                          {u.name}
+                                        </MenuItem>
+                                      ))}
+                                    </TextField>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                      <IconButton
+                                        size="small"
+                                        aria-label="decrement quantity"
+                                        onClick={() =>
+                                          handleQuantityChange(
+                                            index,
+                                            Math.max(1, (quantity || 0) - 1),
+                                            { ingredientId: ingredient.ingredient_id }
+                                          )
+                                        }
+                                      >
+                                        <Remove fontSize="small" />
+                                      </IconButton>
+                                      <TextField
+                                        type="number"
+                                        value={quantity}
+                                        onChange={(e) =>
+                                          handleQuantityChange(
+                                            index,
+                                            parseFloat(e.target.value) || 0,
+                                            { ingredientId: ingredient.ingredient_id }
+                                          )
+                                        }
+                                        sx={{ width: 80 }}
+                                      />
+                                      <IconButton
+                                        size="small"
+                                        aria-label="increment quantity"
+                                        onClick={() =>
+                                          handleQuantityChange(
+                                            index,
+                                            (quantity || 0) + 1,
+                                            { ingredientId: ingredient.ingredient_id }
+                                          )
+                                        }
+                                      >
+                                        <Add fontSize="small" />
+                                      </IconButton>
+                                      <Box component="span">x {item.portions}</Box>
+                                    </Box>
                                   </TableCell>
                                   <TableCell>
                                     {formatCellNumber(ingMacros.calories * item.portions)}
@@ -463,17 +736,55 @@ function Planning() {
                 <TableRow key={`ingredient-${index}`}>
                   <TableCell />
                   <TableCell>
-                    {ingredient ? ingredient.name : ""}
+                    <NameWithEdit
+                      name={ingredient ? ingredient.name : ""}
+                      onEdit={() => ingredient && handleOpenIngredientEditor(ingredient.id)}
+                    />
                   </TableCell>
                   <TableCell>
-                    <TextField
-                      type="number"
-                      value={item.amount}
-                      onChange={(e) =>
-                        handleQuantityChange(index, parseFloat(e.target.value) || 0)
-                      }
-                      sx={{ width: 80 }}
-                    /> {unit ? unit.name : ""}
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <IconButton
+                        size="small"
+                        aria-label="decrement amount"
+                        onClick={() =>
+                          handleQuantityChange(index, Math.max(1, item.amount - 1))
+                        }
+                      >
+                        <Remove fontSize="small" />
+                      </IconButton>
+                      <TextField
+                        type="number"
+                        value={item.amount}
+                        onChange={(e) =>
+                          handleQuantityChange(index, parseFloat(e.target.value) || 0)
+                        }
+                        sx={{ width: 80 }}
+                      />
+                      <IconButton
+                        size="small"
+                        aria-label="increment amount"
+                        onClick={() => handleQuantityChange(index, item.amount + 1)}
+                      >
+                        <Add fontSize="small" />
+                      </IconButton>
+                      <TextField
+                        select
+                        value={item.unitId}
+                        onChange={(e) =>
+                          handleUnitChange(index, parseInt(e.target.value, 10))
+                        }
+                        sx={{ minWidth: 120 }}
+                        key={`single-item-unit-${item.ingredientId}-${
+                          (ingredient?.units?.length) ?? 0
+                        }`}
+                      >
+                        {(ingredient?.units || []).map((u) => (
+                          <MenuItem key={u.id} value={u.id}>
+                            {u.name}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </Box>
                   </TableCell>
                   <TableCell>{formatCellNumber(macros.calories)}</TableCell>
                   <TableCell>{formatCellNumber(macros.protein)}</TableCell>
@@ -536,6 +847,11 @@ function Planning() {
           </Table>
         </TableContainer>
       </Box>
+      <IngredientEditModal
+        open={openIngredientEditModal}
+        ingredient={editorIngredient}
+        onClose={() => setOpenIngredientEditModal(false)}
+      />
     </Box>
   );
 }
