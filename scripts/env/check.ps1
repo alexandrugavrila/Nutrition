@@ -14,6 +14,7 @@ $ErrorActionPreference = 'Stop'
 
 function Write-Info { param([string]$Msg) if(-not $Quiet){ Write-Host "[ENV CHECK] $Msg" } }
 function Fail { param([string]$Msg) Write-Error "[ENV CHECK] $Msg"; exit 1 }
+function Resolve-PathSafe { param([string]$Path) try { (Resolve-Path $Path).Path } catch { $null } }
 
 # Load helpers from scripts/lib
 $libBranchEnv = (Resolve-Path (Join-Path $PSScriptRoot "../lib/branch-env.ps1")).Path
@@ -156,8 +157,27 @@ Write-Info "Worktree mapping OK."
 # Verify Python venv
 $expectedVenv = Join-Path $repoRoot '.venv'
 $actualVenv = $env:VIRTUAL_ENV
-if (-not $actualVenv) { Fail "Python virtual environment is not activated. Run: .\scripts\env\activate-venv.ps1" }
-if ((Resolve-Path $actualVenv).Path -ne (Resolve-Path $expectedVenv).Path) {
+$activateScript = Join-Path $repoRoot 'scripts\env\activate-venv.ps1'
+
+$expectedResolved = Resolve-PathSafe $expectedVenv
+$actualResolved = if ($actualVenv) { Resolve-PathSafe $actualVenv } else { $null }
+
+if (-not $actualResolved -or -not $expectedResolved -or $actualResolved -ne $expectedResolved) {
+  if ($Fix) {
+    if (-not (Test-Path $activateScript)) {
+      Fail "Python virtual environment is not activated and activate script not found at: $activateScript"
+    }
+    Write-Info "Attempting to activate Python virtual environment..."
+    & $activateScript
+    $actualVenv = $env:VIRTUAL_ENV
+    $expectedResolved = Resolve-PathSafe $expectedVenv
+    $actualResolved = if ($actualVenv) { Resolve-PathSafe $actualVenv } else { $null }
+  }
+}
+
+if (-not $actualResolved) { Fail "Python virtual environment is not activated. Run: .\scripts\env\activate-venv.ps1" }
+if (-not $expectedResolved) { Fail "Expected venv directory not found: $expectedVenv" }
+if ($actualResolved -ne $expectedResolved) {
   Fail "VIRTUAL_ENV points elsewhere.`n  expected: $expectedVenv`n  actual:   $actualVenv"
 }
 
