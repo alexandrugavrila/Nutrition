@@ -9,11 +9,17 @@
     Optional branch name or numeric selection. If omitted the script prompts.
 .PARAMETER Remote
     Remote name used for fetches and default tracking. Defaults to origin.
+.PARAMETER SkipVSCode
+    Suppress launching VS Code after switching.
+.PARAMETER NewVSCodeWindow
+    Open the worktree in a new VS Code window instead of reusing the current one.
 #>
 [CmdletBinding()]
 param(
     [string]$Branch,
-    [string]$Remote = 'origin'
+    [string]$Remote = 'origin',
+    [switch]$SkipVSCode,
+    [switch]$NewVSCodeWindow
 )
 
 $ErrorActionPreference = 'Stop'
@@ -121,6 +127,35 @@ function Sanitize-WorktreeName {
     $sanitized = [Regex]::Replace($BranchName,'[^A-Za-z0-9._-]+','-').Trim('-')
     if (-not $sanitized) { $sanitized = 'worktree' }
     return $sanitized
+}
+
+function Open-VSCode {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [switch]$NewWindow
+    )
+
+    $codeCommand = Get-Command -Name 'code' -ErrorAction SilentlyContinue
+    if (-not $codeCommand) {
+        Write-Warning "VS Code command 'code' not found in PATH. Skipping VS Code launch."
+        return
+    }
+
+    $args = @()
+    if ($NewWindow) {
+        $args += '-n'
+    }
+    else {
+        $args += '-r'
+    }
+    $args += $Path
+
+    try {
+        Start-Process -FilePath $codeCommand.Source -ArgumentList $args | Out-Null
+    }
+    catch {
+        Write-Warning "Failed to launch VS Code: $($_.Exception.Message)"
+    }
 }
 
 $initialLocation = Get-Location
@@ -241,6 +276,10 @@ if ($targetPath) {
     foreach ($line in $summary) {
         Write-Host "  $line"
     }
+
+    if (-not $SkipVSCode) {
+        Open-VSCode -Path $targetPath -NewWindow:$NewVSCodeWindow
+    }
     return
 }
 
@@ -334,4 +373,8 @@ Write-Host 'Status:'
 $finalSummary = Invoke-Git @('status','-sb')
 foreach ($line in $finalSummary) {
     Write-Host "  $line"
+}
+
+if (-not $SkipVSCode) {
+    Open-VSCode -Path $targetPath -NewWindow:$NewVSCodeWindow
 }
