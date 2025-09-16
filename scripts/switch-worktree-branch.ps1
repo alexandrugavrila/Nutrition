@@ -1,20 +1,18 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Interactively switch the branch used by this worktree.
+    Jump to an existing worktree for a branch or create a new one.
 .DESCRIPTION
-    Fetches the latest refs, shows existing worktrees, and helps you move this worktree to a new branch.
+    Lists current worktrees, lets you pick a branch, and either changes directory to
+    the matching worktree or creates a fresh worktree for that branch.
 .PARAMETER Branch
-    Optional target branch to switch to. If omitted the script prompts for one.
-.PARAMETER Force
-    Proceed even when the worktree has uncommitted changes (requires confirmation).
+    Optional branch name or numeric selection. If omitted the script prompts.
 .PARAMETER Remote
-    Remote name to fetch from and use when creating tracking branches. Defaults to origin.
+    Remote name used for fetches and default tracking. Defaults to origin.
 #>
 [CmdletBinding()]
 param(
     [string]$Branch,
-    [switch]$Force,
     [string]$Remote = 'origin'
 )
 
@@ -117,6 +115,16 @@ function Get-LastLine {
     return [string]($Lines | Select-Object -Last 1)
 }
 
+function Sanitize-WorktreeName {
+    param([Parameter(Mandatory = $true)][string]$BranchName)
+
+    $sanitized = [Regex]::Replace($BranchName,'[^A-Za-z0-9._-]+','-').Trim('-')
+    if (-not $sanitized) { $sanitized = 'worktree' }
+    return $sanitized
+}
+
+$initialLocation = Get-Location
+
 $repoRootRaw = Get-LastLine (Invoke-Git @('rev-parse','--show-toplevel'))
 if (-not $repoRootRaw) {
     throw 'Unable to determine repository root. Is this a git worktree?'
@@ -124,122 +132,206 @@ if (-not $repoRootRaw) {
 Set-Location $repoRootRaw
 $repoRoot = Normalize-Path $repoRootRaw
 
-$currentBranch = Get-LastLine (Invoke-Git @('rev-parse','--abbrev-ref','HEAD'))
-
-$statusLines = Invoke-Git @('status','--porcelain')
-$hasPendingChanges = $false
-foreach ($line in $statusLines) {
-    $text = [string]$line
-    if ($text.Trim().Length -gt 0) {
-        $hasPendingChanges = $true
-        break
-    }
-}
-if ($hasPendingChanges) {
-    if (-not $Force) {
-        Write-Error 'Worktree has uncommitted changes. Commit or stash them, or rerun with -Force.'
-        exit 1
-    }
-
-    $confirmation = Read-Host "Force enabled. Type YES to continue despite uncommitted changes"
-    if ($confirmation -ne 'YES') {
-        Write-Host 'Aborting.'
-        exit 1
-    }
-}
-
 Write-Host "Fetching latest refs from '$Remote'..."
 Invoke-Git @('fetch',$Remote,'--prune') | Out-Null
 
 $worktreeLines = Invoke-Git @('worktree','list','--porcelain')
 $worktrees = Parse-Worktrees $worktreeLines
 
+$branchMap = @{}
+foreach ($wt in $worktrees) {
+    if (-not $wt.Branch) { continue }
+    if ($branchMap.ContainsKey($wt.Branch)) {
+        $branchMap[$wt.Branch] += $wt
+    }
+    else {
+        $branchMap[$wt.Branch] = @($wt)
+    }
+}
+
 Write-Host ''
 Write-Host 'Existing worktrees:'
-foreach ($wt in $worktrees) {
+$branchOptions = @()
+$optionIndex = 1
+foreach ($wt in $worktrees | Sort-Object Branch, Path) {
     $marker = if ($wt.Path -eq $repoRoot) { '>' } else { ' ' }
     $branchLabel = if ($wt.Branch) { $wt.Branch } else { '<detached>' }
     Write-Host (" $marker $branchLabel -> $($wt.Path)")
-}
-Write-Host ''
-
-if (-not $Branch) {
-    $Branch = Read-Host 'Enter the branch to use in this worktree'
-}
-$Branch = $Branch.Trim()
-if (-not $Branch) {
-    Write-Error 'No branch name supplied.'
-    exit 1
-}
-
-if ($Branch -eq $currentBranch) {
-    Write-Host "Already on branch '$Branch'."
-    exit 0
-}
-
-$matching = $worktrees | Where-Object { $_.Branch -eq $Branch }
-$otherMatches = $matching | Where-Object { $_.Path -ne $repoRoot }
-if ($otherMatches.Count -gt 0) {
-    Write-Host "Branch '$Branch' is already checked out in these worktrees:"
-    foreach ($item in $otherMatches) {
-        Write-Host "  - $($item.Path)"
+    if ($wt.Branch) {
+        $branchOptions += [pscustomobject]@{
+            Index  = $optionIndex
+            Branch = $wt.Branch
+            Path   = $wt.Path
+        }
+        $optionIndex++
     }
-    Write-Host 'Open the listed worktree or move it to another branch before retrying.'
-    exit 1
 }
 
-$branchExists = Test-LocalBranch -Name $Branch
-$track = $false
-$baseRef = $null
+$defaultBase = "$Remote/main"
+try {
+    $remoteHead = Get-LastLine (Invoke-Git @('symbolic-ref',"refs/remotes/$Remote/HEAD"))
+    if ($remoteHead) {
+        $remoteHeadName = $remoteHead -replace "^refs/remotes/$Remote/", ''
+        if ($remoteHeadName) { $defaultBase = "$Remote/$remoteHeadName" }
+    }
+} catch {
+    # ignore
+}
 
-if (-not $branchExists) {
-    $remoteHasBranch = Test-RemoteBranch -RemoteName $Remote -Name $Branch
-    if ($remoteHasBranch) {
-        $response = Read-Host "Create local branch '$Branch' tracking '$Remote/$Branch'? (Y/n)"
-        if ($response -and $response.Trim().ToLower().StartsWith('n')) {
-            $baseRef = Read-Host "Enter the base ref to create '$Branch' from (leave blank to abort)"
-            if (-not $baseRef) {
-                Write-Host 'Aborting.'
-                exit 1
-            }
-        }
-        else {
-            $baseRef = "$Remote/$Branch"
-            $track = $true
-        }
+if (-not $Branch) {
+    if ($branchOptions.Count -gt 0) {
+        $Branch = Read-Host 'Select branch by name or number (or enter a new branch)'
     }
     else {
-        $baseRef = Read-Host "Branch '$Branch' not found locally or on '$Remote'. Enter a base ref (leave blank to abort)"
-        if (-not $baseRef) {
-            Write-Host 'Aborting.'
+        $Branch = Read-Host 'Enter a branch to create a new worktree for'
+    }
+}
+$Branch = ($Branch ?? '').Trim()
+if (-not $Branch) {
+    Write-Error 'No branch supplied.'
+    Set-Location $initialLocation
+    exit 1
+}
+
+$selectedOption = $null
+if ($Branch -match '^[0-9]+$') {
+    $selectedOption = $branchOptions | Where-Object { $_.Index -eq [int]$Branch }
+    if (-not $selectedOption) {
+        Write-Error 'Invalid numeric selection.'
+        Set-Location $initialLocation
+        exit 1
+    }
+    $Branch = $selectedOption.Branch
+}
+
+$targetPath = $null
+if ($selectedOption) {
+    $targetPath = $selectedOption.Path
+}
+elseif ($branchMap.ContainsKey($Branch)) {
+    $entries = $branchMap[$Branch]
+    if ($entries.Count -gt 1) {
+        Write-Host "Branch '$Branch' is checked out in multiple worktrees:"
+        for ($i = 0; $i -lt $entries.Count; $i++) {
+            Write-Host "  [$(($i + 1))] $($entries[$i].Path)"
+        }
+        $choice = Read-Host 'Choose a worktree number'
+        if ($choice -match '^[0-9]+$' -and [int]$choice -ge 1 -and [int]$choice -le $entries.Count) {
+            $targetPath = $entries[[int]$choice - 1].Path
+        }
+        else {
+            Write-Error 'Invalid selection.'
+            Set-Location $initialLocation
             exit 1
         }
     }
+    else {
+        $targetPath = $entries[0].Path
+    }
 }
 
-if ($branchExists) {
-    Write-Host "Switching to existing branch '$Branch'..."
-    Invoke-Git @('switch',$Branch) | Out-Null
+if ($targetPath) {
+    Write-Host ''
+    Write-Host "Switching to branch '$Branch' at:"
+    Write-Host "  $targetPath"
+    Set-Location $targetPath
+    Write-Host ''
+    Write-Host 'Status:'
+    $summary = Invoke-Git @('status','-sb')
+    foreach ($line in $summary) {
+        Write-Host "  $line"
+    }
+    return
 }
-else {
-    if ($track) {
-        Write-Host "Creating branch '$Branch' tracking '$baseRef'..."
-        Invoke-Git @('switch','--create',$Branch,'--track',$baseRef) | Out-Null
+
+$sanitizedName = Sanitize-WorktreeName $Branch
+$parentDir = Split-Path -Parent $repoRoot
+if (-not $parentDir) { $parentDir = $repoRoot }
+$defaultPath = Normalize-Path (Join-Path $parentDir $sanitizedName)
+if ($defaultPath -eq $repoRoot) {
+    $defaultPath = Normalize-Path (Join-Path $parentDir ($sanitizedName + '-worktree'))
+}
+$counter = 1
+while (Test-Path $defaultPath) {
+    $defaultPath = Normalize-Path (Join-Path $parentDir ("$sanitizedName-$counter"))
+    $counter++
+}
+
+while (-not $targetPath) {
+    $pathInput = Read-Host "Branch '$Branch' has no worktree. Enter path for new worktree (default: $defaultPath)"
+    if ([string]::IsNullOrWhiteSpace($pathInput)) {
+        $targetPath = $defaultPath
     }
     else {
-        Write-Host "Creating branch '$Branch' from '$baseRef'..."
-        Invoke-Git @('switch','--create',$Branch,$baseRef) | Out-Null
+        if ([System.IO.Path]::IsPathRooted($pathInput)) {
+            $candidate = Normalize-Path $pathInput
+        }
+        else {
+            $candidate = Normalize-Path (Join-Path $parentDir $pathInput)
+        }
+        if (Test-Path $candidate) {
+            Write-Host "Path '$candidate' already exists. Choose another location."
+        }
+        else {
+            $targetPath = $candidate
+        }
+    }
+}
+
+$branchExists = Test-LocalBranch -Name $Branch
+if ($branchExists) {
+    Write-Host "Creating new worktree for existing branch '$Branch'..."
+    Invoke-Git @('worktree','add',$targetPath,$Branch) | Out-Null
+}
+else {
+    $remoteHasBranch = Test-RemoteBranch -RemoteName $Remote -Name $Branch
+    $baseRef = $null
+    $useTracking = $false
+
+    if ($remoteHasBranch) {
+        $response = Read-Host "Branch '$Branch' exists on '$Remote'. Track it in a new worktree? (Y/n)"
+        if ($response -and $response.Trim().ToLower().StartsWith('n')) {
+            $remoteHasBranch = $false
+        }
+        else {
+            $baseRef = "$Remote/$Branch"
+            $useTracking = $true
+        }
+    }
+
+    if (-not $remoteHasBranch) {
+        $prompt = "Enter base ref to create '$Branch' from (default: $defaultBase)"
+        $baseInput = Read-Host $prompt
+        if ([string]::IsNullOrWhiteSpace($baseInput)) {
+            $baseRef = $defaultBase
+        }
+        else {
+            $baseRef = $baseInput.Trim()
+        }
+        if (-not $baseRef) {
+            Write-Host 'Aborting.'
+            Set-Location $initialLocation
+            exit 1
+        }
+    }
+
+    if ($useTracking) {
+        Write-Host "Creating branch '$Branch' tracking '$baseRef' in new worktree..."
+        Invoke-Git @('worktree','add','--track','-b',$Branch,$targetPath,$baseRef) | Out-Null
+    }
+    else {
+        Write-Host "Creating branch '$Branch' from '$baseRef' in new worktree..."
+        Invoke-Git @('worktree','add','-b',$Branch,$targetPath,$baseRef) | Out-Null
     }
 }
 
 Write-Host ''
-Write-Host 'Current branch:'
-$current = Get-LastLine (Invoke-Git @('rev-parse','--abbrev-ref','HEAD'))
-Write-Host "  $current"
-
+Write-Host "Switched to new worktree for '$Branch':"
+Write-Host "  $targetPath"
+Set-Location $targetPath
 Write-Host ''
 Write-Host 'Status:'
-$summary = Invoke-Git @('status','-sb')
-foreach ($line in $summary) {
+$finalSummary = Invoke-Git @('status','-sb')
+foreach ($line in $finalSummary) {
     Write-Host "  $line"
 }
