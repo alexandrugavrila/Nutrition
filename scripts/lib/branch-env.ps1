@@ -33,6 +33,7 @@ function Set-BranchEnv {
   $offset  = [int]($hash[0] % 100)
 
   $env:REPO_ROOT       = $repoRoot
+  $env:BRANCH_WORKTREE_DIR = $repoRoot
   $env:BRANCH_NAME     = $branch
   $env:BRANCH_SANITIZED= $sanitized
   $env:COMPOSE_PROJECT = $project
