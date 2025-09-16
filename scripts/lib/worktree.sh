@@ -54,9 +54,9 @@ ensure_worktree() {
     return 0
   fi
 
-  # If a worktree already exists for this branch, use it.
+  # If a worktree already exists for this branch at the desired location, use it.
   if existing="$(_wt_find_for_branch "$branch")"; then
-    if [[ -n "$existing" ]]; then
+    if [[ -n "$existing" && "$existing" == "$desired" ]]; then
       cd "$existing"
       return 0
     fi

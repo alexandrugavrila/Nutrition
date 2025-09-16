@@ -46,9 +46,9 @@ if [[ "$branch" == "$base" ]]; then
 else
   if [[ "$repo_root" != "$desired" ]]; then
     if [[ ! -d "$desired" ]]; then
-      # If the branch already has a worktree elsewhere, prefer using it.
+      # If the branch already has a worktree at the desired path, prefer using it.
       existing="$(_wt_find_for_branch "$branch" 2>/dev/null || true)"
-      if [[ -n "$existing" ]]; then
+      if [[ -n "$existing" && "$existing" == "$desired" ]]; then
         info "Found existing worktree for '$branch' at: $existing"
         if $FIX; then
           info "Run: cd '$existing'"
