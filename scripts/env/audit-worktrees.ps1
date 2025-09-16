@@ -68,6 +68,7 @@ Write-Info "Default branch:       $defaultBranch"
 $branchToWorktree = [System.Collections.Generic.Dictionary[string,string]]::new()
 $expectedToBranch = [System.Collections.Generic.Dictionary[string,string]]::new()
 $script:Errors = [System.Collections.Generic.List[string]]::new()
+$script:OrphanedWorktrees = [System.Collections.Generic.List[pscustomobject]]::new()
 
 $script:CurrentWorktree = $null
 $script:CurrentBranchRef = $null
@@ -101,6 +102,21 @@ function Process-Entry {
   }
   else {
     $branch = $branchRef.Substring('refs/heads/'.Length)
+
+    git -C $repoRoot show-ref --verify --quiet ("refs/heads/$branch") *> $null
+    if ($LASTEXITCODE -ne 0) {
+      $wtFull = Normalize-Path $script:CurrentWorktree
+      $script:OrphanedWorktrees.Add([pscustomobject]@{
+        Branch = $branch
+        Worktree = $script:CurrentWorktree
+        WorktreeFull = $wtFull
+      }) | Out-Null
+      Write-Info "Branch '$branch' has no matching local ref. Marking worktree '$wtFull' for cleanup."
+      $script:CurrentWorktree = $null
+      $script:CurrentBranchRef = $null
+      $script:CurrentDetached = $false
+      return
+    }
 
     if ($branchToWorktree.ContainsKey($branch)) {
       Add-Error "Branch '$branch' has multiple worktrees: '${branchToWorktree[$branch]}' and '$($script:CurrentWorktree)'"
@@ -171,6 +187,25 @@ foreach ($line in $lines) {
 
 Process-Entry
 
+
+foreach ($orphan in $script:OrphanedWorktrees) {
+  Write-Info "Branch '${($orphan.Branch)}' is missing but worktree '${($orphan.WorktreeFull)}' remains."
+  $response = Read-Host "Remove this orphaned worktree? (y/N)"
+  if ($response -match '^[Yy]$') {
+    Write-Info "Removing orphaned worktree '${($orphan.WorktreeFull)}'..."
+    git -C $repoRoot worktree remove $($orphan.Worktree) *> $null
+    if ($LASTEXITCODE -eq 0) {
+      Write-Info "Removed worktree '${($orphan.WorktreeFull)}'."
+    }
+    else {
+      Add-Error "Failed to remove orphaned worktree '${($orphan.WorktreeFull)}' for missing branch '${($orphan.Branch)}'."
+    }
+  }
+  else {
+    Add-Error "Worktree '${($orphan.WorktreeFull)}' references missing branch '${($orphan.Branch)}'."
+  }
+}
+
 if ($script:Errors.Count -gt 0) {
   foreach ($err in $script:Errors) {
     [Console]::Error.WriteLine("[WORKTREE AUDIT] ERROR: $err")
@@ -179,3 +214,4 @@ if ($script:Errors.Count -gt 0) {
 }
 
 Write-Info 'All worktrees match the expected layout.'
+
