@@ -51,7 +51,7 @@ if ($branch -eq $base) {
 }
 else {
   if (-not (Test-Path $desired)) {
-    # If the branch already has a worktree elsewhere, prefer using it.
+    # If the branch already has a worktree elsewhere, validate it's not the primary root.
     $existing = $null
     $lines2 = git worktree list --porcelain | Out-String
     $blocks2 = ($lines2 -split "`r?`n`r?`n")
@@ -60,17 +60,46 @@ else {
       $br = ($blk -split "`r?`n") | Where-Object { $_ -like 'branch *' }  | ForEach-Object { ($_ -split ' ',3)[1] }
       if ($wt -and $br -and $br -eq "refs/heads/$branch") { $existing = $wt; break }
     }
-    # Compare paths without requiring them to exist
-    if ($existing -and ([System.IO.Path]::GetFullPath($existing) -ne [System.IO.Path]::GetFullPath($desired))) {
-      if ($Fix) {
-        Set-Location $existing
-        Write-Info "Using existing worktree for '$branch' at: $existing"
-        $repoRoot = Get-RepoRoot
-        # Treat the existing worktree as the expected location for subsequent checks
-        $desired = $existing
+    if ($existing) {
+      $existingFull = [System.IO.Path]::GetFullPath($existing)
+      $desiredFull  = [System.IO.Path]::GetFullPath($desired)
+      $primaryFull  = [System.IO.Path]::GetFullPath($primaryRoot)
+      if ($existingFull -eq $primaryFull) {
+        if ($Fix) {
+          Write-Info "Creating dedicated worktree for '$branch' at '$desired' (currently checked out in primary root)..."
+          $rootHead = (git -C $primaryRoot rev-parse --abbrev-ref HEAD).Trim()
+          if ($rootHead -eq $branch) {
+            $dirty = git -C $primaryRoot status --porcelain
+            if ($dirty) { Fail "Primary worktree ($primaryRoot) has uncommitted changes. Commit/stash before auto-creating worktree." }
+            Write-Info "Switching primary worktree to '$base' to free branch..."
+            git -C $primaryRoot switch $base | Out-Null
+          }
+          git worktree add $desired $branch | Out-Null
+          Set-Location $desired
+          Write-Info "Created and switched to: $desired"
+          $venvScript = Join-Path $desired 'scripts\env\activate-venv.ps1'
+          if (Test-Path $venvScript) {
+            Write-Info "Bootstrapping venv in the new worktree..."
+            & $venvScript
+          }
+          # refresh root after move
+          $repoRoot = Get-RepoRoot
+        }
+        else {
+          Fail "Branch '$branch' is currently checked out in the primary root. Re-run with -Fix to create a dedicated worktree at: $desired"
+        }
       }
       else {
-        Fail "Branch '$branch' already has a worktree at: $existing`nRe-run with -Fix to switch there."
+        if ($Fix) {
+          Set-Location $existing
+          Write-Info "Using existing dedicated worktree for '$branch' at: $existing"
+          $repoRoot = Get-RepoRoot
+          # Treat the existing worktree as the expected location for subsequent checks
+          $desired = $existing
+        }
+        else {
+          Fail "Branch '$branch' already has a worktree at: $existing`nRe-run with -Fix to switch there."
+        }
       }
     }
     elseif ($Fix) {
