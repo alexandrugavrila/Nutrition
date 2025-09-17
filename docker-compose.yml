@@ -29,7 +29,7 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - ./Backend:/app/Backend
+      - ${BRANCH_WORKTREE_DIR:-.}/Backend:/app/Backend
     command: >
       bash -c "set -eux; python -m pip install --break-system-packages -v -r Backend/requirements.txt;
       python -m pip show uvicorn;
@@ -47,7 +47,7 @@ services:
     depends_on:
       - backend
     volumes:
-      - ./Frontend:/app
+      - ${BRANCH_WORKTREE_DIR:-.}/Frontend:/app
       - node_modules:/app/node_modules
     environment:
       CHOKIDAR_USEPOLLING: "true"
@@ -62,7 +62,6 @@ services:
 volumes:
   dbdata:
   node_modules:
-    name: "${COMPOSE_PROJECT_NAME:-nutrition}_node_modules"
 
 
 networks:

@@ -15,10 +15,12 @@ branch_env_sanitize_branch() {
 }
 
 # Compute branch-specific environment variables and export them.
-# Sets: REPO_ROOT, BRANCH_NAME, BRANCH_SANITIZED, COMPOSE_PROJECT,
+# Sets: REPO_ROOT, BRANCH_WORKTREE_DIR, BRANCH_NAME, BRANCH_SANITIZED, COMPOSE_PROJECT,
 #       PORT_OFFSET, DEV_DB_PORT, DEV_BACKEND_PORT, DEV_FRONTEND_PORT, DATABASE_URL
 branch_env_load() {
   REPO_ROOT="$(branch_env_repo_root)"
+  # For clarity in compose and scripts, expose the current worktree directory explicitly.
+  BRANCH_WORKTREE_DIR="$REPO_ROOT"
   BRANCH_NAME="$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD | tr -d '\n')"
   BRANCH_SANITIZED="$(branch_env_sanitize_branch "$BRANCH_NAME")"
   COMPOSE_PROJECT="nutrition-$BRANCH_SANITIZED"
@@ -33,6 +35,6 @@ branch_env_load() {
   TEST_BACKEND_PORT=$((18000 + PORT_OFFSET))
   TEST_FRONTEND_PORT=$((13000 + PORT_OFFSET))
   DATABASE_URL="postgresql://nutrition_user:nutrition_pass@localhost:$DEV_DB_PORT/nutrition"
-  export REPO_ROOT BRANCH_NAME BRANCH_SANITIZED COMPOSE_PROJECT PORT_OFFSET \
+  export REPO_ROOT BRANCH_WORKTREE_DIR BRANCH_NAME BRANCH_SANITIZED COMPOSE_PROJECT PORT_OFFSET \
     DEV_DB_PORT DEV_BACKEND_PORT DEV_FRONTEND_PORT TEST_DB_PORT TEST_BACKEND_PORT TEST_FRONTEND_PORT DATABASE_URL
 }

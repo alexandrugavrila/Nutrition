@@ -1,160 +1,122 @@
-# 🍽️ Nutrition Tracker
+# Nutrition Tracker
 
 A full-stack nutrition planning and tracking app built with:
 
-- 🖥️ **React** frontend (Material UI + Context API)
-- 🐍 **FastAPI** backend (SQLModel)
-- 🐘 **PostgreSQL** database (seeded with food and nutrition data)
-- 🐳 **Docker** for development and deployment
+- React 18 + Vite + Material UI frontend
+- FastAPI + SQLModel backend
+- PostgreSQL database seeded with curated food data
+- Docker Compose orchestrated by branch-aware helper scripts
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
-### 1. Prerequisites
+1. Clone the repository.
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop)
-- [PowerShell 7+](https://learn.microsoft.com/powershell/) (Windows/macOS/Linux)
-- [DBeaver](https://dbeaver.io/download/) (optional, DB GUI)
+   ```pwsh
+   git clone https://github.com/alexandrugavrila/Nutrition
+   cd Nutrition
+   ```
 
-### 2. Clone & Launch
+2. (Optional) Create or jump to a dedicated worktree when you want hot reload and database state isolated per branch.
 
-```pwsh
-git clone https://github.com/alexandrugavrila/Nutrition
-cd Nutrition
+   ```pwsh
+   pwsh ./scripts/switch-worktree-branch.ps1 feature/my-feature
+   ```
+   - The script creates `../nutrition-feature-my-feature` if needed and reopens the folder in VS Code (use `-SkipVSCode` to opt out).
+   - Worktrees let every branch mount its own code directory and Postgres volume, so multiple stacks can run in parallel.
 
-# Start stack for this branch (dev ports)
-pwsh ./scripts/docker/compose.ps1 up data -test   # or data -prod
-```
+   Bash users can run the script through `pwsh` (PowerShell 7+ is cross-platform).
 
-👉 The script prints the branch-specific ports for frontend, backend, and database.
-Multiple branches can run in parallel without conflicts.
+3. Activate the developer environment (installs backend dependencies and keeps the virtualenv up to date).
 
-### 3. Access Services
+   ```pwsh
+   pwsh ./scripts/env/activate-venv.ps1
+   # or
+   source ./scripts/env/activate-venv.sh
+   ```
 
-- Frontend → `http://localhost:<DEV_FRONTEND_PORT>`
-- Backend API → `http://localhost:<DEV_BACKEND_PORT>`
-- PostgreSQL → `localhost:<DEV_DB_PORT>`
+   To verify the current shell is in the right worktree with an active venv, run `pwsh ./scripts/env/check.ps1 -Fix` (or `./scripts/env/check.sh --fix`).
 
-### 4. Environment Variables
+4. Start the branch-local Docker stack.
 
-The frontend dev server proxies `/api` requests to the backend. By default it targets the branch-specific port printed above. Set `BACKEND_URL` to point at a different backend host.
+   ```pwsh
+   pwsh ./scripts/docker/compose.ps1 up data -test
+   ```
+   - Replace `-test` with `-prod` to seed production-like data.
+   - Add `type -test` to run on the dedicated test ports (used by the end-to-end suite).
 
-### 5. Frontend Commands
+   The script prints the branch-specific ports and waits until the services are ready:
+   - Frontend: `http://localhost:<DEV_FRONTEND_PORT>`
+   - Backend API: `http://localhost:<DEV_BACKEND_PORT>/docs`
+   - PostgreSQL: `localhost:<DEV_DB_PORT>`
 
-Run the React app directly without Docker:
+5. Visit the printed URLs or connect a SQL client (default credentials: `nutrition_user` / `nutrition_pass`).
 
-```bash
-npm --prefix Frontend run dev     # start dev server
-npm --prefix Frontend run build   # production build
-npm --prefix Frontend run preview # preview build
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full contributor workflow details.
-
-### 6. Database Migrations (local)
-
-When running Alembic locally (outside Docker), point it at the backend config:
-
-```bash
-alembic -c Backend/alembic.ini upgrade head
-```
-
-This ensures Alembic finds the migration scripts under `Backend/migrations/`.
-
-### 7. Run Tests
-
-```bash
-./scripts/run-tests.sh        # Bash
-pwsh ./scripts/run-tests.ps1  # PowerShell
-```
-
-Pass `--e2e` to also run the end-to-end API suite. The e2e runner stands up a dedicated test stack (on TEST ports) and tears it down after tests.
-
-### 8. Database Backups
-
-```bash
-./scripts/db/backup.sh        # Bash
-pwsh ./scripts/db/backup.ps1  # PowerShell
-```
-
-Backups are written to `Database/backups/` with timestamped filenames.
-
-Restore the most recent dump for the current branch:
-
-```bash
-./scripts/db/restore.sh
-pwsh ./scripts/db/restore.ps1
-```
-
-Or restore a specific file:
-
-```bash
-./scripts/db/restore.sh Database/backups/<file>
-pwsh ./scripts/db/restore.ps1 Database/backups/<file>
-```
-
-If your local schema has drifted and restore fails with dependency errors, reset the schema first:
-
-```bash
-./scripts/db/restore.sh --reset-schema
-pwsh ./scripts/db/restore.ps1 -ResetSchema
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
 
 ---
 
-## 🗂️ Project Structure
+## Key Helper Scripts
+
+- `pwsh ./scripts/repo/check.ps1`: fetch latest refs, audit worktrees, and suggest fixes. Bash: `./scripts/repo/check.sh`.
+- `pwsh ./scripts/switch-worktree-branch.ps1`: create or hop between branch-dedicated worktrees.
+- `pwsh ./scripts/env/check.ps1 -Fix`: ensure you are inside the correct worktree with an activated virtualenv (Bash variant available).
+- `pwsh ./scripts/docker/compose.ps1 <up|down|restart>`: manage the per-branch Docker stack.
+- `pwsh ./scripts/run-tests.ps1 [-sync] [-e2e]`: run backend + frontend tests with optional API/migration sync. Bash variant: `./scripts/run-tests.sh`.
+- `pwsh ./scripts/db/backup.ps1` / `restore.ps1`: create or restore branch-local Postgres backups. Bash variants available in the same directory.
+
+---
+
+## Worktrees & Branch Isolation
+
+- The default branch (`main`) lives in the primary clone.
+- Feature branches should run from sibling worktrees named `nutrition-<sanitized-branch>`.
+- Each worktree gets unique compose project names, container names, ports, and Postgres volumes via the branch-aware scripts.
+- Run `pwsh ./scripts/repo/sync-branches.ps1` to mirror new remote branches and `pwsh ./scripts/repo/audit-worktrees.ps1` to confirm every branch maps to exactly one worktree.
+- More details and troubleshooting live in [CONTRIBUTING.md](CONTRIBUTING.md#branching--worktrees).
+
+---
+
+## Project Structure
 
 ```
 Nutrition/
-├── Backend/        # FastAPI app (models, routes, db)
-├── Frontend/       # React app
-├── Database/       # CSV seed data + import utils
+├── Backend/       # FastAPI app (routes, models, migrations)
+├── Frontend/      # React app (Vite + Material UI)
+├── Database/      # CSV seed data and backup scripts
 ├── docker-compose.yml
-└── scripts/        # Helper scripts
-    ├── docker/     # Compose up/down and stack management
-    ├── db/         # Database and API schema utilities
-    ├── env/        # Virtualenv setup helpers
-    └── tests/      # Test runners and helpers
+└── scripts/       # Cross-platform helper scripts
+    ├── db/        # Database + OpenAPI utilities
+    ├── docker/    # Compose orchestration
+    ├── env/       # Virtualenv + environment checks
+    ├── lib/       # Shared script helpers
+    ├── repo/      # Worktree and branch management
+    └── tests/     # E2E harness
 ```
 
 ---
 
-## 🧠 Core Concepts
+## Core Concepts
 
-- **Backend** → API routes in `Backend/routes/`, models in `Backend/models/`
-- **Frontend** → React app in `Frontend/`, global `DataContext.js` for state
-- **Database** → Schema managed with Alembic migrations, optional CSV seed data
-
----
-
-## ✅ API Endpoints
-
-**Ingredients**
-
-- `GET /ingredients` – list all
-- `GET /ingredients/{id}` – single ingredient
-- `GET /ingredients/possible_tags` – list tags
-- `POST /ingredients` – add new
-- `PUT /ingredients/{id}` – update
-- `DELETE /ingredients/{id}` – remove
-
-Each ingredient persists a base unit named `g` with `grams == 1`.
-
-**Foods**
-
-- `GET /foods` – list all
-- `GET /foods/{id}` – single food
-- `GET /foods/possible_tags` – list tags
-- `POST /foods` – add new
-- `PUT /foods/{id}` – update
-- `DELETE /foods/{id}` – remove
+- **Backend** – FastAPI routes under `Backend/routes`, models in `Backend/models`, migrations in `Backend/migrations`.
+- **Frontend** – React application under `Frontend/` with shared state in `Frontend/src/context`.
+- **Database** – Postgres schema managed by Alembic; branch scripts seed either test or production-style fixtures.
+- **Automation** – Helper scripts keep API artifacts (OpenAPI + TypeScript types) and migrations in sync.
 
 ---
 
-## 📊 Diagrams
+## API Highlights
+
+- `GET /ingredients` / `POST /ingredients` – list and create ingredients.
+- `GET /foods` / `POST /foods` – list and create composite foods.
+- `GET /ingredients/possible_tags` / `GET /foods/possible_tags` – discover available filters.
+
+Detailed endpoint documentation is available at `http://localhost:<DEV_BACKEND_PORT>/docs` when the backend container is running.
+
+---
+
+## Diagrams
 
 <details>
 <summary>Backend Schema (Mermaid)</summary>
@@ -186,7 +148,6 @@ classDiagram
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-For **developer setup, migrations, OpenAPI generation, commit checklist, and CI/CD details**, see
-👉 [CONTRIBUTING.md](CONTRIBUTING.md)
+For environment setup, migrations, API schema generation, commit checklist, and CI details, read [CONTRIBUTING.md](CONTRIBUTING.md).
