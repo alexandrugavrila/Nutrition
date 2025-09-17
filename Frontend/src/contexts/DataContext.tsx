@@ -120,18 +120,27 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         .create()({});
       const processed = data.map((ingredient) => {
         const unitsWithFloatGrams =
-          ingredient.units?.map((unit) => ({
-            ...unit,
-            grams: parseFloat(String(unit.grams)),
-          })) ?? [];
+          ingredient.units?.map((unit) => {
+            const normalizedId =
+              unit.id === undefined || unit.id === null ? null : Number(unit.id);
+            return {
+              ...unit,
+              id: normalizedId,
+              grams: parseFloat(String(unit.grams)),
+            };
+          }) ?? [];
         const defaultUnit =
           unitsWithFloatGrams.find((unit) => unit.name === "g" && unit.grams === 1) ||
           unitsWithFloatGrams.find((unit) => unit.grams === 1) ||
           unitsWithFloatGrams[0];
+        const selectedUnitId =
+          defaultUnit && defaultUnit.id !== undefined && defaultUnit.id !== null
+            ? defaultUnit.id
+            : null;
         return {
           ...ingredient,
           units: unitsWithFloatGrams,
-          selectedUnitId: defaultUnit ? defaultUnit.id : null,
+          selectedUnitId,
         };
       });
       setIngredients(processed);
@@ -310,3 +319,4 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 };
+
