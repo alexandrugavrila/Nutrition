@@ -23,7 +23,7 @@ const initialState = {
   ingredientToEdit: {
     name: "",
     id: crypto.randomUUID(),
-    units: [{ id: "0", ingredient_id: crypto.randomUUID(), name: "1g", grams: "1" }],
+    units: [{ id: "0", ingredient_id: crypto.randomUUID(), name: "g", grams: "1" }],
     nutrition: {
       calories: 0,
       protein: 0,
@@ -67,7 +67,7 @@ function IngredientForm({ ingredientToEditData }) {
   const initializeEmptyIngredient = () => ({
     name: "",
     id: crypto.randomUUID(),
-    units: [{ id: "0", ingredient_id: crypto.randomUUID(), name: "1g", grams: "1" }],
+    units: [{ id: "0", ingredient_id: crypto.randomUUID(), name: "g", grams: "1" }],
     nutrition: {
       calories: 0,
       protein: 0,
@@ -93,7 +93,7 @@ function IngredientForm({ ingredientToEditData }) {
     const toDatabaseIngredient = {
       ...ingredientToEdit,
       units: ingredientToEdit.units
-        .filter((unit) => unit.name !== "1g") // Remove the 1g unit from ingredientToEdit
+        .filter((unit) => unit.name !== "g") // Remove the g unit from ingredientToEdit
         .map(({ id, ...unit }) =>
           typeof id === "number" ? { id, ...unit } : unit
         ),
