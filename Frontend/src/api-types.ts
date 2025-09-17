@@ -38,6 +38,11 @@ export interface paths {
     /**
      * Update Ingredient
      * @description Update an existing ingredient.
+     *
+     * Important: Avoid deleting existing units on update to preserve referential
+     * integrity for rows in food_ingredients that reference them. Instead,
+     * upsert provided units (update by id or insert new). Existing units not in
+     * the payload are left unchanged.
      */
     put: operations["update_ingredient_api_ingredients__ingredient_id__put"];
     /**
@@ -215,6 +220,18 @@ export interface components {
       grams: number;
     };
     /**
+     * IngredientUnitUpdate
+     * @description Schema for updating ingredient unit data (allows id for upsert).
+     */
+    IngredientUnitUpdate: {
+      /** Id */
+      id?: number | null;
+      /** Name */
+      name: string;
+      /** Grams */
+      grams: number;
+    };
+    /**
      * IngredientUpdate
      * @description Schema for updating an ingredient.
      */
@@ -223,7 +240,7 @@ export interface components {
       name: string;
       nutrition?: components["schemas"]["NutritionCreate"] | null;
       /** Units */
-      units?: components["schemas"]["IngredientUnitCreate"][];
+      units?: components["schemas"]["IngredientUnitUpdate"][];
       /** Tags */
       tags?: components["schemas"]["TagRef"][];
     };
@@ -428,6 +445,11 @@ export interface operations {
   /**
    * Update Ingredient
    * @description Update an existing ingredient.
+   *
+   * Important: Avoid deleting existing units on update to preserve referential
+   * integrity for rows in food_ingredients that reference them. Instead,
+   * upsert provided units (update by id or insert new). Existing units not in
+   * the payload are left unchanged.
    */
   update_ingredient_api_ingredients__ingredient_id__put: {
     parameters: {
