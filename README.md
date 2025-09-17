@@ -59,7 +59,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
 
 ## Key Helper Scripts
 
-- `pwsh ./scripts/repo/check.ps1`: fetch latest refs, audit worktrees, and suggest fixes. Bash: `./scripts/repo/check.sh`.
+- `pwsh ./scripts/repo/check.ps1`: fetch latest refs, audit worktrees, flag stale container stacks, and suggest fixes. Bash: `./scripts/repo/check.sh`.
 - `pwsh ./scripts/switch-worktree-branch.ps1`: create or hop between branch-dedicated worktrees.
 - `pwsh ./scripts/env/check.ps1 -Fix`: ensure you are inside the correct worktree with an activated virtualenv (Bash variant available).
 - `pwsh ./scripts/docker/compose.ps1 <up|down|restart>`: manage the per-branch Docker stack.
@@ -151,3 +151,4 @@ classDiagram
 ## Contributing
 
 For environment setup, migrations, API schema generation, commit checklist, and CI details, read [CONTRIBUTING.md](CONTRIBUTING.md).
+

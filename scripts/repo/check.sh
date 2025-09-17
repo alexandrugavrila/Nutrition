@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # scripts/repo/check.sh
-# Orchestrates repository health checks by syncing branches and auditing worktrees.
+# Orchestrates repository health checks by syncing branches, auditing worktrees, and flagging stale container sets.
 
 set -euo pipefail
 
@@ -8,14 +8,15 @@ usage() {
   cat <<'USAGE'
 Usage: scripts/repo/check.sh [options]
 
-Runs sync-branches followed by audit-worktrees. Non-control options are passed
-to sync-branches. Use --skip-sync or --skip-audit to bypass individual steps.
+Runs sync-branches followed by audit-worktrees and container-set auditing. Non-control options are passed
+to sync-branches. Use --skip-sync, --skip-audit, or --skip-containers to bypass individual steps.
 USAGE
 }
 
 SYNC_ARGS=()
 SKIP_SYNC=false
 SKIP_AUDIT=false
+SKIP_CONTAINERS=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -24,6 +25,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-audit)
       SKIP_AUDIT=true
+      ;;
+    --skip-containers)
+      SKIP_CONTAINERS=true
       ;;
     -h|--help)
       usage
@@ -52,4 +56,8 @@ fi
 
 if [[ "$SKIP_AUDIT" == false ]]; then
   "$SCRIPT_DIR/audit-worktrees.sh"
+fi
+
+if [[ "$SKIP_CONTAINERS" == false ]]; then
+  "$SCRIPT_DIR/audit-container-sets.sh"
 fi

@@ -34,7 +34,7 @@ Recommended flow when starting or updating a branch:
    ./scripts/repo/check.sh
    ```
 
-   The command runs `sync-branches` (fetch, prune, create local tracking branches) and `audit-worktrees` (ensures every branch maps to exactly one worktree, the default branch stays in the primary clone, and no worktree is detached).
+   The command runs `sync-branches` (fetch, prune, create local tracking branches), `audit-worktrees` (ensures every branch maps to exactly one worktree, the default branch stays in the primary clone, and no worktree is detached), and `audit-container-sets` (flags Docker Compose projects for branches that no longer exist).
 
 2. Create or switch to the branch in Git:
 
@@ -70,6 +70,7 @@ Other repo utilities:
 
 - `pwsh ./scripts/repo/sync-branches.ps1 [-DryRun] [-NoFetch]`: refresh local branches, pruning deleted refs, and optionally create worktrees for new branches.
 - `pwsh ./scripts/repo/audit-worktrees.ps1`: report orphaned or misconfigured worktrees without fetching.
+- `pwsh ./scripts/repo/audit-container-sets.ps1`: flag Docker Compose projects whose branches no longer exist.
 - Bash equivalents for both commands live next to the PowerShell versions.
 
 ---
