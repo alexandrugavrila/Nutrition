@@ -25,7 +25,7 @@ const initialState = {
   ingredient: /** @type {any} */ ({
     name: "",
     id: crypto.randomUUID(),
-    units: [{ id: "0", ingredient_id: crypto.randomUUID(), name: "1g", grams: "1" }],
+    units: [{ id: "0", ingredient_id: crypto.randomUUID(), name: "g", grams: "1" }],
     nutrition: {
       calories: 0,
       protein: 0,
@@ -69,7 +69,7 @@ function IngredientEditor({ mode, initial = null, onSaved, onDeleted }) {
   const initializeEmpty = () => ({
     name: "",
     id: crypto.randomUUID(),
-    units: [{ id: "0", ingredient_id: crypto.randomUUID(), name: "1g", grams: "1" }],
+    units: [{ id: "0", ingredient_id: crypto.randomUUID(), name: "g", grams: "1" }],
     nutrition: {
       calories: 0,
       protein: 0,
@@ -91,7 +91,7 @@ function IngredientEditor({ mode, initial = null, onSaved, onDeleted }) {
     const toDatabaseIngredient = {
       ...ingredient,
       units: ingredient.units
-        .filter((unit) => unit.name !== "1g")
+        .filter((unit) => unit.name !== "g")
         .map(({ id, ...unit }) => (typeof id === "number" ? { id, ...unit } : unit)),
     };
 

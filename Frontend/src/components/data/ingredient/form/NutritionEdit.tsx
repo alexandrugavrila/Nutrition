@@ -40,21 +40,39 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
     setDisplayedNutrition(normalized);
 
     // Calculate nutrition per gram
+    const baseMultiplier = multiplier || 1;
     const updatedNutrition = {
-      calories: normalized.calories / multiplier,
-      protein: normalized.protein / multiplier,
-      carbohydrates: normalized.carbohydrates / multiplier,
-      fat: normalized.fat / multiplier,
-      fiber: normalized.fiber / multiplier,
+      calories: normalized.calories / baseMultiplier,
+      protein: normalized.protein / baseMultiplier,
+      carbohydrates: normalized.carbohydrates / baseMultiplier,
+      fat: normalized.fat / baseMultiplier,
+      fiber: normalized.fiber / baseMultiplier,
     };
     dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, nutrition: updatedNutrition } });
   };
 
   useEffect(() => {
-    if (ingredient && ingredient.units && ingredient.selectedUnitId) {
-      setMultiplier(ingredient.units.find((unit) => unit.id === ingredient.selectedUnitId).grams);
+    if (!ingredient) return;
+
+    const units = ingredient.units || [];
+    const selectedUnit = units.find((unit) => unit.id === ingredient.selectedUnitId) || units[0];
+    const parsedGrams = parseFloat(String(selectedUnit?.grams ?? 1));
+    const safeMultiplier = Number.isFinite(parsedGrams) && parsedGrams > 0 ? parsedGrams : 1;
+
+    if (safeMultiplier !== multiplier) {
+      setMultiplier(safeMultiplier);
     }
-  }, [ingredient]); // Sets multiplier on ingredient.selectedUnitId change
+
+    if (!needsClearForm) {
+      setDisplayedNutrition({
+        calories: (ingredient.nutrition?.calories ?? 0) * safeMultiplier,
+        protein: (ingredient.nutrition?.protein ?? 0) * safeMultiplier,
+        carbohydrates: (ingredient.nutrition?.carbohydrates ?? 0) * safeMultiplier,
+        fat: (ingredient.nutrition?.fat ?? 0) * safeMultiplier,
+        fiber: (ingredient.nutrition?.fiber ?? 0) * safeMultiplier,
+      });
+    }
+  }, [ingredient, multiplier, needsClearForm]); // Sync displayed nutrition when units or base values change
 
   useEffect(() => {
     if (needsClearForm) {
@@ -82,11 +100,11 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
   useEffect(() => {
     if (needsFillForm) {
       setDisplayedNutrition({
-        calories: ingredient.nutrition.calories * multiplier,
-        protein: ingredient.nutrition.protein * multiplier,
-        carbohydrates: ingredient.nutrition.carbohydrates * multiplier,
-        fat: ingredient.nutrition.fat * multiplier,
-        fiber: ingredient.nutrition.fiber * multiplier,
+        calories: (ingredient.nutrition?.calories ?? 0) * multiplier,
+        protein: (ingredient.nutrition?.protein ?? 0) * multiplier,
+        carbohydrates: (ingredient.nutrition?.carbohydrates ?? 0) * multiplier,
+        fat: (ingredient.nutrition?.fat ?? 0) * multiplier,
+        fiber: (ingredient.nutrition?.fiber ?? 0) * multiplier,
       });
     }
   }, [needsFillForm, ingredient, multiplier]); // Fills the form on needsFillForm

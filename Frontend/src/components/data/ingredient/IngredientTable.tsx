@@ -51,7 +51,16 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
   };
 
   const handleUnitChange = (event, ingredientId) => {
-    const selectedUnitId = event.target.value; // Store only the id of the selected unit
+    const rawValue = event.target.value;
+    let selectedUnitId = null;
+    if (rawValue !== "" && rawValue !== null && rawValue !== undefined) {
+      if (typeof rawValue === "number") {
+        selectedUnitId = rawValue;
+      } else {
+        const parsed = Number(rawValue);
+        selectedUnitId = Number.isNaN(parsed) ? null : parsed;
+      }
+    }
     setIngredients((prevIngredients) =>
       prevIngredients.map((ingredient) =>
         ingredient.id === ingredientId
@@ -71,6 +80,33 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
   const handleItemsPerPageChange = (event) => {
     setItemsPerPage(parseInt(event.target.value, 10));
     setCurrentPage(1); // Reset to first page when items per page changes
+  };
+  const resolveSelectedUnit = (ingredient) => {
+    if (!ingredient.units || ingredient.units.length === 0) {
+      return null;
+    }
+    const selectedId = ingredient.selectedUnitId;
+    if (selectedId === null || selectedId === undefined || selectedId === "") {
+      return (
+        ingredient.units.find((unit) => unit.name === "g" && unit.grams === 1) ||
+        ingredient.units.find((unit) => unit.grams === 1) ||
+        ingredient.units[0]
+      );
+    }
+    const numericId =
+      typeof selectedId === "number" ? selectedId : Number(selectedId);
+    if (!Number.isNaN(numericId)) {
+      const match = ingredient.units.find((unit) => unit.id === numericId);
+      if (match) {
+        return match;
+      }
+    }
+    // Fall back to the 1g entry when the backend sends a synthetic unit without an id.
+    return (
+      ingredient.units.find((unit) => unit.name === "g" && unit.grams === 1) ||
+      ingredient.units.find((unit) => unit.grams === 1) ||
+      ingredient.units[0]
+    );
   };
   //#endregion Handles
 
@@ -168,34 +204,40 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentIngredients.map((ingredient) => (
-              <TableRow
-                key={ingredient.id}
-                onDoubleClick={() => handleIngredientDoubleClick(ingredient)}
-                onClick={(event) => handleIngredientClick(event, ingredient)}>
-                <TableCell>{ingredient.name}</TableCell>
-                <TableCell>
-                  <Select
-                    value={ingredient.selectedUnitId}
-                    size="small"
-                    onChange={(event) => handleUnitChange(event, ingredient.id)}
-                    style={{ minWidth: "120px", display: "inline-block" }}>
-                    {ingredient.units.map((unit) => (
-                      <MenuItem
-                        key={unit.id}
-                        value={unit.id}>
-                        {unit.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </TableCell>
-                <TableCell>{formatCellNumber(ingredient.nutrition.calories * (ingredient.units.find((unit) => unit.id === ingredient.selectedUnitId)?.grams || 1))}</TableCell>
-                <TableCell>{formatCellNumber(ingredient.nutrition.protein * (ingredient.units.find((unit) => unit.id === ingredient.selectedUnitId)?.grams || 1))}</TableCell>
-                <TableCell>{formatCellNumber(ingredient.nutrition.carbohydrates * (ingredient.units.find((unit) => unit.id === ingredient.selectedUnitId)?.grams || 1))}</TableCell>
-                <TableCell>{formatCellNumber(ingredient.nutrition.fat * (ingredient.units.find((unit) => unit.id === ingredient.selectedUnitId)?.grams || 1))}</TableCell>
-                <TableCell>{formatCellNumber(ingredient.nutrition.fiber * (ingredient.units.find((unit) => unit.id === ingredient.selectedUnitId)?.grams || 1))}</TableCell>
-              </TableRow>
-            ))}
+            {currentIngredients.map((ingredient) => {
+              const selectedUnit = resolveSelectedUnit(ingredient);
+              const gramsPerUnit = selectedUnit?.grams ?? 1;
+              return (
+                <TableRow
+                  key={ingredient.id}
+                  onDoubleClick={() => handleIngredientDoubleClick(ingredient)}
+                  onClick={(event) => handleIngredientClick(event, ingredient)}>
+                  <TableCell>{ingredient.name}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={ingredient.selectedUnitId ?? ""}
+                      size="small"
+                      displayEmpty
+                      renderValue={() => selectedUnit?.name ?? ""}
+                      onChange={(event) => handleUnitChange(event, ingredient.id)}
+                      style={{ minWidth: "120px", display: "inline-block" }}>
+                      {ingredient.units.map((unit) => (
+                        <MenuItem
+                          key={unit.id ?? `${ingredient.id}-${unit.name}`}
+                          value={unit.id ?? ""}>
+                          {unit.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </TableCell>
+                  <TableCell>{formatCellNumber((ingredient.nutrition?.calories ?? 0) * gramsPerUnit)}</TableCell>
+                  <TableCell>{formatCellNumber((ingredient.nutrition?.protein ?? 0) * gramsPerUnit)}</TableCell>
+                  <TableCell>{formatCellNumber((ingredient.nutrition?.carbohydrates ?? 0) * gramsPerUnit)}</TableCell>
+                  <TableCell>{formatCellNumber((ingredient.nutrition?.fat ?? 0) * gramsPerUnit)}</TableCell>
+                  <TableCell>{formatCellNumber((ingredient.nutrition?.fiber ?? 0) * gramsPerUnit)}</TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>
