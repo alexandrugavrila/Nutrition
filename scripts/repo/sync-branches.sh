@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# scripts/env/sync-worktrees.sh
+# scripts/repo/sync-branches.sh
 # Synchronizes local git branches and worktrees with the remote origin.
 
 set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/env/sync-worktrees.sh [options]
+Usage: scripts/repo/sync-branches.sh [options]
 
 Options:
   --no-fetch   Skip fetching remote updates before syncing.
@@ -17,11 +17,11 @@ USAGE
 }
 
 info() {
-  printf '[WORKTREE SYNC] %s\n' "$*"
+  printf '[BRANCH SYNC] %s\n' "$*"
 }
 
 warn() {
-  printf '[WORKTREE SYNC] WARNING: %s\n' "$*" >&2
+  printf '[BRANCH SYNC] WARNING: %s\n' "$*" >&2
 }
 
 confirm() {
@@ -46,7 +46,7 @@ import os, sys
 print(os.path.abspath(sys.argv[1]))
 PY
     ); then
-      printf '%s\n' "$result"
+      printf '%s[BRANCH SYNC]' "$result"
       return 0
     fi
   elif command -v python >/dev/null 2>&1; then
@@ -55,14 +55,14 @@ import os, sys
 print(os.path.abspath(sys.argv[1]))
 PY
     ); then
-      printf '%s\n' "$result"
+      printf '%s[BRANCH SYNC]' "$result"
       return 0
     fi
   fi
 
   if command -v realpath >/dev/null 2>&1; then
     if result=$(realpath "$path" 2>/dev/null); then
-      printf '%s\n' "$result"
+      printf '%s[BRANCH SYNC]' "$result"
       return 0
     fi
   fi
@@ -72,10 +72,10 @@ PY
   base=$(basename "$path")
   if [[ -d "$dir" ]]; then
     (
-      cd "$dir" 2>/dev/null && printf '%s/%s\n' "$(pwd -P)" "$base"
+      cd "$dir" 2>/dev/null && printf '%s/%s[BRANCH SYNC]' "$(pwd -P)" "$base"
     ) && return 0
   fi
-  printf '%s\n' "$path"
+  printf '%s[BRANCH SYNC]' "$path"
 }
 
 NO_FETCH=false
@@ -92,12 +92,12 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     -* )
-      printf 'Unknown option: %s\n\n' "$1" >&2
+      printf 'Unknown option: %s[BRANCH SYNC][BRANCH SYNC]' "$1" >&2
       usage >&2
       exit 1
       ;;
     * )
-      printf 'Unexpected argument: %s\n\n' "$1" >&2
+      printf 'Unexpected argument: %s[BRANCH SYNC][BRANCH SYNC]' "$1" >&2
       usage >&2
       exit 1
       ;;
@@ -113,7 +113,7 @@ source "$ROOT_DIR/scripts/lib/worktree.sh"
 
 repo_root="$(_wt_repo_root)"
 if [[ -z "$repo_root" ]]; then
-  printf '[WORKTREE SYNC] Failed to resolve repository root.\n' >&2
+  printf '[BRANCH SYNC] Failed to resolve repository root.[BRANCH SYNC]' >&2
   exit 1
 fi
 repo_root="$(normalize_path "$repo_root")"
@@ -141,7 +141,7 @@ fi
 default_branch="$(_wt_default_branch)"
 info "Default branch: $default_branch"
 
-common_git_dir="$(git -C "$repo_root" rev-parse --git-common-dir | tr -d '\r')"
+common_git_dir="$(git -C "$repo_root" rev-parse --git-common-dir | tr -d '[BRANCH SYNC]')"
 if [[ "$common_git_dir" != /* && ! "$common_git_dir" =~ ^[A-Za-z]:/ ]]; then
   common_git_dir="$repo_root/$common_git_dir"
 fi
@@ -150,10 +150,10 @@ primary_root="$(cd "$common_git_dir/.." && pwd -P)"
 parent_dir="$(dirname "$primary_root")"
 
 declare -a local_branches=()
-mapfile -t local_branches < <(git -C "$repo_root" for-each-ref --format '%(refname:short)' refs/heads | tr -d '\r' | awk 'NF')
+mapfile -t local_branches < <(git -C "$repo_root" for-each-ref --format '%(refname:short)' refs/heads | tr -d '[BRANCH SYNC]' | awk 'NF')
 
 declare -a remote_branches_raw=()
-mapfile -t remote_branches_raw < <(git -C "$repo_root" for-each-ref --format '%(refname:short)' refs/remotes/origin | tr -d '\r' | awk 'NF')
+mapfile -t remote_branches_raw < <(git -C "$repo_root" for-each-ref --format '%(refname:short)' refs/remotes/origin | tr -d '[BRANCH SYNC]' | awk 'NF')
 
 declare -a remote_branches=()
 for ref in "${remote_branches_raw[@]}"; do
@@ -191,7 +191,7 @@ done
 
 sorted_local_only=()
 if ((${#local_only[@]} > 0)); then
-  mapfile -t sorted_local_only < <(printf '%s\n' "${local_only[@]}" | sort)
+  mapfile -t sorted_local_only < <(printf '%s[BRANCH SYNC]' "${local_only[@]}" | sort)
   info 'Local branches without matching origin branch:'
   for branch in "${sorted_local_only[@]}"; do
     info "  $branch"
@@ -202,7 +202,7 @@ fi
 
 sorted_remote_only=()
 if ((${#remote_only[@]} > 0)); then
-  mapfile -t sorted_remote_only < <(printf '%s\n' "${remote_only[@]}" | sort)
+  mapfile -t sorted_remote_only < <(printf '%s[BRANCH SYNC]' "${remote_only[@]}" | sort)
   info 'Remote branches without local copies:'
   for branch in "${sorted_remote_only[@]}"; do
     info "  $branch"
@@ -234,10 +234,10 @@ load_worktrees() {
       continue
     fi
     case "$line" in
-      worktree\ *)
+      worktree[BRANCH SYNC]*)
         current_wt="${line#worktree }"
         ;;
-      branch\ *)
+      branch[BRANCH SYNC]*)
         current_branch="${line#branch }"
         ;;
       detached)
@@ -246,7 +246,7 @@ load_worktrees() {
       *)
         ;;
     esac
-  done < <(git -C "$repo_root" worktree list --porcelain | tr -d '\r')
+  done < <(git -C "$repo_root" worktree list --porcelain | tr -d '[BRANCH SYNC]')
   if [[ -n "$current_wt" ]]; then
     WT_PATHS+=("$current_wt")
     WT_BRANCH_REFS+=("$current_branch")
@@ -401,7 +401,7 @@ for idx in "${!WT_PATHS[@]}"; do
     if [[ -z "${branch_worktree_map[$branch]:-}" ]]; then
       branch_worktree_map["$branch"]="$path_norm"
     else
-      branch_worktree_map["$branch"]+=$'\n'"$path_norm"
+      branch_worktree_map["$branch"]+=$'[BRANCH SYNC]'"$path_norm"
     fi
   fi
 done
@@ -425,7 +425,7 @@ fi
 
 sorted_locals=()
 if ((${#local_branches[@]} > 0)); then
-  mapfile -t sorted_locals < <(printf '%s\n' "${local_branches[@]}" | sort)
+  mapfile -t sorted_locals < <(printf '%s[BRANCH SYNC]' "${local_branches[@]}" | sort)
 fi
 
 for branch in "${sorted_locals[@]}"; do
@@ -503,5 +503,4 @@ for branch in "${sorted_locals[@]}"; do
   fi
 done
 
-info 'Sync complete. Run scripts/env/audit-worktrees.sh for a final validation if desired.'
-
+info 'Sync complete. Run scripts/repo/audit-worktrees.sh for a final validation if desired.'

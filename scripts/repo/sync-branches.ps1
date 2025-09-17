@@ -1,4 +1,4 @@
-# scripts/env/sync-worktrees.ps1
+# scripts/repo/sync-branches.ps1
 # Synchronizes local branches and git worktrees with the remote origin.
 
 param(
@@ -12,12 +12,12 @@ $ErrorActionPreference = 'Stop'
 
 function Write-Info {
   param([string]$Message)
-  Write-Host "[WORKTREE SYNC] $Message"
+  Write-Host "[BRANCH SYNC] $Message"
 }
 
 function Write-Warn {
   param([string]$Message)
-  Write-Warning "[WORKTREE SYNC] $Message"
+  Write-Warning "[BRANCH SYNC] $Message"
 }
 
 function Confirm-Action {
@@ -337,5 +337,7 @@ foreach ($branch in ($localBranches | Sort-Object)) {
   }
 }
 
-Write-Info 'Sync complete. Run scripts/env/audit-worktrees.ps1 for a final validation if desired.'
+Write-Info 'Sync complete. Run scripts/repo/audit-worktrees.ps1 for a final validation if desired.'
+
+
 

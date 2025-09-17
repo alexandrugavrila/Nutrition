@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/env/audit-worktrees.sh
+# scripts/repo/audit-worktrees.sh
 # Audits all git worktrees to ensure each branch maps to exactly one worktree
 # and each worktree follows the expected nutrition-<branch> naming convention.
 

@@ -1,4 +1,4 @@
-# scripts/env/audit-worktrees.ps1
+# scripts/repo/audit-worktrees.ps1
 # Audits git worktrees to ensure each branch maps to exactly one worktree
 # and follows the nutrition-<branch> naming scheme used by the bash version.
 
@@ -214,4 +214,5 @@ if ($script:Errors.Count -gt 0) {
 }
 
 Write-Info 'All worktrees match the expected layout.'
+
 
