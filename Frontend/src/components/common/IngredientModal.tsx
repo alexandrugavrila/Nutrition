@@ -1,4 +1,3 @@
-// @ts-check
 import React from "react";
 import { Dialog, DialogTitle, DialogContent, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
@@ -9,18 +8,21 @@ import type { components } from "@/api-types";
 
 type IngredientRead = components["schemas"]["IngredientRead"];
 
-interface Props {
+type IngredientModalProps = {
   open: boolean;
-  ingredient: IngredientRead | null;
+  mode: "add" | "edit";
+  ingredient?: IngredientRead | null;
   onClose: () => void;
-}
+};
 
-function IngredientEditModal({ open, ingredient, onClose }: Props) {
+function IngredientModal({ open, mode, ingredient = null, onClose }: IngredientModalProps) {
+  const title = mode === "edit" ? "Edit Ingredient" : "Add Ingredient";
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { position: "relative" } }}>
       <SaveStatusChip />
       <DialogTitle sx={{ pr: 6 }}>
-        Edit Ingredient
+        {title}
         <IconButton
           aria-label="close"
           onClick={onClose}
@@ -30,11 +32,10 @@ function IngredientEditModal({ open, ingredient, onClose }: Props) {
         </IconButton>
       </DialogTitle>
       <DialogContent>
-        <IngredientEditor mode="edit" initial={ingredient ?? undefined} onSaved={onClose} onDeleted={onClose} />
+        <IngredientEditor mode={mode} initial={ingredient ?? null} onSaved={onClose} onDeleted={onClose} />
       </DialogContent>
     </Dialog>
   );
 }
 
-export default IngredientEditModal;
-
+export default IngredientModal;

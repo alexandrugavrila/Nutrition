@@ -1,6 +1,6 @@
 // @ts-check
 import React, { useEffect, useCallback, useReducer, useMemo, useRef, useState } from "react";
-import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Box } from "@mui/material";
+import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import SaveStatusChip from "@/components/common/SaveStatusChip";
 
 import { useData } from "@/contexts/DataContext";
@@ -261,3 +261,4 @@ function FoodForm({ foodToEditData }) {
 }
 
 export default FoodForm;
+

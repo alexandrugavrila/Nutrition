@@ -8,7 +8,7 @@ import { useData } from "@/contexts/DataContext";
 
 // Mock DataContext hook and any heavy children used inside Planning
 vi.mock("@/contexts/DataContext");
-vi.mock("@/components/common/IngredientEditModal", () => ({
+vi.mock("@/components/common/IngredientModal", () => ({
   __esModule: true,
   default: () => null,
 }));
