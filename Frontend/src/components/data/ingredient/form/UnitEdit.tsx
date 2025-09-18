@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Button, Select, MenuItem, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 
+const NULL_UNIT_VALUE = "__NULL_UNIT__";
+
 function AddUnitDialog({ open, onClose, onAddUnit }) {
   const [unitName, setUnitName] = useState("");
   const [unitGrams, setUnitGrams] = useState("");
@@ -63,7 +65,17 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }) {
 
   const handleSelectedUnitChange = useCallback(
     (event) => {
-      dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, selectedUnitId: event.target.value } });
+      const { value } = event.target;
+      const normalizedValue =
+        value === NULL_UNIT_VALUE || value === "" || value === undefined ? null : value;
+      const matchingUnit =
+        ingredient.units?.find((unit) => {
+          if (unit.id == null && normalizedValue == null) return true;
+          if (unit.id == null || normalizedValue == null) return false;
+          return String(unit.id) === String(normalizedValue);
+        }) || null;
+      const updatedUnitId = matchingUnit ? matchingUnit.id ?? null : normalizedValue;
+      dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, selectedUnitId: updatedUnitId } });
     },
     [ingredient, dispatch]
   );
@@ -84,7 +96,7 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }) {
 
   useEffect(() => {
     if (needsClearForm) {
-      dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, units: [], selectedUnitId: 0 } });
+      dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, units: [], selectedUnitId: null } });
     }
   }, [needsClearForm, dispatch, ingredient]);
 
@@ -95,13 +107,13 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }) {
           style={{ textAlign: "center" }}
           labelId="unit-select-label"
           id="unit-select"
-          value={ingredient.selectedUnitId || 0}
+          value={ingredient.selectedUnitId == null ? NULL_UNIT_VALUE : String(ingredient.selectedUnitId)}
           onChange={handleSelectedUnitChange}>
           {ingredient.units &&
             ingredient.units.map((unit) => (
               <MenuItem
-                key={unit.id}
-                value={unit.id}>
+                key={unit.id ?? `unit-${unit.name}`}
+                value={unit.id == null ? NULL_UNIT_VALUE : String(unit.id)}>
                 {unit.name}
               </MenuItem>
             ))}
