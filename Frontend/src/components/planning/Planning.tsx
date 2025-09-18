@@ -20,7 +20,9 @@ import { KeyboardArrowDown, KeyboardArrowRight, Add, Remove, Edit as EditIcon } 
 
 import { useData } from "@/contexts/DataContext";
 import { formatCellNumber } from "@/utils/utils";
-import IngredientEditModal from "@/components/common/IngredientEditModal";
+import { createIngredientLookup, macrosForFood, macrosForIngredientPortion, ZERO_MACROS, findIngredientInLookup } from "@/utils/nutrition";
+import type { IngredientRead } from "@/utils/nutrition";
+import IngredientModal from "@/components/common/IngredientModal";
 import useHoverable from "@/hooks/useHoverable";
 
 // Plan item types
@@ -68,6 +70,7 @@ const NameWithEdit: React.FC<NameWithEditProps> = ({ name, onEdit }) => {
 
 function Planning() {
   const { foods, ingredients } = useData();
+  const ingredientLookup = useMemo(() => createIngredientLookup(ingredients), [ingredients]);
 
   const [days, setDays] = useState(1);
   const [daysError, setDaysError] = useState(false);
@@ -87,13 +90,13 @@ function Planning() {
   const [selectedIngredientUnitId, setSelectedIngredientUnitId] = useState(0);
   const [selectedIngredientAmount, setSelectedIngredientAmount] = useState(1);
   const [open, setOpen] = useState({});
-  const [openIngredientEditModal, setOpenIngredientEditModal] = useState(false);
-  const [editorIngredient, setEditorIngredient] = useState<any>(null);
+  const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
+  const [editorIngredient, setEditorIngredient] = useState<IngredientRead | null>(null);
 
   const handleOpenIngredientEditor = (ingredientId: string) => {
-    const dataIngredient = ingredients.find((i) => i.id === ingredientId) || null;
+    const dataIngredient = findIngredientInLookup(ingredientLookup, ingredientId) ?? null;
     setEditorIngredient(dataIngredient);
-    if (dataIngredient) setOpenIngredientEditModal(true);
+    setIngredientModalOpen(Boolean(dataIngredient));
   };
 
   // Change unit while preserving total grams
@@ -252,58 +255,29 @@ function Planning() {
   };
 
   const calculateIngredientMacros = useCallback(
-    (
-      ingredient,
-      override?: FoodOverride,
-    ) => {
-      const dataIngredient = ingredients.find(
-        (i) => i.id === ingredient.ingredient_id,
-      );
-      if (!dataIngredient) {
-        return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
+    (ingredient, override?: FoodOverride) => {
+      if (!ingredient) return { ...ZERO_MACROS };
+      const ingredientId = ingredient.ingredient_id;
+      if (ingredientId === null || ingredientId === undefined) {
+        return { ...ZERO_MACROS };
       }
-      const effectiveUnitId = override?.unitId ?? ingredient.unit_id;
-      const effectiveQuantity = override?.quantity ?? ingredient.unit_quantity;
-      const unit =
-        dataIngredient.units.find((u) => u.id === effectiveUnitId) ||
-        dataIngredient.units.find((u) => u.name === "1g") ||
-        dataIngredient.units[0];
-      const grams = unit ? unit.grams : 0;
-      return {
-        calories:
-          (dataIngredient.nutrition.calories || 0) * grams * effectiveQuantity,
-        protein:
-          (dataIngredient.nutrition.protein || 0) * grams * effectiveQuantity,
-        fat: (dataIngredient.nutrition.fat || 0) * grams * effectiveQuantity,
-        carbs:
-          (dataIngredient.nutrition.carbohydrates || 0) * grams * effectiveQuantity,
-        fiber: (dataIngredient.nutrition.fiber || 0) * grams * effectiveQuantity,
-      };
+      const dataIngredient = findIngredientInLookup(ingredientLookup, ingredientId);
+      if (!dataIngredient) {
+        return { ...ZERO_MACROS };
+      }
+      return macrosForIngredientPortion({
+        ingredient: dataIngredient,
+        unitId: override?.unitId ?? ingredient.unit_id,
+        quantity: override?.quantity ?? ingredient.unit_quantity,
+      });
     },
-    [ingredients],
+    [ingredientLookup]
   );
 
   const calculateFoodMacros = useCallback(
-    (
-      food,
-      overrides?: Record<string, FoodOverride>,
-    ) => {
-      if (!food) return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
-      return food.ingredients.reduce(
-        (totals, ingredient) => {
-          const override = overrides?.[ingredient.ingredient_id];
-          const macros = calculateIngredientMacros(ingredient, override);
-          totals.calories += macros.calories;
-          totals.protein += macros.protein;
-          totals.fat += macros.fat;
-          totals.carbs += macros.carbs;
-          totals.fiber += macros.fiber;
-          return totals;
-        },
-        { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 }
-      );
-    },
-    [calculateIngredientMacros]
+    (food, overrides?: Record<string, FoodOverride>) =>
+      macrosForFood(food, ingredientLookup, overrides),
+    [ingredientLookup]
   );
 
   const calculateItemMacros = useCallback(
@@ -339,13 +313,13 @@ function Planning() {
         totals.fiber += macros.fiber;
         return totals;
       },
-      { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 }
+      { ...ZERO_MACROS }
     );
   }, [plan, calculateItemMacros]);
 
   const perDayMacros = useMemo(() => {
     if (days <= 0) {
-      return { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 };
+      return { ...ZERO_MACROS };
     }
     return {
       calories: totalMacros.calories / days,
@@ -609,15 +583,9 @@ function Planning() {
                           </TableHead>
                           <TableBody>
                             {food?.ingredients.map((ingredient) => {
-                              const dataIngredient = ingredients.find(
-                                (i) => i.id === ingredient.ingredient_id
-                              );
+                              const dataIngredient = findIngredientInLookup(ingredientLookup, ingredient.ingredient_id);
                               const override = item.overrides[ingredient.ingredient_id];
                               const unitId = override?.unitId ?? ingredient.unit_id;
-                              const unit =
-                                dataIngredient?.units.find((u) => u.id === unitId) ||
-                                dataIngredient?.units.find((u) => u.name === "1g") ||
-                                dataIngredient?.units[0];
                               const quantity = override?.quantity ?? ingredient.unit_quantity;
                               const ingMacros = calculateIngredientMacros(
                                 ingredient,
@@ -723,10 +691,7 @@ function Planning() {
                 </React.Fragment>
               );
             } else {
-              const ingredient = ingredients.find(
-                (i) => i.id === item.ingredientId
-              );
-              const unit = ingredient?.units.find((u) => u.id === item.unitId);
+              const ingredient = findIngredientInLookup(ingredientLookup, item.ingredientId);
               const macros = calculateIngredientMacros({
                 ingredient_id: item.ingredientId,
                 unit_id: item.unitId,
@@ -847,13 +812,37 @@ function Planning() {
           </Table>
         </TableContainer>
       </Box>
-      <IngredientEditModal
-        open={openIngredientEditModal}
+      <IngredientModal
+        open={ingredientModalOpen}
+        mode="edit"
         ingredient={editorIngredient}
-        onClose={() => setOpenIngredientEditModal(false)}
+        onClose={() => {
+          setIngredientModalOpen(false);
+          setEditorIngredient(null);
+        }}
       />
     </Box>
   );
 }
 
 export default Planning;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

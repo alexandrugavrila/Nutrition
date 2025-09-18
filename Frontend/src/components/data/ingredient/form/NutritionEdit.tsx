@@ -21,7 +21,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
 
   const handleFieldEdit = (key, value) => {
     // Allow empty, integers, and decimals while typing (e.g. "1.")
-    const isValidPartialNumber = value === "" || /^(\d+)?([\.,]\d*)?$/.test(value);
+    const isValidPartialNumber = value === "" || /^(\\d+)?([.,]\\d*)?$/.test(value);
     if (!isValidPartialNumber) return;
 
     setDisplayedNutrition({
@@ -176,3 +176,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
 }
 
 export default NutritionEdit;
+
+
+
+

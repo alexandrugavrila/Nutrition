@@ -1,11 +1,12 @@
 // FoodTable.js
 
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, Collapse, Typography, TablePagination, Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowRight } from "@mui/icons-material";
 
 import { useData } from "@/contexts/DataContext";
 import { formatCellNumber } from "@/utils/utils";
+import { createIngredientLookup, macrosForFood, macrosForIngredientPortion, ZERO_MACROS, findIngredientInLookup } from "@/utils/nutrition";
 import TagFilter from "@/components/common/TagFilter";
 
 function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} }) {
@@ -26,6 +27,7 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
   const [open, setOpen] = React.useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const ingredientLookup = useMemo(() => createIngredientLookup(ingredients), [ingredients]);
   //#endregion States
 
   //#region Handles
@@ -80,80 +82,31 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
     ...foodOtherTags.map((tag) => ({ ...tag, group: "Other" })),
   ];
 
-  const calculateIngredientMacros = (ingredient) => {
-    const dataIngredient = ingredients.find(
-      (item) => item.id === ingredient.ingredient_id
-    );
-    if (!dataIngredient) {
-      return {
-        calories: 0,
-        protein: 0,
-        fat: 0,
-        carbs: 0,
-        fiber: 0,
-      };
-    }
-
-    const dataUnit =
-      dataIngredient.units.find((u) => u.id === ingredient.unit_id) ||
-      dataIngredient.units.find((u) => u.grams === 1) ||
-      dataIngredient.units[0];
-
-    if (!dataUnit) {
-      return {
-        calories: 0,
-        protein: 0,
-        fat: 0,
-        carbs: 0,
-        fiber: 0,
-      };
-    }
-
-    return {
-      calories: dataIngredient.nutrition.calories
-        ? dataIngredient.nutrition.calories * dataUnit.grams * ingredient.unit_quantity
-        : 0,
-      protein: dataIngredient.nutrition.protein
-        ? dataIngredient.nutrition.protein * dataUnit.grams * ingredient.unit_quantity
-        : 0,
-      fat: dataIngredient.nutrition.fat
-        ? dataIngredient.nutrition.fat * dataUnit.grams * ingredient.unit_quantity
-        : 0,
-      carbs: dataIngredient.nutrition.carbohydrates
-        ? dataIngredient.nutrition.carbohydrates * dataUnit.grams * ingredient.unit_quantity
-        : 0,
-      fiber: dataIngredient.nutrition.fiber
-        ? dataIngredient.nutrition.fiber * dataUnit.grams * ingredient.unit_quantity
-        : 0,
-    };
-  };
-
-  const calculateFoodMacros = (food) => {
-    let totalCalories = 0;
-    let totalProtein = 0;
-    let totalFat = 0;
-    let totalCarbs = 0;
-    let totalFiber = 0;
-
-    food.ingredients.forEach((ingredient) => {
-      const dataIngredient = ingredients.find((item) => item.id === ingredient.ingredient_id);
-      if (dataIngredient) {
-        totalCalories += calculateIngredientMacros(ingredient).calories;
-        totalProtein += calculateIngredientMacros(ingredient).protein;
-        totalFat += calculateIngredientMacros(ingredient).fat;
-        totalCarbs += calculateIngredientMacros(ingredient).carbs;
-        totalFiber += calculateIngredientMacros(ingredient).fiber;
+  const calculateIngredientMacros = useCallback(
+    (ingredient) => {
+      if (!ingredient) return { ...ZERO_MACROS };
+      const ingredientId = ingredient.ingredient_id;
+      if (ingredientId === null || ingredientId === undefined) {
+        return { ...ZERO_MACROS };
       }
-    });
+      const dataIngredient = findIngredientInLookup(ingredientLookup, ingredientId);
+      if (!dataIngredient) {
+        return { ...ZERO_MACROS };
+      }
+      return macrosForIngredientPortion({
+        ingredient: dataIngredient,
+        unitId: ingredient.unit_id,
+        quantity: ingredient.unit_quantity,
+      });
+    },
+    [ingredientLookup]
+  );
 
-    return {
-      totalCalories,
-      totalProtein,
-      totalFat,
-      totalCarbs,
-      totalFiber,
-    };
-  };
+  const calculateFoodMacros = useCallback(
+    (food) => macrosForFood(food, ingredientLookup),
+    [ingredientLookup]
+  );
+
   //#endregion Handles
 
   return (
@@ -243,11 +196,11 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
                     onClick={(event) => handleFoodClick(event, food)}>
                     <TableCell>{open[food.id] ? <KeyboardArrowDown /> : <KeyboardArrowRight />}</TableCell>
                     <TableCell>{food.name}</TableCell>
-                    <TableCell>{formatCellNumber(calculateFoodMacros(food).totalCalories)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateFoodMacros(food).totalProtein)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateFoodMacros(food).totalFat)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateFoodMacros(food).totalCarbs)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateFoodMacros(food).totalFiber)}</TableCell>
+                    <TableCell>{formatCellNumber(calculateFoodMacros(food).calories)}</TableCell>
+                    <TableCell>{formatCellNumber(calculateFoodMacros(food).protein)}</TableCell>
+                    <TableCell>{formatCellNumber(calculateFoodMacros(food).fat)}</TableCell>
+                    <TableCell>{formatCellNumber(calculateFoodMacros(food).carbs)}</TableCell>
+                    <TableCell>{formatCellNumber(calculateFoodMacros(food).fiber)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell
@@ -280,9 +233,8 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
                           </TableHead>
                           <TableBody>
                             {food.ingredients.map((ingredient) => {
-                              const dataIngredient = ingredients.find(
-                                (item) => item.id === ingredient.ingredient_id
-                              );
+                              const dataIngredient =
+                              findIngredientInLookup(ingredientLookup, ingredient.ingredient_id);
                               const unit =
                                 dataIngredient?.units.find(
                                   (u) => u.id === ingredient.unit_id
@@ -363,3 +315,19 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
   );
 }
 export default FoodTable;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

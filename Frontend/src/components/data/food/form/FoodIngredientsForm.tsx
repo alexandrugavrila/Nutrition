@@ -1,15 +1,18 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Button, TextField, Select, MenuItem, Dialog, TableContainer, Table, TableHead, TableRow, TableCell, Paper, TableBody, IconButton, Stack } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 
 import { useData } from "@/contexts/DataContext";
 import IngredientTable from "@/components/data/ingredient/IngredientTable";
-import IngredientEditModal from "@/components/common/IngredientEditModal";
-import IngredientAddModal from "@/components/common/IngredientAddModal";
+import IngredientModal from "@/components/common/IngredientModal";
 
 import { formatCellNumber } from "@/utils/utils";
+import { createIngredientLookup, macrosForIngredientPortion, ZERO_MACROS, findIngredientInLookup } from "@/utils/nutrition";
+import type { components } from "@/api-types";
 
 const NULL_UNIT_VALUE = "__NULL_UNIT__";
+
+type IngredientRead = components["schemas"]["IngredientRead"];
 
 function matchUnitById(units, targetId) {
   if (!units || units.length === 0) return undefined;
@@ -44,17 +47,10 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
   //#region States
   const { ingredients } = useData();
   const [openIngredientsDialog, setOpenIngredientsDialog] = useState(false);
-  const [openEditModal, setOpenEditModal] = useState(false);
-  const [openAddModal, setOpenAddModal] = useState(false);
-  const [editorIngredient, setEditorIngredient] = useState(null);
+  const [modalState, setModalState] = useState<{ mode: "add" | "edit"; ingredient: IngredientRead | null } | null>(null);
   const [unitQuantities, setUnitQuantities] = useState({}); // Use an object to track unit quantities by ingredient index
-  const [totalMacros, setTotalMacros] = useState({
-    calories: 0,
-    protein: 0,
-    fat: 0,
-    carbs: 0,
-    fiber: 0,
-  });
+  const [totalMacros, setTotalMacros] = useState(() => ({ ...ZERO_MACROS }));
+  const ingredientLookup = useMemo(() => createIngredientLookup(ingredients), [ingredients]);
   //#endregion States
 
   //#region Handles
@@ -72,12 +68,11 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
   };
 
   const handleOpenIngredientEditor = (ingredientId) => {
-    const dataIngredient = ingredients.find((i) => i.id === ingredientId) || null;
-    setEditorIngredient(dataIngredient);
+    const dataIngredient = findIngredientInLookup(ingredientLookup, ingredientId) ?? null;
     if (dataIngredient) {
-      setOpenEditModal(true);
+      setModalState({ mode: "edit", ingredient: dataIngredient });
     } else {
-      setOpenAddModal(true);
+      setModalState({ mode: "add", ingredient: null });
     }
   };
 
@@ -117,26 +112,23 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
   };
 
   const calculateTotalIngredientMacros = useCallback(
-    (food_ingredient) => {
-      if (!food_ingredient) return;
-
-      const dataIngredient = ingredients.find((item) => item.id === food_ingredient.ingredient_id);
-
-      const unitId = food_ingredient.unit_id;
-      const dataUnit =
-        matchUnitById(dataIngredient.units, unitId) ||
-        dataIngredient.units.find((unit) => unit.grams === 1) ||
-        dataIngredient.units[0];
-
-      return {
-        calories: dataIngredient.nutrition.calories ? dataIngredient.nutrition.calories * dataUnit.grams * food_ingredient.unit_quantity : 0,
-        protein: dataIngredient.nutrition.protein ? dataIngredient.nutrition.protein * dataUnit.grams * food_ingredient.unit_quantity : 0,
-        fat: dataIngredient.nutrition.fat ? dataIngredient.nutrition.fat * dataUnit.grams * food_ingredient.unit_quantity : 0,
-        carbs: dataIngredient.nutrition.carbohydrates ? dataIngredient.nutrition.carbohydrates * dataUnit.grams * food_ingredient.unit_quantity : 0,
-        fiber: dataIngredient.nutrition.fiber ? dataIngredient.nutrition.fiber * dataUnit.grams * food_ingredient.unit_quantity : 0,
-      };
+    (foodIngredient) => {
+      if (!foodIngredient) return { ...ZERO_MACROS };
+      const ingredientId = foodIngredient.ingredient_id;
+      if (ingredientId === null || ingredientId === undefined) {
+        return { ...ZERO_MACROS };
+      }
+      const dataIngredient = findIngredientInLookup(ingredientLookup, ingredientId);
+      if (!dataIngredient) {
+        return { ...ZERO_MACROS };
+      }
+      return macrosForIngredientPortion({
+        ingredient: dataIngredient,
+        unitId: foodIngredient.unit_id,
+        quantity: foodIngredient.unit_quantity,
+      });
     },
-    [ingredients]
+    [ingredientLookup]
   );
 
   const handleUnitChange = (event, ingredientIndex, ingredientUnits) => {
@@ -177,11 +169,11 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
         acc.fiber += macros.fiber;
         return acc;
       },
-      { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 }
+      { ...ZERO_MACROS }
     );
 
     setTotalMacros(totals);
-  }, [food.ingredients, ingredients, calculateTotalIngredientMacros]); // Update totals when food ingredients or ingredients change
+  }, [food.ingredients, calculateTotalIngredientMacros]); // Update totals when food ingredients or ingredients change
   //#endregion Effects
 
   return (
@@ -213,7 +205,7 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
 
           <TableBody>
             {food.ingredients.map((ingredient, index) => {
-              const dataIngredient = ingredients.find((item) => item.id === ingredient.ingredient_id);
+              const dataIngredient = findIngredientInLookup(ingredientLookup, ingredient.ingredient_id);
               const ingredientUnits = dataIngredient?.units ?? [];
               const defaultUnitId =
                 ingredientUnits.find((u) => u.grams === 1)?.id ??
@@ -286,9 +278,7 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
         <Button
           variant="outlined"
           onClick={() => {
-            setEditorMode("add");
-            setEditorIngredient(null);
-            setOpenEditor(true);
+            setModalState({ mode: "add", ingredient: null });
           }}
         >
           New Ingredient
@@ -304,20 +294,16 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
         <IngredientTable
           onIngredientDoubleClick={handleAddIngredient}
           onIngredientCtrlClick={(ing) => {
-            setEditorIngredient(ing);
-            setOpenEditModal(true);
+            setModalState({ mode: "edit", ingredient: ing });
           }}
         />
       </Dialog>
 
-      <IngredientEditModal
-        open={openEditModal}
-        ingredient={editorIngredient}
-        onClose={() => setOpenEditModal(false)}
-      />
-      <IngredientAddModal
-        open={openAddModal}
-        onClose={() => setOpenAddModal(false)}
+      <IngredientModal
+        open={Boolean(modalState)}
+        mode={modalState?.mode ?? "add"}
+        ingredient={modalState?.ingredient ?? null}
+        onClose={() => setModalState(null)}
       />
     </div>
   );
