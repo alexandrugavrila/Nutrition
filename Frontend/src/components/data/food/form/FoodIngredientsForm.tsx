@@ -9,6 +9,37 @@ import IngredientAddModal from "@/components/common/IngredientAddModal";
 
 import { formatCellNumber } from "@/utils/utils";
 
+const NULL_UNIT_VALUE = "__NULL_UNIT__";
+
+function matchUnitById(units, targetId) {
+  if (!units || units.length === 0) return undefined;
+  const normalizedTarget = Array.isArray(targetId) ? targetId[0] : targetId;
+  const comparableTarget =
+    normalizedTarget === NULL_UNIT_VALUE || normalizedTarget === "" || normalizedTarget === undefined
+      ? null
+      : normalizedTarget;
+  return units.find((unit) => {
+    if (unit.id == null && comparableTarget == null) return true;
+    if (unit.id == null || comparableTarget == null) return false;
+    return String(unit.id) === String(comparableTarget);
+  });
+}
+
+function coerceUnitId(units, rawId) {
+  const normalizedRaw = Array.isArray(rawId) ? rawId[0] : rawId;
+  if (
+    normalizedRaw === NULL_UNIT_VALUE ||
+    normalizedRaw === "" ||
+    normalizedRaw === undefined ||
+    normalizedRaw === null
+  ) {
+    return null;
+  }
+  const match = matchUnitById(units, normalizedRaw);
+  if (!match) return normalizedRaw;
+  return match.id ?? null;
+}
+
 function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
   //#region States
   const { ingredients } = useData();
@@ -54,7 +85,7 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
     return {
       ingredient_id: ingredient.id,
       food_id: food.id,
-      unit_id: ingredient.selectedUnitId ? ingredient.selectedUnitId : null,
+      unit_id: ingredient.selectedUnitId ?? null,
       unit_quantity: 1,
     };
   };
@@ -91,9 +122,9 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
 
       const dataIngredient = ingredients.find((item) => item.id === food_ingredient.ingredient_id);
 
-      const unitId = food_ingredient.unit_id ?? 0; // If undefined or null, use synthetic 0 for display fallback
+      const unitId = food_ingredient.unit_id;
       const dataUnit =
-        dataIngredient.units.find((unit) => unit.id === unitId) ||
+        matchUnitById(dataIngredient.units, unitId) ||
         dataIngredient.units.find((unit) => unit.grams === 1) ||
         dataIngredient.units[0];
 
@@ -108,8 +139,9 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
     [ingredients]
   );
 
-  const handleUnitChange = (event, ingredientIndex) => {
-    const newUnitId = event.target.value;
+  const handleUnitChange = (event, ingredientIndex, ingredientUnits) => {
+    const unitsForIngredient = ingredientUnits ?? [];
+    const newUnitId = coerceUnitId(unitsForIngredient, event.target.value);
     const updatedIngredients = [...food.ingredients];
     updatedIngredients[ingredientIndex] = {
       ...updatedIngredients[ingredientIndex],
@@ -182,8 +214,14 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
           <TableBody>
             {food.ingredients.map((ingredient, index) => {
               const dataIngredient = ingredients.find((item) => item.id === ingredient.ingredient_id);
-              const defaultUnitId = dataIngredient?.units.find((u) => u.grams === 1)?.id || dataIngredient?.units[0]?.id || 0;
-
+              const ingredientUnits = dataIngredient?.units ?? [];
+              const defaultUnitId =
+                ingredientUnits.find((u) => u.grams === 1)?.id ??
+                ingredientUnits[0]?.id ??
+                null;
+              const selectedUnitId = ingredient.unit_id ?? defaultUnitId ?? null;
+              const selectedUnitOption =
+                selectedUnitId == null ? NULL_UNIT_VALUE : String(selectedUnitId);
               return (
                 <TableRow key={index}>
                   <TableCell>{dataIngredient ? dataIngredient.name : "Unknown Ingredient"}</TableCell>
@@ -191,14 +229,22 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Select
                         style={{ textAlign: "center" }}
-                        value={ingredient.unit_id ?? defaultUnitId}
-                        onChange={(event) => handleUnitChange(event, index)}
-                        inputProps={{ "aria-label": "Without label" }}>
-                        {dataIngredient.units.map((unit) => (
-                          <MenuItem key={unit.id} value={unit.id}>
-                            {unit.name}
-                          </MenuItem>
-                        ))}
+                        value={selectedUnitOption}
+                        onChange={(event) => handleUnitChange(event, index, ingredientUnits)}
+                        inputProps={{ "aria-label": "Without label" }}
+                        displayEmpty
+                        renderValue={(value) => {
+                          const unit = matchUnitById(ingredientUnits, value);
+                          return unit ? unit.name : "Select unit";
+                        }}>
+                        {ingredientUnits.map((unit) => {
+                          const optionValue = unit.id == null ? NULL_UNIT_VALUE : String(unit.id);
+                          return (
+                            <MenuItem key={unit.id ?? `unit-${unit.name}`} value={optionValue}>
+                              {unit.name}
+                            </MenuItem>
+                          );
+                        })}
                       </Select>
                       <IconButton
                         aria-label="Edit ingredient"
