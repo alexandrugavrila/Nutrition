@@ -362,43 +362,45 @@ function Shopping() {
 
                 return (
                   <TableRow key={item.ingredientId ?? item.name}>
-                    <TableCell>{item.name}</TableCell>
+                    <TableCell>
+                      <HoverableEditWrapper
+                        onEdit={() => openIngredientModal(contextIngredient)}
+                      >
+                        <Typography component="span">{item.name}</Typography>
+                      </HoverableEditWrapper>
+                    </TableCell>
                     <TableCell>
                       <Stack spacing={1}>
-                        <HoverableEditWrapper
-                          onEdit={() => openIngredientModal(contextIngredient)}
+                        <Select
+                          size="small"
+                          value={selectValue}
+                          onChange={(event) =>
+                            handlePreferredUnitChange(
+                              ingredientId,
+                              event.target.value,
+                            )
+                          }
                         >
-                          <Select
-                            size="small"
-                            value={selectValue}
-                            onChange={(event) =>
-                              handlePreferredUnitChange(
-                                ingredientId,
-                                event.target.value,
-                              )
-                            }
-                          >
-                            <MenuItem value={CLEAR_SELECTION_VALUE}>No preference</MenuItem>
-                            {(contextIngredient.units ?? []).map((unit) => {
-                              const optionValue =
-                                unit.id === null || unit.id === undefined
-                                  ? NULL_UNIT_SENTINEL
-                                  : String(unit.id);
-                              const grams = Number(unit.grams);
-                              const gramsLabel = Number.isFinite(grams)
-                                ? formatCellNumber(grams)
-                                : unit.grams;
-                              return (
-                                <MenuItem
-                                  key={`${optionValue}-${unit.name}`}
-                                  value={optionValue}
-                                >
-                                  {unit.name} ({gramsLabel} g)
-                                </MenuItem>
-                              );
-                            })}
-                          </Select>
-                        </HoverableEditWrapper>
+                          <MenuItem value={CLEAR_SELECTION_VALUE}>No preference</MenuItem>
+                          {(contextIngredient.units ?? []).map((unit) => {
+                            const optionValue =
+                              unit.id === null || unit.id === undefined
+                                ? NULL_UNIT_SENTINEL
+                                : String(unit.id);
+                            const grams = Number(unit.grams);
+                            const gramsLabel = Number.isFinite(grams)
+                              ? formatCellNumber(grams)
+                              : unit.grams;
+                            return (
+                              <MenuItem
+                                key={`${optionValue}-${unit.name}`}
+                                value={optionValue}
+                              >
+                                {unit.name} ({gramsLabel} g)
+                              </MenuItem>
+                            );
+                          })}
+                        </Select>
                         {preferredLabel && (
                           <Typography>
                             Preferred: {preferredLabel}
