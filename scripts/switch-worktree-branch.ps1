@@ -318,14 +318,17 @@ while (-not $targetPath) {
 }
 
 $branchExists = Test-LocalBranch -Name $Branch
+$shouldPushNewBranch = $false
 if ($branchExists) {
     Write-Host "Creating new worktree for existing branch '$Branch'..."
     Invoke-Git @('worktree','add',$targetPath,$Branch) | Out-Null
 }
 else {
-    $remoteHasBranch = Test-RemoteBranch -RemoteName $Remote -Name $Branch
+    $remoteBranchExists = Test-RemoteBranch -RemoteName $Remote -Name $Branch
+    $remoteHasBranch = $remoteBranchExists
     $baseRef = $null
     $useTracking = $false
+    $shouldPushNewBranch = -not $remoteBranchExists
 
     if ($remoteHasBranch) {
         $response = Read-Host "Branch '$Branch' exists on '$Remote'. Track it in a new worktree? (Y/n)"
@@ -362,6 +365,11 @@ else {
         Write-Host "Creating branch '$Branch' from '$baseRef' in new worktree..."
         Invoke-Git @('worktree','add','-b',$Branch,$targetPath,$baseRef) | Out-Null
     }
+}
+
+if ($shouldPushNewBranch) {
+    Write-Host "Pushing new branch '$Branch' to '$Remote' and setting upstream..."
+    Invoke-Git @('-C',$targetPath,'push','--set-upstream',$Remote,$Branch) | Out-Null
 }
 
 Write-Host ''
