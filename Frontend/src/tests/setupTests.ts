@@ -1,10 +1,11 @@
-// @testing-library/jest-dom adds custom DOM matchers for assertions.
-// see: https://github.com/testing-library/jest-dom
-import { expect } from 'vitest';
+import { expect, vi, beforeEach } from 'vitest';
 import matchers from '@testing-library/jest-dom/matchers';
-import { vi } from 'vitest';
 
 expect.extend(matchers);
+
+beforeEach(() => {
+  window.sessionStorage.clear();
+});
 
 // Provide a simple fetch mock that handles relative URLs so tests don't
 // hit the network or throw "Invalid URL" errors.

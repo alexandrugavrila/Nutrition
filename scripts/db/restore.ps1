@@ -26,14 +26,56 @@ if (-not $DumpPath) {
   $backupDir = Join-Path $envInfo.RepoRoot "Database/backups"
   $pattern = "$($envInfo.Sanitized)-*.dump"
   $latest = Get-ChildItem -Path $backupDir -Filter $pattern -File -ErrorAction SilentlyContinue | Sort-Object Name | Select-Object -Last 1
+  $selectedBranch = $envInfo.Branch
+  $selectedDir = $backupDir
   if (-not $latest) {
-    Write-Error "No dump files found for branch '$($envInfo.Branch)' in '$backupDir'"
-    exit 1
+    $fallbackBranch = "main"
+    $fallbackPattern = "$(Get-SanitizedBranch $fallbackBranch)-*.dump"
+    $fallbackDir = $backupDir
+    $fallbackWorktree = $null
+    try {
+      $wtRaw = (& git worktree list --porcelain 2>$null)
+      if ($wtRaw) {
+        $wtText = [string]::Join("`n", $wtRaw)
+        $blocks = [System.Text.RegularExpressions.Regex]::Split($wtText, "`r?`n`r?`n")
+        foreach ($block in $blocks) {
+          if ([string]::IsNullOrWhiteSpace($block)) { continue }
+          $branchMatch = [regex]::Match($block, "branch\s+refs/heads/(?<branch>[^\r\n]+)")
+          if (-not $branchMatch.Success) { continue }
+          if ($branchMatch.Groups['branch'].Value -ne $fallbackBranch) { continue }
+          $worktreeMatch = [regex]::Match($block, "worktree\s+(?<path>[^\r\n]+)")
+          if ($worktreeMatch.Success) {
+            $fallbackWorktree = $worktreeMatch.Groups['path'].Value.Trim()
+            break
+          }
+        }
+      }
+    } catch {}
+    if ($fallbackWorktree -and (Test-Path $fallbackWorktree) -and ($fallbackWorktree -ne $envInfo.RepoRoot)) {
+      $candidateDir = Join-Path $fallbackWorktree "Database/backups"
+      if (Test-Path $candidateDir) {
+        $fallbackDir = $candidateDir
+      }
+    }
+    $latest = Get-ChildItem -Path $fallbackDir -Filter $fallbackPattern -File -ErrorAction SilentlyContinue | Sort-Object Name | Select-Object -Last 1
+    if (-not $latest) {
+      Write-Error "No dump files found for branch '$($envInfo.Branch)' in '$backupDir' or fallback branch '$fallbackBranch' in '$fallbackDir'"
+      exit 1
+    }
+    $selectedBranch = $fallbackBranch
+    $selectedDir = $fallbackDir
   }
-  Write-Host "No dump specified; using latest for branch '$($envInfo.Branch)': $($latest.FullName)"
+  if ($selectedBranch -eq $envInfo.Branch) {
+    Write-Host "No dump specified; using latest for branch '$($envInfo.Branch)': $($latest.FullName)"
+  } else {
+    if ($selectedDir -ne $backupDir) {
+      Write-Host "No dump for branch '$($envInfo.Branch)'; using latest for '$selectedBranch' from '$selectedDir': $($latest.FullName)"
+    } else {
+      Write-Host "No dump for branch '$($envInfo.Branch)'; using latest for '$selectedBranch': $($latest.FullName)"
+    }
+  }
   $DumpPath = $latest.FullName
 }
-
 # If a .meta.json file was passed by mistake, try the matching .dump file
 if ($DumpPath -like '*.meta.json') {
   $suffix = '.meta.json'

@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, within, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { vi, type Mock } from "vitest";
 
@@ -70,7 +71,7 @@ describe("Planning - ingredient editing updates macros", () => {
   });
 
   it("recalculates totals when editing an ingredient amount", async () => {
-    render(<Planning />);
+    render(<MemoryRouter><Planning /></MemoryRouter>);
 
     // Switch to adding an Ingredient
     await userEvent.click(screen.getByLabelText(/Type/i));
@@ -115,7 +116,7 @@ describe("Planning - ingredient editing updates macros", () => {
   });
 
   it("ignores invalid amounts (<= 0) when editing an existing ingredient", async () => {
-    render(<Planning />);
+    render(<MemoryRouter><Planning /></MemoryRouter>);
 
     // Add Oats 100g as above
     await userEvent.click(screen.getByLabelText(/Type/i));
@@ -146,7 +147,7 @@ describe("Planning - ingredient editing updates macros", () => {
   });
 
   it("shows targets and allows totals to exceed them", async () => {
-    render(<Planning />);
+    render(<MemoryRouter><Planning /></MemoryRouter>);
 
     // Add Oats 150g
     await userEvent.click(screen.getByLabelText(/Type/i));
@@ -178,3 +179,4 @@ describe("Planning - ingredient editing updates macros", () => {
     });
   });
 });
+

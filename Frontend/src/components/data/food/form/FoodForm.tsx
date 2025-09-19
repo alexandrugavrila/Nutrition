@@ -1,7 +1,8 @@
 // @ts-check
-import React, { useEffect, useCallback, useReducer, useMemo, useRef, useState } from "react";
+import React, { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import SaveStatusChip from "@/components/common/SaveStatusChip";
+import { useSessionStorageReducer } from "@/hooks/useSessionStorageState";
 
 import { useData } from "@/contexts/DataContext";
 import { handleFetchRequest } from "@/utils/utils";
@@ -15,19 +16,21 @@ import FoodIngredientsForm from "./FoodIngredientsForm";
  * @typedef {import("../../../../api-types").operations["add_food_api_foods_post"]["responses"][201]["content"]["application/json"]} FoodResponse
  */
 
-const intitalState = {
+const createEmptyFood = () => ({
+  name: "",
+  id: crypto.randomUUID(),
+  ingredients: [],
+  tags: [],
+});
+
+const createInitialState = () => ({
   isOpen: false,
   openConfirmationDialog: false,
   isEditMode: false,
-  foodToEdit: {
-    name: "",
-    id: crypto.randomUUID(),
-    ingredients: [],
-    tags: [],
-  },
+  foodToEdit: createEmptyFood(),
   needsClearForm: false,
   needsFillForm: false,
-};
+});
 
 const reducer = (state, action) => {
   switch (action.type) {
@@ -56,11 +59,13 @@ const reducer = (state, action) => {
 function FoodForm({ foodToEditData }) {
   //#region States
   const { setFoodsNeedsRefetch, startRequest, endRequest } = useData();
-  const [state, dispatch] = useReducer(reducer, intitalState);
+  const [state, dispatch] = useSessionStorageReducer(reducer, createInitialState, "food-form-state-v1");
 
   const { isOpen, openConfirmationDialog, isEditMode, foodToEdit, needsClearForm, needsFillForm } = state;
   const [isSaving, setIsSaving] = useState(false);
   const saveTimerRef = useRef(/** @type {any} */ (null));
+  const isInitialRenderRef = useRef(true);
+  const previousIsOpenRef = useRef(isOpen);
 
   const hasContent = useMemo(() => {
     const hasName = (foodToEdit?.name || "").trim().length > 0;
@@ -68,20 +73,14 @@ function FoodForm({ foodToEditData }) {
     return hasName || hasIngredients;
   }, [foodToEdit]);
 
-  const initializeEmptyFood = () => ({
-    name: "",
-    id: crypto.randomUUID(),
-    ingredients: [],
-    tags: [],
-  });
   //#endregion States
 
   //#region Handlers
   const handleClearForm = useCallback(() => {
     dispatch({ type: "SET_EDIT_MODE", payload: false });
-    dispatch({ type: "SET_FOOD", payload: initializeEmptyFood() });
+    dispatch({ type: "SET_FOOD", payload: createEmptyFood() });
     dispatch({ type: "SET_CLEAR_FORM", payload: true });
-  }, []);
+  }, [dispatch]);
 
   const handleFoodAction = () => {
     startRequest();
@@ -148,7 +147,7 @@ function FoodForm({ foodToEditData }) {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks-exhaustive-deps
   }, [foodToEdit, isOpen, isEditMode, hasContent]);
 
   const handleFoodDelete = () => {
@@ -183,8 +182,15 @@ function FoodForm({ foodToEditData }) {
 
   //#region Effects
   useEffect(() => {
+    if (isInitialRenderRef.current) {
+      isInitialRenderRef.current = false;
+      if (!foodToEditData) {
+        return;
+      }
+    }
+
     if (!foodToEditData) {
-      dispatch({ type: "SET_FOOD", payload: initializeEmptyFood() });
+      dispatch({ type: "SET_FOOD", payload: createEmptyFood() });
       dispatch({ type: "SET_EDIT_MODE", payload: false });
       dispatch({ type: "OPEN_FORM", payload: false });
     } else {
@@ -193,12 +199,13 @@ function FoodForm({ foodToEditData }) {
       dispatch({ type: "OPEN_FORM", payload: true });
       dispatch({ type: "SET_FILL_FORM", payload: true });
     }
-  }, [foodToEditData]); // Fill foodToEdit and set form state when foodToEditData changes
+  }, [foodToEditData, dispatch]); // Fill foodToEdit and set form state when foodToEditData changes
 
   useEffect(() => {
-    if (!isOpen) {
+    if (previousIsOpenRef.current && !isOpen) {
       handleClearForm();
     }
+    previousIsOpenRef.current = isOpen;
   }, [isOpen, handleClearForm]); // Clear form when closing form
 
   useEffect(() => {

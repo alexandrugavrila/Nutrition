@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useEffect, useCallback, useRef, useState } from "react";
 import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Box } from "@mui/material";
 
 import NameEdit from "./NameEdit";
@@ -6,6 +6,7 @@ import UnitEdit from "./UnitEdit";
 import NutritionEdit from "./NutritionEdit";
 import TagEdit from "./TagEdit";
 import { useIngredientForm } from "./useIngredientForm";
+import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type { components } from "@/api-types";
 
 type IngredientRead = components["schemas"]["IngredientRead"];
@@ -15,9 +16,11 @@ type IngredientFormProps = {
 };
 
 function IngredientForm({ ingredientToEditData }: IngredientFormProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useSessionStorageState("ingredient-form-open", false);
   const [openConfirmationDialog, setOpenConfirmationDialog] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const isInitialRenderRef = useRef(true);
+  const previousIsOpenRef = useRef(isOpen);
+  const [isEditMode, setIsEditMode] = useSessionStorageState("ingredient-form-edit-mode", false);
 
   const {
     ingredient,
@@ -36,7 +39,7 @@ function IngredientForm({ ingredientToEditData }: IngredientFormProps) {
     clearForm();
     setIsEditMode(false);
     setOpenConfirmationDialog(false);
-  }, [clearForm]);
+  }, [clearForm, setIsEditMode, setOpenConfirmationDialog]);
 
   const handleIngredientAction = useCallback(() => {
     save({
@@ -59,6 +62,13 @@ function IngredientForm({ ingredientToEditData }: IngredientFormProps) {
   }, [remove, handleClearForm]);
 
   useEffect(() => {
+    if (isInitialRenderRef.current) {
+      isInitialRenderRef.current = false;
+      if (!ingredientToEditData) {
+        return;
+      }
+    }
+
     if (!ingredientToEditData) {
       loadIngredient(null);
       setIsEditMode(false);
@@ -68,12 +78,13 @@ function IngredientForm({ ingredientToEditData }: IngredientFormProps) {
       setIsEditMode(true);
       setIsOpen(true);
     }
-  }, [ingredientToEditData, loadIngredient]);
+  }, [ingredientToEditData, loadIngredient, setIsOpen, setIsEditMode]);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (previousIsOpenRef.current && !isOpen) {
       handleClearForm();
     }
+    previousIsOpenRef.current = isOpen;
   }, [isOpen, handleClearForm]);
 
   useEffect(() => {
@@ -129,3 +140,4 @@ function IngredientForm({ ingredientToEditData }: IngredientFormProps) {
   );
 }
 export default IngredientForm;
+

@@ -1,6 +1,7 @@
-import { useCallback, useReducer } from "react";
+import { useCallback } from "react";
 
 import { useData } from "@/contexts/DataContext";
+import { useSessionStorageReducer } from "@/hooks/useSessionStorageState";
 import { handleFetchRequest } from "@/utils/utils";
 import type { components, operations } from "@/api-types";
 
@@ -52,11 +53,11 @@ const initializeEmptyIngredient = (): IngredientFormState["ingredient"] => ({
   selectedUnitId: "0",
 });
 
-const initialState: IngredientFormState = {
+const createInitialState = (): IngredientFormState => ({
   ingredient: initializeEmptyIngredient(),
   needsClearForm: false,
   needsFillForm: false,
-};
+});
 
 const reducer = (state: IngredientFormState, action: IngredientFormAction): IngredientFormState => {
   switch (action.type) {
@@ -91,7 +92,7 @@ const buildRequestPayload = (ingredient: IngredientFormState["ingredient"]): Ing
 
 export const useIngredientForm = () => {
   const { setIngredientsNeedsRefetch, startRequest, endRequest } = useData();
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useSessionStorageReducer(reducer, createInitialState, "ingredient-form-state-v1");
 
   const loadIngredient = useCallback((initial?: IngredientRead | null) => {
     if (initial) {

@@ -68,11 +68,42 @@ else
   set +e
   latest=$(ls -1 "$backup_dir"/$pattern 2>/dev/null | sort | tail -n 1 || true)
   set -e
+  selected_branch="$BRANCH_NAME"
+  selected_dir="$backup_dir"
   if [[ -z "${latest:-}" ]]; then
-    echo "No dump files found for branch '$BRANCH_NAME' in '$backup_dir'" >&2
-    exit 1
+    fallback_branch="main"
+    fallback_sanitized="$(branch_env_sanitize_branch "$fallback_branch")"
+    fallback_dir="$backup_dir"
+    fallback_worktree=$(git worktree list --porcelain 2>/dev/null | awk -v target="refs/heads/$fallback_branch" '
+      /^worktree / { wt=$2 }
+      /^branch / { br=$2 }
+      br==target { print wt; exit }
+    ')
+    if [[ -n "$fallback_worktree" && "$fallback_worktree" != "$REPO_ROOT" ]]; then
+      candidate="$fallback_worktree/Database/backups"
+      if [[ -d "$candidate" ]]; then
+        fallback_dir="$candidate"
+      fi
+    fi
+    set +e
+    latest=$(ls -1 "$fallback_dir"/"$fallback_sanitized"-*.dump 2>/dev/null | sort | tail -n 1 || true)
+    set -e
+    if [[ -z "${latest:-}" ]]; then
+      echo "No dump files found for branch '$BRANCH_NAME' in '$backup_dir' or fallback branch '$fallback_branch' in '$fallback_dir'" >&2
+      exit 1
+    fi
+    selected_branch="$fallback_branch"
+    selected_dir="$fallback_dir"
   fi
-  echo "No dump specified; using latest for branch '$BRANCH_NAME': $latest"
+  if [[ "$selected_branch" == "$BRANCH_NAME" ]]; then
+    echo "No dump specified; using latest for branch '$BRANCH_NAME': $latest"
+  else
+    if [[ "$selected_dir" != "$backup_dir" ]]; then
+      echo "No dump for branch '$BRANCH_NAME'; using latest for '$selected_branch' from '$selected_dir': $latest"
+    else
+      echo "No dump for branch '$BRANCH_NAME'; using latest for '$selected_branch': $latest"
+    fi
+  fi
   dump_file="$latest"
 fi
 

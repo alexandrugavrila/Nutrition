@@ -46,6 +46,7 @@ import {
 import type { IngredientRead } from "@/utils/nutrition";
 import IngredientModal from "@/components/common/IngredientModal";
 import useHoverable from "@/hooks/useHoverable";
+import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type { PlanRead } from "@/utils/planApi";
 import { createPlan, updatePlan } from "@/utils/planApi";
 import type { FoodOverride, FoodPlanItem, IngredientPlanItem, PlanItem, PlanPayload } from "@/utils/planningTypes";
@@ -85,33 +86,37 @@ function Planning() {
   const location = useLocation();
   const ingredientLookup = useMemo(() => createIngredientLookup(ingredients), [ingredients]);
 
-  const [days, setDays] = useState(1);
+  const [days, setDays] = useSessionStorageState<number>("planning-days", 1);
   const [daysError, setDaysError] = useState(false);
-  const [targetMacros, setTargetMacros] = useState<PlanPayload["targetMacros"]>(() => ({
+  const [targetMacros, setTargetMacros] = useSessionStorageState<PlanPayload["targetMacros"]>("planning-target-macros", () => ({
     ...ZERO_MACROS,
   }));
-  const [plan, setPlan] = useState<PlanItem[]>([]); // FoodPlanItem or IngredientPlanItem
+  const [plan, setPlan] = useSessionStorageState<PlanItem[]>("planning-plan", () => []); // FoodPlanItem or IngredientPlanItem
 
-  const [activePlan, setActivePlan] = useState<{ id: number | null; label: string | null; updatedAt: string | null }>({
+  const [activePlan, setActivePlan] = useSessionStorageState<{
+    id: number | null;
+    label: string | null;
+    updatedAt: string | null;
+  }>("planning-active-plan", () => ({
     id: null,
     label: null,
     updatedAt: null,
-  });
+  }));
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [saveLabel, setSaveLabel] = useState("");
+  const [saveLabel, setSaveLabel] = useSessionStorageState("planning-save-label", "");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState<"create" | "update" | null>(null);
   const lastSavedPayloadRef = useRef<PlanPayload | null>(null);
   const [isDirty, setIsDirty] = useState(false);
 
-  const [selectedType, setSelectedType] = useState("food");
-  const [selectedFoodId, setSelectedFoodId] = useState("");
-  const [selectedPortions, setSelectedPortions] = useState(1);
-  const [selectedIngredientId, setSelectedIngredientId] = useState("");
-  const [selectedIngredientUnitId, setSelectedIngredientUnitId] = useState(0);
-  const [selectedIngredientAmount, setSelectedIngredientAmount] = useState(1);
-  const [open, setOpen] = useState({});
+  const [selectedType, setSelectedType] = useSessionStorageState("planning-selected-type", "food");
+  const [selectedFoodId, setSelectedFoodId] = useSessionStorageState("planning-selected-food-id", "");
+  const [selectedPortions, setSelectedPortions] = useSessionStorageState<number>("planning-selected-portions", 1);
+  const [selectedIngredientId, setSelectedIngredientId] = useSessionStorageState("planning-selected-ingredient-id", "");
+  const [selectedIngredientUnitId, setSelectedIngredientUnitId] = useSessionStorageState("planning-selected-ingredient-unit-id", "");
+  const [selectedIngredientAmount, setSelectedIngredientAmount] = useSessionStorageState<number>("planning-selected-ingredient-amount", 1);
+  const [open, setOpen] = useSessionStorageState<Record<number, boolean>>("planning-open-state", () => ({}));
   const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
   const [editorIngredient, setEditorIngredient] = useState<IngredientRead | null>(null);
 
@@ -124,6 +129,45 @@ function Planning() {
   );
   const canResetPlan = hasContent || activePlan.id !== null;
 
+
+  useEffect(() => {
+    if (!selectedIngredientId) {
+      if (selectedIngredientUnitId !== "") {
+        setSelectedIngredientUnitId("");
+      }
+      return;
+    }
+
+    const ingredient = ingredients.find((ing) => String(ing.id) === String(selectedIngredientId));
+    if (!ingredient) {
+      if (selectedIngredientUnitId !== "") {
+        setSelectedIngredientUnitId("");
+      }
+      return;
+    }
+
+    const units = ingredient.units ?? [];
+    if (units.length === 0) {
+      if (selectedIngredientUnitId !== "") {
+        setSelectedIngredientUnitId("");
+      }
+      return;
+    }
+
+    const hasMatch = units.some((unit) => String(unit.id ?? "") === String(selectedIngredientUnitId));
+    if (!hasMatch) {
+      const fallback = units.find((unit) => Number(unit.grams) === 1) ?? units[0];
+      const fallbackId = fallback?.id == null ? "" : String(fallback.id);
+      if (fallbackId !== selectedIngredientUnitId) {
+        setSelectedIngredientUnitId(fallbackId);
+      }
+    }
+  }, [
+    ingredients,
+    selectedIngredientId,
+    selectedIngredientUnitId,
+    setSelectedIngredientUnitId,
+  ]);
 
   const handleOpenIngredientEditor = (ingredientId: string) => {
     const dataIngredient = findIngredientInLookup(ingredientLookup, ingredientId) ?? null;
@@ -377,12 +421,12 @@ function Planning() {
         {
           type: "ingredient",
           ingredientId: selectedIngredientId,
-          unitId: selectedIngredientUnitId,
+          unitId: Number(selectedIngredientUnitId) || 0,
           amount: selectedIngredientAmount,
         },
       ]);
       setSelectedIngredientId("");
-      setSelectedIngredientUnitId(0);
+      setSelectedIngredientUnitId("");
       setSelectedIngredientAmount(1);
     }
   };
@@ -716,35 +760,37 @@ function Planning() {
               onChange={(e) => {
                 const id = e.target.value;
                 setSelectedIngredientId(id);
-                const ing = ingredients.find((i) => i.id === id);
-                const defaultUnit =
-                  ing?.units.find((u) => u.grams === 1) || ing?.units[0];
-                setSelectedIngredientUnitId(defaultUnit?.id || 0);
+                const ing = ingredients.find((i) => String(i.id) === String(id));
+                const fallbackUnit =
+                  ing?.units?.find((u) => Number(u.grams) === 1) ?? ing?.units?.[0];
+                setSelectedIngredientUnitId(
+                  fallbackUnit?.id == null ? "" : String(fallbackUnit.id),
+                );
               }}
               sx={{ minWidth: 200 }}
             >
               {ingredients.map((ingredient) => (
-                <MenuItem key={ingredient.id} value={ingredient.id}>
+                <MenuItem key={ingredient.id} value={String(ingredient.id)}>
                   {ingredient.name}
                 </MenuItem>
               ))}
             </TextField>
-                <TextField
+            <TextField
                   select
                   label="Unit"
                   value={selectedIngredientUnitId}
                   onChange={(e) =>
-                    setSelectedIngredientUnitId(parseInt(e.target.value, 10))
+                    setSelectedIngredientUnitId(e.target.value)
                   }
                   sx={{ minWidth: 120 }}
                   key={`add-unit-${
-                    (ingredients.find((i) => i.id === selectedIngredientId)?.units
+                    (ingredients.find((i) => String(i.id) === String(selectedIngredientId))?.units
                       ?.length) ?? 0
                   }`}
                 >
-                  {(ingredients.find((i) => i.id === selectedIngredientId)?.units || []).map(
+                  {(ingredients.find((i) => String(i.id) === String(selectedIngredientId))?.units || []).map(
                     (unit) => (
-                      <MenuItem key={unit.id} value={unit.id}>
+                      <MenuItem key={unit.id} value={unit.id == null ? "" : String(unit.id)}>
                         {unit.name}
                       </MenuItem>
                     )
@@ -1164,6 +1210,12 @@ function Planning() {
 }
 
 export default Planning;
+
+
+
+
+
+
 
 
 
