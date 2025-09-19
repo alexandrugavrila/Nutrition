@@ -80,7 +80,7 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
     return {
       ingredient_id: ingredient.id,
       food_id: food.id,
-      unit_id: ingredient.selectedUnitId ?? null,
+      unit_id: ingredient.shoppingUnitId ?? null,
       unit_quantity: 1,
     };
   };

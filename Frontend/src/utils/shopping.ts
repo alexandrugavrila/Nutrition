@@ -17,6 +17,7 @@ export type ShoppingListItem = {
   name: string;
   totalGrams: number;
   unitTotals: ShoppingListUnitTotal[];
+  preferredUnitTotal: ShoppingListUnitTotal | null;
 };
 
 export type ShoppingListIssue = {
@@ -45,6 +46,13 @@ const normalizeId = (value: unknown): string | null => {
   if (value === null || value === undefined) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   return String(value);
+};
+
+const formatUnitIdentifier = (value: unknown): number | string | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const normalized = normalizeId(value);
+  return normalized;
 };
 
 const toNumber = (value: unknown): number => {
@@ -89,6 +97,16 @@ const resolveIngredientUnit = (
   }
 
   return undefined;
+};
+
+const resolvePreferredUnitId = (ingredient: IngredientRead): unknown => {
+  const candidate =
+    (ingredient as IngredientRead & { shoppingUnitId?: unknown }).shoppingUnitId ??
+    (ingredient as IngredientRead & { shopping_unit_id?: unknown }).shopping_unit_id ??
+    (ingredient as IngredientRead & { shopping_unit?: { id?: unknown } }).shopping_unit?.id ??
+    null;
+  if (candidate === undefined) return null;
+  return candidate;
 };
 
 const addContribution = (
@@ -314,20 +332,45 @@ export const aggregateShoppingList = ({
     }
   });
 
-  const items: ShoppingListItem[] = Array.from(totals.values()).map((entry) => ({
-    ingredientId: (entry.ingredient.id as number | string | null) ?? null,
-    ingredient: entry.ingredient,
-    name: entry.ingredient.name ?? "Unnamed ingredient",
-    totalGrams: entry.totalGrams,
-    unitTotals: Array.from(entry.unitMap.values())
-      .filter((unit) => unit.quantity > 0 && unit.gramsPerUnit > 0)
-      .sort((a, b) => {
-        if (a.gramsPerUnit === b.gramsPerUnit) {
-          return a.unitName.localeCompare(b.unitName);
-        }
-        return a.gramsPerUnit - b.gramsPerUnit;
-      }),
-  }));
+  const items: ShoppingListItem[] = Array.from(totals.values()).map((entry) => {
+    const preferredUnitId = resolvePreferredUnitId(entry.ingredient);
+    const preferredUnit =
+      preferredUnitId !== null && preferredUnitId !== undefined
+        ? resolveIngredientUnit(entry.ingredient, preferredUnitId)
+        : undefined;
+    const preferredUnitTotal =
+      preferredUnit && preferredUnit.grams > 0
+        ? {
+            unitId: formatUnitIdentifier(
+              preferredUnit.id ?? preferredUnitId ?? null,
+            ),
+            unitName: preferredUnit.name ?? "",
+            quantity: entry.totalGrams / preferredUnit.grams,
+            gramsPerUnit: preferredUnit.grams,
+          }
+        : null;
+
+    return {
+      ingredientId: (entry.ingredient.id as number | string | null) ?? null,
+      ingredient: entry.ingredient,
+      name: entry.ingredient.name ?? "Unnamed ingredient",
+      totalGrams: entry.totalGrams,
+      preferredUnitTotal:
+        preferredUnitTotal &&
+        Number.isFinite(preferredUnitTotal.quantity) &&
+        preferredUnitTotal.quantity > 0
+          ? preferredUnitTotal
+          : null,
+      unitTotals: Array.from(entry.unitMap.values())
+        .filter((unit) => unit.quantity > 0 && unit.gramsPerUnit > 0)
+        .sort((a, b) => {
+          if (a.gramsPerUnit === b.gramsPerUnit) {
+            return a.unitName.localeCompare(b.unitName);
+          }
+          return a.gramsPerUnit - b.gramsPerUnit;
+        }),
+    };
+  });
 
   items.sort((a, b) => a.name.localeCompare(b.name));
 

@@ -8,10 +8,11 @@ import type { components, operations } from "@/api-types";
 type IngredientRead = components["schemas"]["IngredientRead"];
 type IngredientUnitUpdate = components["schemas"]["IngredientUnitUpdate"];
 type IngredientUnitCreate = components["schemas"]["IngredientUnitCreate"];
+type IngredientShoppingUnitSelection = components["schemas"]["IngredientShoppingUnitSelection"];
 type IngredientRequest = operations["add_ingredient_api_ingredients__post"]["requestBody"]["content"]["application/json"];
 
 type IngredientFormState = {
-  ingredient: IngredientRead & { selectedUnitId?: number | string | null };
+  ingredient: IngredientRead & { shoppingUnitId?: number | string | null };
   needsClearForm: boolean;
   needsFillForm: boolean;
 };
@@ -50,7 +51,7 @@ const initializeEmptyIngredient = (): IngredientFormState["ingredient"] => ({
     fiber: 0,
   },
   tags: [],
-  selectedUnitId: "0",
+  shoppingUnitId: "0",
 });
 
 const createInitialState = (): IngredientFormState => ({
@@ -85,6 +86,62 @@ const buildRequestPayload = (ingredient: IngredientFormState["ingredient"]): Ing
 
   if (typeof payload.id !== "number") {
     delete (payload as { id?: number }).id;
+  }
+
+  // Remove local-only helper property
+  delete (payload as { shoppingUnitId?: unknown }).shoppingUnitId;
+
+  const normalizeShoppingUnitId = (value: unknown): number | null => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed === "") return null;
+      const numeric = Number(trimmed);
+      if (Number.isFinite(numeric)) {
+        return numeric;
+      }
+    }
+    return null;
+  };
+
+  const normalizedId = normalizeShoppingUnitId(ingredient.shoppingUnitId);
+  if ("shopping_unit_id" in payload) {
+    delete (payload as { shopping_unit_id?: number | null }).shopping_unit_id;
+  }
+  if ("shopping_unit" in payload) {
+    delete (payload as { shopping_unit?: IngredientShoppingUnitSelection | null }).shopping_unit;
+  }
+
+  if (normalizedId !== null) {
+    (payload as { shopping_unit_id?: number | null }).shopping_unit_id = normalizedId;
+  } else {
+    const match = (ingredient.units ?? []).find((unit) => {
+      if (unit.id === ingredient.shoppingUnitId) return true;
+      if (
+        typeof ingredient.shoppingUnitId === "string" &&
+        unit.id !== null &&
+        unit.id !== undefined &&
+        String(unit.id) === ingredient.shoppingUnitId
+      ) {
+        return true;
+      }
+      return false;
+    });
+
+    if (ingredient.shoppingUnitId === null) {
+      (payload as { shopping_unit_id?: number | null }).shopping_unit_id = null;
+    } else if (match) {
+      const selection: IngredientShoppingUnitSelection = {
+        unit_id:
+          typeof match.id === "number" && Number.isFinite(match.id)
+            ? match.id
+            : undefined,
+        name: match.name,
+        grams: Number(match.grams),
+      };
+      (payload as { shopping_unit?: IngredientShoppingUnitSelection }).shopping_unit = selection;
+    }
   }
 
   return payload;

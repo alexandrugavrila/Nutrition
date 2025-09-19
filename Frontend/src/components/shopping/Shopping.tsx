@@ -1,9 +1,13 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   Box,
+  Button,
   CircularProgress,
+  MenuItem,
   Paper,
+  Select,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -14,11 +18,20 @@ import {
 } from "@mui/material";
 
 import { useData } from "@/contexts/DataContext";
+import apiClient from "@/apiClient";
 import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type { PlanItem } from "@/utils/planningTypes";
 import { aggregateShoppingList } from "@/utils/shopping";
 import type { ShoppingListItem } from "@/utils/shopping";
 import { formatCellNumber } from "@/utils/utils";
+import IngredientModal from "@/components/common/IngredientModal";
+import type { components } from "@/api-types";
+
+type IngredientRead = components["schemas"]["IngredientRead"];
+type IngredientUpdate = components["schemas"]["IngredientUpdate"];
+type IngredientWithSelection = IngredientRead & {
+  shoppingUnitId?: number | string | null;
+};
 
 type ActivePlanState = {
   id: number | null;
@@ -51,8 +64,35 @@ const formatUnitLabel = (
   return labels.join(" + ");
 };
 
+const formatPreferredUnit = (
+  preferred: ShoppingListItem["preferredUnitTotal"],
+  divisor = 1,
+): string | null => {
+  if (!preferred) return null;
+  const safeDivisor = divisor > 0 ? divisor : 1;
+  const quantity = preferred.quantity / safeDivisor;
+  if (!Number.isFinite(quantity) || quantity <= 0) return null;
+  const label = preferred.unitName || "units";
+  return `${formatCellNumber(quantity)} ${label}`;
+};
+
+const CLEAR_SELECTION_VALUE = "__CLEAR_SHOPPING_UNIT__";
+const NULL_UNIT_SENTINEL = "__NULL_UNIT__";
+
 function Shopping() {
-  const { foods, ingredients, fetching } = useData();
+  const {
+    foods,
+    ingredients,
+    fetching,
+    setIngredients,
+    setIngredientsNeedsRefetch,
+    startRequest,
+    endRequest,
+  } = useData();
+  const [modalState, setModalState] = useState<{
+    open: boolean;
+    ingredient: IngredientWithSelection | null;
+  }>({ open: false, ingredient: null });
   const [plan] = useSessionStorageState<PlanItem[]>("planning-plan", () => []);
   const [days] = useSessionStorageState<number>("planning-days", 1);
   const [activePlan] = useSessionStorageState<ActivePlanState>(
@@ -64,6 +104,149 @@ function Shopping() {
     () => aggregateShoppingList({ plan, foods, ingredients }),
     [plan, foods, ingredients],
   );
+
+  const ingredientLookup = useMemo(() => {
+    const map = new Map<string, IngredientWithSelection>();
+    ingredients.forEach((ingredient) => {
+      if (ingredient && ingredient.id !== null && ingredient.id !== undefined) {
+        map.set(String(ingredient.id), ingredient as IngredientWithSelection);
+      }
+    });
+    return map;
+  }, [ingredients]);
+
+  const parseSelectionValue = useCallback((value: unknown): number | string | null => {
+    if (value === CLEAR_SELECTION_VALUE) return null;
+    if (value === NULL_UNIT_SENTINEL) return NULL_UNIT_SENTINEL;
+    if (value === null || value === undefined) return null;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed === "") return null;
+      const numeric = Number(trimmed);
+      if (Number.isFinite(numeric)) return numeric;
+      return trimmed;
+    }
+    return null;
+  }, []);
+
+  const buildUpdatePayload = useCallback(
+    (
+      ingredient: IngredientWithSelection,
+      shoppingUnitId: number | string | null,
+    ): IngredientUpdate => {
+      const units = (ingredient.units ?? [])
+        .filter((unit) => unit.name !== "g")
+        .map((unit) => ({
+          id:
+            typeof unit.id === "number" && Number.isFinite(unit.id) ? unit.id : undefined,
+          name: unit.name ?? "",
+          grams: Number(unit.grams),
+        }));
+
+      const tags = (ingredient.tags ?? []).map((tag) => ({ id: tag.id ?? undefined })).filter((tag) => tag.id != null);
+
+      const nutrition = ingredient.nutrition
+        ? {
+            calories: Number(ingredient.nutrition.calories ?? 0),
+            protein: Number(ingredient.nutrition.protein ?? 0),
+            carbohydrates: Number(ingredient.nutrition.carbohydrates ?? 0),
+            fat: Number(ingredient.nutrition.fat ?? 0),
+            fiber: Number(ingredient.nutrition.fiber ?? 0),
+          }
+        : null;
+
+      const payload: IngredientUpdate = {
+        name: ingredient.name ?? "",
+        nutrition,
+        units: units as IngredientUpdate["units"],
+        tags: tags as IngredientUpdate["tags"],
+      };
+
+      const numericSelection =
+        typeof shoppingUnitId === "number" && Number.isFinite(shoppingUnitId)
+          ? shoppingUnitId
+          : typeof shoppingUnitId === "string"
+          ? Number(shoppingUnitId)
+          : null;
+
+      if (numericSelection !== null && !Number.isNaN(numericSelection)) {
+        payload.shopping_unit_id = numericSelection;
+      } else if (shoppingUnitId === null) {
+        payload.shopping_unit_id = null;
+      } else {
+        const match = (ingredient.units ?? []).find((unit) => {
+          if (unit.id == null && shoppingUnitId === NULL_UNIT_SENTINEL) {
+            return true;
+          }
+          return String(unit.id) === String(shoppingUnitId);
+        });
+        if (match) {
+          payload.shopping_unit = {
+            unit_id:
+              typeof match.id === "number" && Number.isFinite(match.id)
+                ? match.id
+                : undefined,
+            name: match.name ?? "",
+            grams: Number(match.grams),
+          };
+        }
+      }
+
+      return payload;
+    },
+    [],
+  );
+
+  const handlePreferredUnitChange = useCallback(
+    async (ingredientId: number | null | undefined, value: unknown) => {
+      if (ingredientId === null || ingredientId === undefined) return;
+      const lookupKey = String(ingredientId);
+      const ingredient = ingredientLookup.get(lookupKey);
+      if (!ingredient) return;
+      const parsed = parseSelectionValue(value);
+
+      setIngredients((prev) =>
+        prev.map((existing) =>
+          existing.id === ingredientId
+            ? ({ ...existing, shoppingUnitId: parsed } as IngredientWithSelection)
+            : existing,
+        ),
+      );
+
+      startRequest();
+      try {
+        const payload = buildUpdatePayload(ingredient, parsed);
+        await apiClient
+          .path("/api/ingredients/{ingredient_id}", ingredientId)
+          .method("put")
+          .create()({ body: payload });
+        setIngredientsNeedsRefetch(true);
+      } catch (error) {
+        console.error("Failed to update shopping unit", error);
+        setIngredientsNeedsRefetch(true);
+      } finally {
+        endRequest();
+      }
+    },
+    [
+      ingredientLookup,
+      parseSelectionValue,
+      setIngredients,
+      startRequest,
+      buildUpdatePayload,
+      setIngredientsNeedsRefetch,
+      endRequest,
+    ],
+  );
+
+  const openIngredientModal = useCallback((ingredient: IngredientWithSelection) => {
+    setModalState({ open: true, ingredient });
+  }, []);
+
+  const closeIngredientModal = useCallback(() => {
+    setModalState({ open: false, ingredient: null });
+  }, []);
 
   const planIsEmpty = !plan || plan.length === 0;
   const totalWeight = useMemo(
@@ -127,27 +310,102 @@ function Shopping() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.ingredientId ?? item.name}>
-                  <TableCell>{item.name}</TableCell>
-                  <TableCell>
-                    <Typography>{formatUnitLabel(item.unitTotals)}</Typography>
-                    {normalizedDays > 1 && (
-                      <Typography variant="body2" color="text.secondary">
-                        {formatUnitLabel(item.unitTotals, normalizedDays)} per day
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell align="right">
-                    {formatCellNumber(item.totalGrams)}
-                  </TableCell>
-                  {normalizedDays > 1 && (
-                    <TableCell align="right">
-                      {formatCellNumber(item.totalGrams / normalizedDays)}
+              {items.map((item) => {
+                const ingredientId =
+                  typeof item.ingredient.id === "number"
+                    ? item.ingredient.id
+                    : item.ingredient.id != null
+                    ? Number(item.ingredient.id)
+                    : null;
+                const contextIngredient =
+                  (ingredientId != null
+                    ? ingredientLookup.get(String(ingredientId))
+                    : null) ??
+                  (item.ingredient as IngredientWithSelection);
+                const selectValue =
+                  contextIngredient.shoppingUnitId == null
+                    ? CLEAR_SELECTION_VALUE
+                    : String(contextIngredient.shoppingUnitId);
+                const preferredLabel = formatPreferredUnit(item.preferredUnitTotal);
+                const preferredPerDay = formatPreferredUnit(
+                  item.preferredUnitTotal,
+                  normalizedDays,
+                );
+
+                return (
+                  <TableRow key={item.ingredientId ?? item.name}>
+                    <TableCell>{item.name}</TableCell>
+                    <TableCell>
+                      <Stack spacing={1}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Select
+                            size="small"
+                            value={selectValue}
+                            onChange={(event) =>
+                              handlePreferredUnitChange(
+                                ingredientId,
+                                event.target.value,
+                              )
+                            }
+                          >
+                            <MenuItem value={CLEAR_SELECTION_VALUE}>No preference</MenuItem>
+                            {(contextIngredient.units ?? []).map((unit) => {
+                              const optionValue =
+                                unit.id === null || unit.id === undefined
+                                  ? NULL_UNIT_SENTINEL
+                                  : String(unit.id);
+                              const grams = Number(unit.grams);
+                              const gramsLabel = Number.isFinite(grams)
+                                ? formatCellNumber(grams)
+                                : unit.grams;
+                              return (
+                                <MenuItem
+                                  key={`${optionValue}-${unit.name}`}
+                                  value={optionValue}
+                                >
+                                  {unit.name} ({gramsLabel} g)
+                                </MenuItem>
+                              );
+                            })}
+                          </Select>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => openIngredientModal(contextIngredient)}
+                          >
+                            Manage units
+                          </Button>
+                        </Stack>
+                        {preferredLabel && (
+                          <Typography>
+                            Preferred: {preferredLabel}
+                            {normalizedDays > 1 && preferredPerDay
+                              ? ` • ${preferredPerDay} per day`
+                              : ""}
+                          </Typography>
+                        )}
+                        <Typography variant="body2" color="text.secondary">
+                          Plan totals: {formatUnitLabel(item.unitTotals)}
+                          {normalizedDays > 1
+                            ? ` • ${formatUnitLabel(
+                                item.unitTotals,
+                                normalizedDays,
+                              )} per day`
+                            : ""}
+                        </Typography>
+                      </Stack>
                     </TableCell>
-                  )}
-                </TableRow>
-              ))}
+                    <TableCell align="right">
+                      {formatCellNumber(item.totalGrams)}
+                    </TableCell>
+                    {normalizedDays > 1 && (
+                      <TableCell align="right">
+                        {formatCellNumber(item.totalGrams / normalizedDays)}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
@@ -175,6 +433,12 @@ function Shopping() {
           </Box>
         </Alert>
       )}
+      <IngredientModal
+        open={modalState.open}
+        mode="edit"
+        ingredient={modalState.ingredient ?? null}
+        onClose={closeIngredientModal}
+      />
     </Box>
   );
 }

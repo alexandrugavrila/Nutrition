@@ -46,7 +46,7 @@ describe("Planning - ingredient editing updates macros", () => {
         { id: 11, ingredient_id: 1, name: "cup", grams: 100 },
       ],
       tags: [],
-      selectedUnitId: 10,
+      shoppingUnitId: 10,
     },
   ];
 
