@@ -12,6 +12,11 @@ depends_on = None
 
 def upgrade():
     """Create ingredient_shopping_units table."""
+    op.create_unique_constraint(
+        "uq_ingredient_units_ingredient_id_id",
+        "ingredient_units",
+        ["ingredient_id", "id"],
+    )
     op.create_table(
         "ingredient_shopping_units",
         sa.Column("ingredient_id", sa.Integer(), nullable=False),
@@ -38,3 +43,8 @@ def upgrade():
 def downgrade():
     """Drop ingredient_shopping_units table."""
     op.drop_table("ingredient_shopping_units")
+    op.drop_constraint(
+        "uq_ingredient_units_ingredient_id_id",
+        "ingredient_units",
+        type_="unique",
+    )
