@@ -2,8 +2,8 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   Box,
-  Button,
   CircularProgress,
+  IconButton,
   MenuItem,
   Paper,
   Select,
@@ -14,8 +14,10 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
 
 import { useData } from "@/contexts/DataContext";
 import apiClient from "@/apiClient";
@@ -26,11 +28,37 @@ import type { ShoppingListItem } from "@/utils/shopping";
 import { formatCellNumber } from "@/utils/utils";
 import IngredientModal from "@/components/common/IngredientModal";
 import type { components } from "@/api-types";
+import useHoverable from "@/hooks/useHoverable";
 
 type IngredientRead = components["schemas"]["IngredientRead"];
 type IngredientUpdate = components["schemas"]["IngredientUpdate"];
 type IngredientWithSelection = IngredientRead & {
   shoppingUnitId?: number | string | null;
+};
+
+type HoverableEditWrapperProps = {
+  onEdit: () => void;
+  children: React.ReactNode;
+};
+
+const HoverableEditWrapper: React.FC<HoverableEditWrapperProps> = ({
+  onEdit,
+  children,
+}) => {
+  const { hovered, bind } = useHoverable();
+
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }} {...bind}>
+      {children}
+      {hovered && (
+        <Tooltip title="Edit ingredient (add units, nutrition, tags)">
+          <IconButton size="small" aria-label="edit ingredient" onClick={onEdit}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      )}
+    </Box>
+  );
 };
 
 type ActivePlanState = {
@@ -337,7 +365,9 @@ function Shopping() {
                     <TableCell>{item.name}</TableCell>
                     <TableCell>
                       <Stack spacing={1}>
-                        <Stack direction="row" spacing={1} alignItems="center">
+                        <HoverableEditWrapper
+                          onEdit={() => openIngredientModal(contextIngredient)}
+                        >
                           <Select
                             size="small"
                             value={selectValue}
@@ -368,14 +398,7 @@ function Shopping() {
                               );
                             })}
                           </Select>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => openIngredientModal(contextIngredient)}
-                          >
-                            Manage units
-                          </Button>
-                        </Stack>
+                        </HoverableEditWrapper>
                         {preferredLabel && (
                           <Typography>
                             Preferred: {preferredLabel}
