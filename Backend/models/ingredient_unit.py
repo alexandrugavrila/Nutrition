@@ -1,13 +1,18 @@
 from typing import Optional
 
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import Column, String, Numeric
+from sqlalchemy import Column, String, Numeric, UniqueConstraint
 
 
 class IngredientUnit(SQLModel, table=True):
     """Measurement unit for an ingredient."""
 
     __tablename__ = "ingredient_units"
+    __table_args__ = (
+        UniqueConstraint(
+            "ingredient_id", "id", name="uq_ingredient_units_ingredient_id_id"
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     ingredient_id: Optional[int] = Field(
