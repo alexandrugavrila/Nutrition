@@ -24,7 +24,16 @@ This repository contains a full-stack nutrition planning and tracking applicatio
 - Launch with `pwsh ./scripts/docker/compose.ps1 up data -test` (or `.ps1 data -prod`); stop with `pwsh ./scripts/docker/compose.ps1 down`.
 - Add `type -test` to run on the dedicated test ports used by the e2e suite.
 - Containers and ports are isolated per branch through the helper scripts, so multiple branches can run simultaneously.
-- Startup waits for Postgres, applies Alembic migrations, and seeds data based on the selected mode.
+- `data -prod` now restores the latest branch dump via `scripts/db/restore.ps1 -UpgradeAfter`; `data -test` keeps the CSV importer path.
+- Startup waits for Postgres and the backend dependency install before seeding data.
+
+---
+
+## Database workflows
+- Run `pwsh ./scripts/db/backup.ps1` / `./scripts/db/backup.sh` before destructive changes to capture a branch-local dump.
+- Restore with `pwsh ./scripts/db/restore.ps1 [-UpgradeAfter]` (Bash variant available); compose `data -prod` already invokes this flow.
+- Export the current tables via `pwsh ./scripts/db/export-to-csv.ps1 [-Production|-Test]` or `./scripts/db/export-to-csv.sh --output-dir <path>` when you need editable CSV snapshots.
+- The CSV importer (`pwsh ./scripts/db/import-from-csv.ps1`) remains the test-data path and fallback when no dump exists.
 
 ---
 

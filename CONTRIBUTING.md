@@ -130,8 +130,10 @@ All database helpers live under `scripts/db/` and respect the current branch's e
   Writes `Database/backups/<sanitized>-<timestamp>.dump` plus metadata (Alembic revision, git SHA).
 - `pwsh ./scripts/db/restore.ps1 [-ResetSchema] [-UpgradeAfter] [<file>]`  
   Restores the most recent dump for the branch or a provided file. `-ResetSchema` drops/recreates the public schema; `-UpgradeAfter` reapplies migrations.
+- `pwsh ./scripts/db/export-to-csv.ps1 [-Production|-Test] [-OutputDir <path>]`  
+  Writes the current database tables to CSV (defaults to production data). Bash: `./scripts/db/export-to-csv.sh`.
 - `pwsh ./scripts/db/import-from-csv.ps1 [-test|-production]`  
-  Loads CSV seed data into the running container, auto-running migrations if tables are missing.
+  Loads CSV seed data into the running container; used automatically for `compose.ps1 up data -test`.
 - `pwsh ./scripts/db/check-migration-drift.ps1`  
   Compares the migration state between the database and `Backend/migrations`.
 - `pwsh ./scripts/db/update-api-schema.ps1`  

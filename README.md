@@ -43,7 +43,7 @@ A full-stack nutrition planning and tracking app built with:
    ```pwsh
    pwsh ./scripts/docker/compose.ps1 up data -test
    ```
-   - Replace `-test` with `-prod` to seed production-like data.
+   - Replace `-test` with `-prod` to restore the latest branch backup (falls back to CSV seeding if no dump exists).
    - Add `type -test` to run on the dedicated test ports (used by the end-to-end suite).
 
    The script prints the branch-specific ports and waits until the services are ready:
@@ -65,6 +65,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
 - `pwsh ./scripts/docker/compose.ps1 <up|down|restart>`: manage the per-branch Docker stack.
 - `pwsh ./scripts/run-tests.ps1 [-sync] [-e2e]`: run backend + frontend tests with optional API/migration sync. Bash variant: `./scripts/run-tests.sh`.
 - `pwsh ./scripts/db/backup.ps1` / `restore.ps1`: create or restore branch-local Postgres backups. Bash variants available in the same directory.
+- `pwsh ./scripts/db/export-to-csv.ps1` / `./scripts/db/export-to-csv.sh`: export the current database tables to CSV (production by default, `--test` or `--output-dir` available).
 
 ---
 
