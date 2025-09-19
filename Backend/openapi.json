@@ -1,37 +1,786 @@
 {
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FastAPI",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/ingredients/": {
+      "get": {
+        "tags": [
+          "ingredients"
+        ],
+        "summary": "Get All Ingredients",
+        "description": "Return all ingredients.",
+        "operationId": "get_all_ingredients_api_ingredients__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/IngredientRead"
+                  },
+                  "type": "array",
+                  "title": "Response Get All Ingredients Api Ingredients  Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ingredients"
+        ],
+        "summary": "Add Ingredient",
+        "description": "Create a new ingredient.",
+        "operationId": "add_ingredient_api_ingredients__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngredientCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ingredients/possible_tags": {
+      "get": {
+        "tags": [
+          "ingredients"
+        ],
+        "summary": "Get All Possible Tags",
+        "description": "Return all possible ingredient tags ordered by name.",
+        "operationId": "get_all_possible_tags_api_ingredients_possible_tags_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PossibleIngredientTag"
+                  },
+                  "type": "array",
+                  "title": "Response Get All Possible Tags Api Ingredients Possible Tags Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ingredients"
+        ],
+        "summary": "Add Possible Tag",
+        "description": "Create a new possible ingredient tag, or return existing on duplicate name.",
+        "operationId": "add_possible_tag_api_ingredients_possible_tags_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PossibleIngredientTag"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ingredients/{ingredient_id}": {
+      "get": {
+        "tags": [
+          "ingredients"
+        ],
+        "summary": "Get Ingredient",
+        "description": "Retrieve a single ingredient by ID.",
+        "operationId": "get_ingredient_api_ingredients__ingredient_id__get",
+        "parameters": [
+          {
+            "name": "ingredient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Ingredient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ingredients"
+        ],
+        "summary": "Update Ingredient",
+        "description": "Update an existing ingredient.\n\nImportant: Avoid deleting existing units on update to preserve referential\nintegrity for rows in food_ingredients that reference them. Instead,\nupsert provided units (update by id or insert new). Existing units not in\nthe payload are left unchanged.",
+        "operationId": "update_ingredient_api_ingredients__ingredient_id__put",
+        "parameters": [
+          {
+            "name": "ingredient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Ingredient Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngredientUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ingredients"
+        ],
+        "summary": "Delete Ingredient",
+        "description": "Delete an ingredient.",
+        "operationId": "delete_ingredient_api_ingredients__ingredient_id__delete",
+        "parameters": [
+          {
+            "name": "ingredient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Ingredient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Ingredient Api Ingredients  Ingredient Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/foods/": {
+      "get": {
+        "tags": [
+          "foods"
+        ],
+        "summary": "Get All Foods",
+        "description": "Return all foods.",
+        "operationId": "get_all_foods_api_foods__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FoodRead"
+                  },
+                  "type": "array",
+                  "title": "Response Get All Foods Api Foods  Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "foods"
+        ],
+        "summary": "Add Food",
+        "description": "Create a new food.",
+        "operationId": "add_food_api_foods__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FoodCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoodRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/foods/possible_tags": {
+      "get": {
+        "tags": [
+          "foods"
+        ],
+        "summary": "Get Possible Food Tags",
+        "description": "Return all possible food tags ordered by name.",
+        "operationId": "get_possible_food_tags_api_foods_possible_tags_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PossibleFoodTag"
+                  },
+                  "type": "array",
+                  "title": "Response Get Possible Food Tags Api Foods Possible Tags Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "foods"
+        ],
+        "summary": "Add Possible Food Tag",
+        "description": "Create a new possible food tag, or return existing on duplicate name.",
+        "operationId": "add_possible_food_tag_api_foods_possible_tags_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PossibleFoodTag"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/foods/{food_id}": {
+      "get": {
+        "tags": [
+          "foods"
+        ],
+        "summary": "Get Food",
+        "description": "Retrieve a single food by ID.",
+        "operationId": "get_food_api_foods__food_id__get",
+        "parameters": [
+          {
+            "name": "food_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Food Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoodRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "foods"
+        ],
+        "summary": "Update Food",
+        "description": "Update an existing food.",
+        "operationId": "update_food_api_foods__food_id__put",
+        "parameters": [
+          {
+            "name": "food_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Food Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FoodUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoodRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "foods"
+        ],
+        "summary": "Delete Food",
+        "description": "Delete a food.",
+        "operationId": "delete_food_api_foods__food_id__delete",
+        "parameters": [
+          {
+            "name": "food_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Food Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Food Api Foods  Food Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/": {
+      "get": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "List Plans",
+        "description": "Return all saved plans ordered by last update descending.",
+        "operationId": "list_plans_api_plans__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PlanRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Plans Api Plans  Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Create Plan",
+        "description": "Persist a new plan payload.",
+        "operationId": "create_plan_api_plans__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/{plan_id}": {
+      "get": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Get Plan",
+        "description": "Retrieve a single plan by ID.",
+        "operationId": "get_plan_api_plans__plan_id__get",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Update Plan",
+        "description": "Update an existing plan.",
+        "operationId": "update_plan_api_plans__plan_id__put",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Delete Plan",
+        "description": "Delete an existing plan.",
+        "operationId": "delete_plan_api_plans__plan_id__delete",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   "components": {
     "schemas": {
       "FoodCreate": {
-        "description": "Schema for creating a food.",
         "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
           "ingredients": {
             "items": {
               "$ref": "#/components/schemas/FoodIngredientCreate"
             },
-            "title": "Ingredients",
-            "type": "array"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
+            "type": "array",
+            "title": "Ingredients"
           },
           "tags": {
             "items": {
               "$ref": "#/components/schemas/TagRef"
             },
-            "title": "Tags",
-            "type": "array"
+            "type": "array",
+            "title": "Tags"
           }
         },
+        "type": "object",
         "required": [
           "name"
         ],
         "title": "FoodCreate",
-        "type": "object"
+        "description": "Schema for creating a food."
       },
       "FoodIngredient": {
-        "description": "Link between a food and an ingredient with quantity information.",
         "properties": {
+          "ingredient_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingredient Id"
+          },
           "food_id": {
             "anyOf": [
               {
@@ -43,7 +792,7 @@
             ],
             "title": "Food Id"
           },
-          "ingredient_id": {
+          "unit_id": {
             "anyOf": [
               {
                 "type": "integer"
@@ -52,6 +801,28 @@
                 "type": "null"
               }
             ],
+            "title": "Unit Id"
+          },
+          "unit_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Quantity"
+          }
+        },
+        "type": "object",
+        "title": "FoodIngredient",
+        "description": "Link between a food and an ingredient with quantity information."
+      },
+      "FoodIngredientCreate": {
+        "properties": {
+          "ingredient_id": {
+            "type": "integer",
             "title": "Ingredient Id"
           },
           "unit_id": {
@@ -77,105 +848,73 @@
             "title": "Unit Quantity"
           }
         },
-        "title": "FoodIngredient",
-        "type": "object"
-      },
-      "FoodIngredientCreate": {
-        "description": "Schema for creating food ingredient linkage.",
-        "properties": {
-          "ingredient_id": {
-            "title": "Ingredient Id",
-            "type": "integer"
-          },
-          "unit_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Unit Id"
-          },
-          "unit_quantity": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Unit Quantity"
-          }
-        },
+        "type": "object",
         "required": [
           "ingredient_id"
         ],
         "title": "FoodIngredientCreate",
-        "type": "object"
+        "description": "Schema for creating food ingredient linkage."
       },
       "FoodRead": {
-        "description": "Schema for reading food data.",
         "properties": {
           "id": {
-            "title": "Id",
-            "type": "integer"
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
           },
           "ingredients": {
             "items": {
               "$ref": "#/components/schemas/FoodIngredient"
             },
-            "title": "Ingredients",
-            "type": "array"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
+            "type": "array",
+            "title": "Ingredients"
           },
           "tags": {
             "items": {
               "$ref": "#/components/schemas/PossibleFoodTag"
             },
-            "title": "Tags",
-            "type": "array"
+            "type": "array",
+            "title": "Tags"
           }
         },
+        "type": "object",
         "required": [
           "id",
           "name"
         ],
         "title": "FoodRead",
-        "type": "object"
+        "description": "Schema for reading food data."
       },
       "FoodUpdate": {
-        "description": "Schema for updating a food.",
         "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
           "ingredients": {
             "items": {
               "$ref": "#/components/schemas/FoodIngredientCreate"
             },
-            "title": "Ingredients",
-            "type": "array"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
+            "type": "array",
+            "title": "Ingredients"
           },
           "tags": {
             "items": {
               "$ref": "#/components/schemas/TagRef"
             },
-            "title": "Tags",
-            "type": "array"
+            "type": "array",
+            "title": "Tags"
           }
         },
+        "type": "object",
         "required": [
           "name"
         ],
         "title": "FoodUpdate",
-        "type": "object"
+        "description": "Schema for updating a food."
       },
       "HTTPValidationError": {
         "properties": {
@@ -183,19 +922,18 @@
             "items": {
               "$ref": "#/components/schemas/ValidationError"
             },
-            "title": "Detail",
-            "type": "array"
+            "type": "array",
+            "title": "Detail"
           }
         },
-        "title": "HTTPValidationError",
-        "type": "object"
+        "type": "object",
+        "title": "HTTPValidationError"
       },
       "IngredientCreate": {
-        "description": "Schema for creating an ingredient.",
         "properties": {
           "name": {
-            "title": "Name",
-            "type": "string"
+            "type": "string",
+            "title": "Name"
           },
           "nutrition": {
             "anyOf": [
@@ -207,37 +945,58 @@
               }
             ]
           },
-          "tags": {
-            "items": {
-              "$ref": "#/components/schemas/TagRef"
-            },
-            "title": "Tags",
-            "type": "array"
-          },
           "units": {
             "items": {
               "$ref": "#/components/schemas/IngredientUnitCreate"
             },
-            "title": "Units",
-            "type": "array"
+            "type": "array",
+            "title": "Units"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagRef"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "shopping_unit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shopping Unit Id"
+          },
+          "shopping_unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngredientShoppingUnitSelection"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
+        "type": "object",
         "required": [
           "name"
         ],
         "title": "IngredientCreate",
-        "type": "object"
+        "description": "Schema for creating an ingredient."
       },
       "IngredientRead": {
-        "description": "Schema for reading ingredient data.",
         "properties": {
           "id": {
-            "title": "Id",
-            "type": "integer"
+            "type": "integer",
+            "title": "Id"
           },
           "name": {
-            "title": "Name",
-            "type": "string"
+            "type": "string",
+            "title": "Name"
           },
           "nutrition": {
             "anyOf": [
@@ -249,35 +1008,92 @@
               }
             ]
           },
-          "tags": {
-            "items": {
-              "$ref": "#/components/schemas/PossibleIngredientTag"
-            },
-            "title": "Tags",
-            "type": "array"
-          },
           "units": {
             "items": {
               "$ref": "#/components/schemas/IngredientUnit"
             },
-            "title": "Units",
-            "type": "array"
+            "type": "array",
+            "title": "Units"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/PossibleIngredientTag"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "shopping_unit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shopping Unit Id"
+          },
+          "shopping_unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngredientUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
+        "type": "object",
         "required": [
           "id",
           "name"
         ],
         "title": "IngredientRead",
-        "type": "object"
+        "description": "Schema for reading ingredient data."
+      },
+      "IngredientShoppingUnitSelection": {
+        "properties": {
+          "unit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "grams": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grams"
+          }
+        },
+        "type": "object",
+        "title": "IngredientShoppingUnitSelection",
+        "description": "Payload for selecting a preferred shopping unit."
       },
       "IngredientUnit": {
-        "description": "Measurement unit for an ingredient.",
         "properties": {
-          "grams": {
-            "title": "Grams",
-            "type": "number"
-          },
           "id": {
             "anyOf": [
               {
@@ -301,43 +1117,43 @@
             "title": "Ingredient Id"
           },
           "name": {
-            "title": "Name",
-            "type": "string"
+            "type": "string",
+            "title": "Name"
+          },
+          "grams": {
+            "type": "number",
+            "title": "Grams"
           }
         },
+        "type": "object",
         "required": [
           "name",
           "grams"
         ],
         "title": "IngredientUnit",
-        "type": "object"
+        "description": "Measurement unit for an ingredient."
       },
       "IngredientUnitCreate": {
-        "description": "Schema for creating ingredient unit data.",
         "properties": {
-          "grams": {
-            "title": "Grams",
-            "type": "number"
-          },
           "name": {
-            "title": "Name",
-            "type": "string"
+            "type": "string",
+            "title": "Name"
+          },
+          "grams": {
+            "type": "number",
+            "title": "Grams"
           }
         },
+        "type": "object",
         "required": [
           "name",
           "grams"
         ],
         "title": "IngredientUnitCreate",
-        "type": "object"
+        "description": "Schema for creating ingredient unit data."
       },
       "IngredientUnitUpdate": {
-        "description": "Schema for updating ingredient unit data (allows id for upsert).",
         "properties": {
-          "grams": {
-            "title": "Grams",
-            "type": "number"
-          },
           "id": {
             "anyOf": [
               {
@@ -350,23 +1166,27 @@
             "title": "Id"
           },
           "name": {
-            "title": "Name",
-            "type": "string"
+            "type": "string",
+            "title": "Name"
+          },
+          "grams": {
+            "type": "number",
+            "title": "Grams"
           }
         },
+        "type": "object",
         "required": [
           "name",
           "grams"
         ],
         "title": "IngredientUnitUpdate",
-        "type": "object"
+        "description": "Schema for updating ingredient unit data (allows id for upsert)."
       },
       "IngredientUpdate": {
-        "description": "Schema for updating an ingredient.",
         "properties": {
           "name": {
-            "title": "Name",
-            "type": "string"
+            "type": "string",
+            "title": "Name"
           },
           "nutrition": {
             "anyOf": [
@@ -378,46 +1198,51 @@
               }
             ]
           },
-          "tags": {
-            "items": {
-              "$ref": "#/components/schemas/TagRef"
-            },
-            "title": "Tags",
-            "type": "array"
-          },
           "units": {
             "items": {
               "$ref": "#/components/schemas/IngredientUnitUpdate"
             },
-            "title": "Units",
-            "type": "array"
+            "type": "array",
+            "title": "Units"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagRef"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "shopping_unit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shopping Unit Id"
+          },
+          "shopping_unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngredientShoppingUnitSelection"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
+        "type": "object",
         "required": [
           "name"
         ],
         "title": "IngredientUpdate",
-        "type": "object"
+        "description": "Schema for updating an ingredient."
       },
       "Nutrition": {
-        "description": "Nutritional information for a single ingredient.",
         "properties": {
-          "calories": {
-            "title": "Calories",
-            "type": "number"
-          },
-          "carbohydrates": {
-            "title": "Carbohydrates",
-            "type": "number"
-          },
-          "fat": {
-            "title": "Fat",
-            "type": "number"
-          },
-          "fiber": {
-            "title": "Fiber",
-            "type": "number"
-          },
           "id": {
             "anyOf": [
               {
@@ -440,11 +1265,28 @@
             ],
             "title": "Ingredient Id"
           },
+          "calories": {
+            "type": "number",
+            "title": "Calories"
+          },
+          "fat": {
+            "type": "number",
+            "title": "Fat"
+          },
+          "carbohydrates": {
+            "type": "number",
+            "title": "Carbohydrates"
+          },
           "protein": {
-            "title": "Protein",
-            "type": "number"
+            "type": "number",
+            "title": "Protein"
+          },
+          "fiber": {
+            "type": "number",
+            "title": "Fiber"
           }
         },
+        "type": "object",
         "required": [
           "calories",
           "fat",
@@ -453,32 +1295,32 @@
           "fiber"
         ],
         "title": "Nutrition",
-        "type": "object"
+        "description": "Nutritional information for a single ingredient."
       },
       "NutritionCreate": {
-        "description": "Schema for creating nutrition data.",
         "properties": {
           "calories": {
-            "title": "Calories",
-            "type": "number"
-          },
-          "carbohydrates": {
-            "title": "Carbohydrates",
-            "type": "number"
+            "type": "number",
+            "title": "Calories"
           },
           "fat": {
-            "title": "Fat",
-            "type": "number"
+            "type": "number",
+            "title": "Fat"
           },
-          "fiber": {
-            "title": "Fiber",
-            "type": "number"
+          "carbohydrates": {
+            "type": "number",
+            "title": "Carbohydrates"
           },
           "protein": {
-            "title": "Protein",
-            "type": "number"
+            "type": "number",
+            "title": "Protein"
+          },
+          "fiber": {
+            "type": "number",
+            "title": "Fiber"
           }
         },
+        "type": "object",
         "required": [
           "calories",
           "fat",
@@ -487,55 +1329,55 @@
           "fiber"
         ],
         "title": "NutritionCreate",
-        "type": "object"
+        "description": "Schema for creating nutrition data."
       },
       "PlanCreate": {
-        "description": "Payload required to persist a plan.",
         "properties": {
           "label": {
-            "title": "Label",
-            "type": "string"
+            "type": "string",
+            "title": "Label"
           },
           "payload": {
             "additionalProperties": true,
-            "title": "Payload",
-            "type": "object"
+            "type": "object",
+            "title": "Payload"
           }
         },
+        "type": "object",
         "required": [
           "label",
           "payload"
         ],
         "title": "PlanCreate",
-        "type": "object"
+        "description": "Payload required to persist a plan."
       },
       "PlanRead": {
-        "description": "Representation of a saved plan returned from the API.",
         "properties": {
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
           "id": {
-            "title": "Id",
-            "type": "integer"
+            "type": "integer",
+            "title": "Id"
           },
           "label": {
-            "title": "Label",
-            "type": "string"
+            "type": "string",
+            "title": "Label"
           },
           "payload": {
             "additionalProperties": true,
-            "title": "Payload",
-            "type": "object"
+            "type": "object",
+            "title": "Payload"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
           },
           "updated_at": {
+            "type": "string",
             "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
+            "title": "Updated At"
           }
         },
+        "type": "object",
         "required": [
           "id",
           "label",
@@ -544,10 +1386,9 @@
           "updated_at"
         ],
         "title": "PlanRead",
-        "type": "object"
+        "description": "Representation of a saved plan returned from the API."
       },
       "PlanUpdate": {
-        "description": "Fields allowed when updating a persisted plan.",
         "properties": {
           "label": {
             "anyOf": [
@@ -573,11 +1414,11 @@
             "title": "Payload"
           }
         },
+        "type": "object",
         "title": "PlanUpdate",
-        "type": "object"
+        "description": "Fields allowed when updating a persisted plan."
       },
       "PossibleFoodTag": {
-        "description": "Tag that can be associated with a food.",
         "properties": {
           "id": {
             "anyOf": [
@@ -591,18 +1432,18 @@
             "title": "Id"
           },
           "name": {
-            "title": "Name",
-            "type": "string"
+            "type": "string",
+            "title": "Name"
           }
         },
+        "type": "object",
         "required": [
           "name"
         ],
         "title": "PossibleFoodTag",
-        "type": "object"
+        "description": "Tag that can be associated with a food."
       },
       "PossibleIngredientTag": {
-        "description": "Tag that can be associated with an ingredient.",
         "properties": {
           "id": {
             "anyOf": [
@@ -616,43 +1457,44 @@
             "title": "Id"
           },
           "name": {
-            "title": "Name",
-            "type": "string"
+            "type": "string",
+            "title": "Name"
           }
         },
+        "type": "object",
         "required": [
           "name"
         ],
         "title": "PossibleIngredientTag",
-        "type": "object"
+        "description": "Tag that can be associated with an ingredient."
       },
       "TagCreate": {
-        "description": "Schema for creating a new possible tag by name.",
         "properties": {
           "name": {
-            "title": "Name",
-            "type": "string"
+            "type": "string",
+            "title": "Name"
           }
         },
+        "type": "object",
         "required": [
           "name"
         ],
         "title": "TagCreate",
-        "type": "object"
+        "description": "Schema for creating a new possible tag by name."
       },
       "TagRef": {
-        "description": "Reference to an existing tag by ID.",
         "properties": {
           "id": {
-            "title": "Id",
-            "type": "integer"
+            "type": "integer",
+            "title": "Id"
           }
         },
+        "type": "object",
         "required": [
           "id"
         ],
         "title": "TagRef",
-        "type": "object"
+        "description": "Reference to an existing tag by ID."
       },
       "ValidationError": {
         "properties": {
@@ -667,764 +1509,25 @@
                 }
               ]
             },
-            "title": "Location",
-            "type": "array"
+            "type": "array",
+            "title": "Location"
           },
           "msg": {
-            "title": "Message",
-            "type": "string"
+            "type": "string",
+            "title": "Message"
           },
           "type": {
-            "title": "Error Type",
-            "type": "string"
+            "type": "string",
+            "title": "Error Type"
           }
         },
+        "type": "object",
         "required": [
           "loc",
           "msg",
           "type"
         ],
-        "title": "ValidationError",
-        "type": "object"
-      }
-    }
-  },
-  "info": {
-    "title": "FastAPI",
-    "version": "0.1.0"
-  },
-  "openapi": "3.1.0",
-  "paths": {
-    "/api/foods/": {
-      "get": {
-        "description": "Return all foods.",
-        "operationId": "get_all_foods_api_foods__get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/FoodRead"
-                  },
-                  "title": "Response Get All Foods Api Foods  Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get All Foods",
-        "tags": [
-          "foods"
-        ]
-      },
-      "post": {
-        "description": "Create a new food.",
-        "operationId": "add_food_api_foods__post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FoodCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FoodRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Add Food",
-        "tags": [
-          "foods"
-        ]
-      }
-    },
-    "/api/foods/possible_tags": {
-      "get": {
-        "description": "Return all possible food tags ordered by name.",
-        "operationId": "get_possible_food_tags_api_foods_possible_tags_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/PossibleFoodTag"
-                  },
-                  "title": "Response Get Possible Food Tags Api Foods Possible Tags Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Possible Food Tags",
-        "tags": [
-          "foods"
-        ]
-      },
-      "post": {
-        "description": "Create a new possible food tag, or return existing on duplicate name.",
-        "operationId": "add_possible_food_tag_api_foods_possible_tags_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TagCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PossibleFoodTag"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Add Possible Food Tag",
-        "tags": [
-          "foods"
-        ]
-      }
-    },
-    "/api/foods/{food_id}": {
-      "delete": {
-        "description": "Delete a food.",
-        "operationId": "delete_food_api_foods__food_id__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "food_id",
-            "required": true,
-            "schema": {
-              "title": "Food Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Food Api Foods  Food Id  Delete",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Delete Food",
-        "tags": [
-          "foods"
-        ]
-      },
-      "get": {
-        "description": "Retrieve a single food by ID.",
-        "operationId": "get_food_api_foods__food_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "food_id",
-            "required": true,
-            "schema": {
-              "title": "Food Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FoodRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Food",
-        "tags": [
-          "foods"
-        ]
-      },
-      "put": {
-        "description": "Update an existing food.",
-        "operationId": "update_food_api_foods__food_id__put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "food_id",
-            "required": true,
-            "schema": {
-              "title": "Food Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FoodUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FoodRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Update Food",
-        "tags": [
-          "foods"
-        ]
-      }
-    },
-    "/api/ingredients/": {
-      "get": {
-        "description": "Return all ingredients.",
-        "operationId": "get_all_ingredients_api_ingredients__get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/IngredientRead"
-                  },
-                  "title": "Response Get All Ingredients Api Ingredients  Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get All Ingredients",
-        "tags": [
-          "ingredients"
-        ]
-      },
-      "post": {
-        "description": "Create a new ingredient.",
-        "operationId": "add_ingredient_api_ingredients__post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/IngredientCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/IngredientRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Add Ingredient",
-        "tags": [
-          "ingredients"
-        ]
-      }
-    },
-    "/api/ingredients/possible_tags": {
-      "get": {
-        "description": "Return all possible ingredient tags ordered by name.",
-        "operationId": "get_all_possible_tags_api_ingredients_possible_tags_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/PossibleIngredientTag"
-                  },
-                  "title": "Response Get All Possible Tags Api Ingredients Possible Tags Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get All Possible Tags",
-        "tags": [
-          "ingredients"
-        ]
-      },
-      "post": {
-        "description": "Create a new possible ingredient tag, or return existing on duplicate name.",
-        "operationId": "add_possible_tag_api_ingredients_possible_tags_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TagCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PossibleIngredientTag"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Add Possible Tag",
-        "tags": [
-          "ingredients"
-        ]
-      }
-    },
-    "/api/ingredients/{ingredient_id}": {
-      "delete": {
-        "description": "Delete an ingredient.",
-        "operationId": "delete_ingredient_api_ingredients__ingredient_id__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "ingredient_id",
-            "required": true,
-            "schema": {
-              "title": "Ingredient Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Ingredient Api Ingredients  Ingredient Id  Delete",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Delete Ingredient",
-        "tags": [
-          "ingredients"
-        ]
-      },
-      "get": {
-        "description": "Retrieve a single ingredient by ID.",
-        "operationId": "get_ingredient_api_ingredients__ingredient_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "ingredient_id",
-            "required": true,
-            "schema": {
-              "title": "Ingredient Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/IngredientRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Ingredient",
-        "tags": [
-          "ingredients"
-        ]
-      },
-      "put": {
-        "description": "Update an existing ingredient.\n\nImportant: Avoid deleting existing units on update to preserve referential\nintegrity for rows in food_ingredients that reference them. Instead,\nupsert provided units (update by id or insert new). Existing units not in\nthe payload are left unchanged.",
-        "operationId": "update_ingredient_api_ingredients__ingredient_id__put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "ingredient_id",
-            "required": true,
-            "schema": {
-              "title": "Ingredient Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/IngredientUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/IngredientRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Update Ingredient",
-        "tags": [
-          "ingredients"
-        ]
-      }
-    },
-    "/api/plans/": {
-      "get": {
-        "description": "Return all saved plans ordered by last update descending.",
-        "operationId": "list_plans_api_plans__get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/PlanRead"
-                  },
-                  "title": "Response List Plans Api Plans  Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "List Plans",
-        "tags": [
-          "plans"
-        ]
-      },
-      "post": {
-        "description": "Persist a new plan payload.",
-        "operationId": "create_plan_api_plans__post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PlanCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlanRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Plan",
-        "tags": [
-          "plans"
-        ]
-      }
-    },
-    "/api/plans/{plan_id}": {
-      "delete": {
-        "description": "Delete an existing plan.",
-        "operationId": "delete_plan_api_plans__plan_id__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "plan_id",
-            "required": true,
-            "schema": {
-              "title": "Plan Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Delete Plan",
-        "tags": [
-          "plans"
-        ]
-      },
-      "get": {
-        "description": "Retrieve a single plan by ID.",
-        "operationId": "get_plan_api_plans__plan_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "plan_id",
-            "required": true,
-            "schema": {
-              "title": "Plan Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlanRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Plan",
-        "tags": [
-          "plans"
-        ]
-      },
-      "put": {
-        "description": "Update an existing plan.",
-        "operationId": "update_plan_api_plans__plan_id__put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "plan_id",
-            "required": true,
-            "schema": {
-              "title": "Plan Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PlanUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlanRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Update Plan",
-        "tags": [
-          "plans"
-        ]
+        "title": "ValidationError"
       }
     }
   }

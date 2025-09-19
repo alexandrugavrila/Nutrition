@@ -36,6 +36,14 @@ class IngredientUnitUpdate(SQLModel):
     grams: float
 
 
+class IngredientShoppingUnitSelection(SQLModel):
+    """Payload for selecting a preferred shopping unit."""
+
+    unit_id: Optional[int] = None
+    name: Optional[str] = None
+    grams: Optional[float] = None
+
+
 class FoodIngredientCreate(SQLModel):
     """Schema for creating food ingredient linkage."""
 
@@ -57,6 +65,8 @@ class IngredientCreate(SQLModel):
     nutrition: Optional[NutritionCreate] = None
     units: List[IngredientUnitCreate] = Field(default_factory=list)
     tags: List[TagRef] = Field(default_factory=list)
+    shopping_unit_id: Optional[int] = None
+    shopping_unit: Optional[IngredientShoppingUnitSelection] = None
 
 
 class IngredientUpdate(SQLModel):
@@ -67,6 +77,8 @@ class IngredientUpdate(SQLModel):
     # Accept units with optional id for proper upsert behavior
     units: List[IngredientUnitUpdate] = Field(default_factory=list)
     tags: List[TagRef] = Field(default_factory=list)
+    shopping_unit_id: Optional[int] = None
+    shopping_unit: Optional[IngredientShoppingUnitSelection] = None
 
 
 class IngredientRead(SQLModel):
@@ -79,6 +91,8 @@ class IngredientRead(SQLModel):
     nutrition: Optional[Nutrition] = None
     units: List[IngredientUnit] = Field(default_factory=list)
     tags: List[PossibleIngredientTag] = Field(default_factory=list)
+    shopping_unit_id: Optional[int] = None
+    shopping_unit: Optional[IngredientUnit] = None
 
 
 class FoodCreate(SQLModel):
@@ -135,6 +149,7 @@ class PlanRead(SQLModel):
 __all__ = [
     "NutritionCreate",
     "IngredientUnitCreate",
+    "IngredientShoppingUnitSelection",
     "FoodIngredientCreate",
     "TagRef",
     "IngredientCreate",

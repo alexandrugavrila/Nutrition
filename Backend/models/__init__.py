@@ -1,4 +1,5 @@
 from .ingredient import Ingredient
+from .ingredient_shopping_unit import IngredientShoppingUnit
 from .ingredient_unit import IngredientUnit
 from .nutrition import Nutrition
 from .possible_ingredient_tag import PossibleIngredientTag
@@ -27,6 +28,7 @@ from .schemas import (
 __all__ = [
     "Ingredient",
     "IngredientUnit",
+    "IngredientShoppingUnit",
     "Nutrition",
     "PossibleIngredientTag",
     "PossibleFoodTag",

@@ -74,8 +74,10 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }) {
           if (unit.id == null || normalizedValue == null) return false;
           return String(unit.id) === String(normalizedValue);
         }) || null;
-      const updatedUnitId = matchingUnit ? matchingUnit.id ?? null : normalizedValue;
-      dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, selectedUnitId: updatedUnitId } });
+      const updatedUnitId = matchingUnit
+        ? matchingUnit.id ?? normalizedValue
+        : normalizedValue;
+      dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, shoppingUnitId: updatedUnitId } });
     },
     [ingredient, dispatch]
   );
@@ -89,14 +91,24 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }) {
         name: name.trim(),
         grams: grams,
       };
-      dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, units: [...ingredient.units, newUnit], selectedUnitId: tempId } });
+      dispatch({
+        type: "SET_INGREDIENT",
+        payload: {
+          ...ingredient,
+          units: [...ingredient.units, newUnit],
+          shoppingUnitId: tempId,
+        },
+      });
     },
     [dispatch, ingredient]
   );
 
   useEffect(() => {
     if (needsClearForm) {
-      dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, units: [], selectedUnitId: null } });
+      dispatch({
+        type: "SET_INGREDIENT",
+        payload: { ...ingredient, units: [], shoppingUnitId: null },
+      });
     }
   }, [needsClearForm, dispatch, ingredient]);
 
@@ -107,7 +119,11 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }) {
           style={{ textAlign: "center" }}
           labelId="unit-select-label"
           id="unit-select"
-          value={ingredient.selectedUnitId == null ? NULL_UNIT_VALUE : String(ingredient.selectedUnitId)}
+          value={
+            ingredient.shoppingUnitId == null
+              ? NULL_UNIT_VALUE
+              : String(ingredient.shoppingUnitId)
+          }
           onChange={handleSelectedUnitChange}>
           {ingredient.units &&
             ingredient.units.map((unit) => (
