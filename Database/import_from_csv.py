@@ -2,6 +2,7 @@
 
 import argparse
 import csv
+import json
 import os
 import sys
 from collections import defaultdict, deque
@@ -24,6 +25,7 @@ from Backend.models import (
     Nutrition,
     PossibleIngredientTag,
     PossibleFoodTag,
+    Plan,
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -100,6 +102,10 @@ def wipe_data(session, ordered_tables):
     session.commit()
 
 
+JSON_FIELDS = {
+    "plans": ["payload"],
+}
+
 MODEL_MAP = {
     "ingredients": Ingredient,
     "ingredient_units": IngredientUnit,
@@ -110,6 +116,7 @@ MODEL_MAP = {
     "food_ingredients": FoodIngredient,
     "possible_food_tags": PossibleFoodTag,
     "food_tags": FoodTagLink,
+    "plans": Plan,
 }
 
 
@@ -125,6 +132,26 @@ def import_csv(session, folder, ordered_tables):
                     print(f"No model found for {table}")
                     continue
                 rows = list(reader)
+                json_fields = JSON_FIELDS.get(table, [])
+                for row in rows:
+                    # Coerce common scalar types from CSV strings
+                    # - Primary keys like "id" must be proper ints, not strings
+                    if "id" in row and row["id"] not in (None, ""):
+                        try:
+                            row["id"] = int(row["id"])
+                        except (TypeError, ValueError):
+                            # Leave as-is; SQLAlchemy will raise a clearer error if invalid
+                            pass
+                    for field in json_fields:
+                        value = row.get(field)
+                        if not value:
+                            continue
+                        try:
+                            row[field] = json.loads(value)
+                        except json.JSONDecodeError as exc:
+                            raise RuntimeError(
+                                f"Failed decoding JSON for {table}.{field}: {exc}"
+                            ) from exc
                 objects = [model(**row) for row in rows]
                 session.add_all(objects)
                 try:
@@ -172,10 +199,10 @@ def main():
                         sys.executable,
                         "-m",
                         "alembic",
-                        "upgrade",
-                        "head",
                         "-x",
                         f"dburl={dburl}",
+                        "upgrade",
+                        "head",
                     ],
                     check=True,
                     env=env_copy,

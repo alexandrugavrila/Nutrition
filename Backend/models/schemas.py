@@ -1,4 +1,5 @@
-from typing import List, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from pydantic import ConfigDict
 from sqlmodel import SQLModel, Field
@@ -105,6 +106,32 @@ class FoodRead(SQLModel):
     tags: List[PossibleFoodTag] = Field(default_factory=list)
 
 
+class PlanCreate(SQLModel):
+    """Payload required to persist a plan."""
+
+    label: str
+    payload: Dict[str, Any]
+
+
+class PlanUpdate(SQLModel):
+    """Fields allowed when updating a persisted plan."""
+
+    label: Optional[str] = None
+    payload: Optional[Dict[str, Any]] = None
+
+
+class PlanRead(SQLModel):
+    """Representation of a saved plan returned from the API."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    label: str
+    payload: Dict[str, Any]
+    created_at: datetime
+    updated_at: datetime
+
+
 __all__ = [
     "NutritionCreate",
     "IngredientUnitCreate",
@@ -116,4 +143,7 @@ __all__ = [
     "FoodCreate",
     "FoodUpdate",
     "FoodRead",
+    "PlanCreate",
+    "PlanUpdate",
+    "PlanRead",
 ]

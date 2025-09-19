@@ -7,6 +7,7 @@ from .food import Food
 from .food_ingredient import FoodIngredient
 from .ingredient_tag import IngredientTagLink
 from .food_tag import FoodTagLink
+from .plan import Plan
 from .schemas import (
     NutritionCreate,
     IngredientUnitCreate,
@@ -18,6 +19,9 @@ from .schemas import (
     FoodCreate,
     FoodUpdate,
     FoodRead,
+    PlanCreate,
+    PlanUpdate,
+    PlanRead,
 )
 
 __all__ = [
@@ -30,6 +34,7 @@ __all__ = [
     "FoodIngredient",
     "IngredientTagLink",
     "FoodTagLink",
+    "Plan",
     "NutritionCreate",
     "IngredientUnitCreate",
     "FoodIngredientCreate",
@@ -40,4 +45,7 @@ __all__ = [
     "FoodCreate",
     "FoodUpdate",
     "FoodRead",
+    "PlanCreate",
+    "PlanUpdate",
+    "PlanRead",
 ]

@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from Backend.db import Base, engine
-from Backend.routes import ingredients_router, foods_router
+from Backend.routes import ingredients_router, foods_router, plans_router
 from Backend.settings import settings
 
 
@@ -33,6 +33,7 @@ app.add_middleware(
 # Prefix all API routes with /api so the frontend can proxy requests.
 app.include_router(ingredients_router, prefix="/api")
 app.include_router(foods_router, prefix="/api")
+app.include_router(plans_router, prefix="/api")
 
 
 __all__ = ["app"]

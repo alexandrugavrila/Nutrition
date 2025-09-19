@@ -1,51 +1,61 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Box,
   Button,
+  Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
   MenuItem,
   Paper,
+  Stack,
   Table,
-  TableContainer,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
   TextField,
-  Collapse,
-  Typography,
   Tooltip,
+  Typography,
 } from "@mui/material";
-import { KeyboardArrowDown, KeyboardArrowRight, Add, Remove, Edit as EditIcon } from "@mui/icons-material";
+import {
+  KeyboardArrowDown,
+  KeyboardArrowRight,
+  Add,
+  Remove,
+  Edit as EditIcon,
+  Save as SaveIcon,
+  RestartAlt as ResetIcon,
+  ListAlt as ManageIcon,
+} from "@mui/icons-material";
 
+import { useLocation, useNavigate } from "react-router-dom";
 import { useData } from "@/contexts/DataContext";
 import { formatCellNumber } from "@/utils/utils";
-import { createIngredientLookup, macrosForFood, macrosForIngredientPortion, ZERO_MACROS, findIngredientInLookup } from "@/utils/nutrition";
+import {
+  createIngredientLookup,
+  macrosForFood,
+  macrosForIngredientPortion,
+  ZERO_MACROS,
+  findIngredientInLookup,
+} from "@/utils/nutrition";
 import type { IngredientRead } from "@/utils/nutrition";
 import IngredientModal from "@/components/common/IngredientModal";
 import useHoverable from "@/hooks/useHoverable";
+import type { PlanRead } from "@/utils/planApi";
+import { createPlan, updatePlan } from "@/utils/planApi";
+import type { FoodOverride, FoodPlanItem, IngredientPlanItem, PlanItem, PlanPayload } from "@/utils/planningTypes";
 
-// Plan item types
-type FoodOverride = {
-  unitId: number;
-  quantity: number; // quantity in selected unit per portion
+const formatPlanTimestamp = (value?: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
 };
-
-type FoodPlanItem = {
-  type: "food";
-  foodId: string;
-  portions: number;
-  overrides: Record<string, FoodOverride>; // ingredientId -> override
-};
-
-type IngredientPlanItem = {
-  type: "ingredient";
-  ingredientId: string;
-  unitId: number;
-  amount: number;
-};
-
-type PlanItem = FoodPlanItem | IngredientPlanItem;
 
 type NameWithEditProps = {
   name: string;
@@ -54,6 +64,7 @@ type NameWithEditProps = {
 
 const NameWithEdit: React.FC<NameWithEditProps> = ({ name, onEdit }) => {
   const { hovered, bind } = useHoverable();
+
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }} {...bind}>
       <span>{name}</span>
@@ -70,18 +81,29 @@ const NameWithEdit: React.FC<NameWithEditProps> = ({ name, onEdit }) => {
 
 function Planning() {
   const { foods, ingredients } = useData();
+  const navigate = useNavigate();
+  const location = useLocation();
   const ingredientLookup = useMemo(() => createIngredientLookup(ingredients), [ingredients]);
 
   const [days, setDays] = useState(1);
   const [daysError, setDaysError] = useState(false);
-  const [targetMacros, setTargetMacros] = useState({
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0,
-    fiber: 0,
-  });
+  const [targetMacros, setTargetMacros] = useState<PlanPayload["targetMacros"]>(() => ({
+    ...ZERO_MACROS,
+  }));
   const [plan, setPlan] = useState<PlanItem[]>([]); // FoodPlanItem or IngredientPlanItem
+
+  const [activePlan, setActivePlan] = useState<{ id: number | null; label: string | null; updatedAt: string | null }>({
+    id: null,
+    label: null,
+    updatedAt: null,
+  });
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saveLabel, setSaveLabel] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState<"create" | "update" | null>(null);
+  const lastSavedPayloadRef = useRef<PlanPayload | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   const [selectedType, setSelectedType] = useState("food");
   const [selectedFoodId, setSelectedFoodId] = useState("");
@@ -93,11 +115,159 @@ function Planning() {
   const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
   const [editorIngredient, setEditorIngredient] = useState<IngredientRead | null>(null);
 
+  const hasContent = useMemo(
+    () =>
+      plan.length > 0 ||
+      days !== 1 ||
+      Object.values(targetMacros).some((value) => value !== 0),
+    [plan, days, targetMacros]
+  );
+  const canResetPlan = hasContent || activePlan.id !== null;
+
+
   const handleOpenIngredientEditor = (ingredientId: string) => {
     const dataIngredient = findIngredientInLookup(ingredientLookup, ingredientId) ?? null;
     setEditorIngredient(dataIngredient);
     setIngredientModalOpen(Boolean(dataIngredient));
   };
+
+  const sanitizePlanItems = useCallback((): PlanItem[] => {
+    return plan.map((item) => {
+      if (item.type === "food") {
+        const overrides: Record<string, FoodOverride> = {};
+        Object.entries(item.overrides ?? {}).forEach(([key, value]) => {
+          if (!value) {
+            overrides[key] = { unitId: 0, quantity: 0 };
+            return;
+          }
+          overrides[key] = {
+            unitId: typeof value.unitId === "number" ? value.unitId : Number(value.unitId ?? 0),
+            quantity: typeof value.quantity === "number" ? value.quantity : Number(value.quantity ?? 0),
+          };
+        });
+        return {
+          type: "food",
+          foodId: item.foodId,
+          portions: item.portions,
+          overrides,
+        } as FoodPlanItem;
+      }
+      return {
+        type: "ingredient",
+        ingredientId: item.ingredientId,
+        unitId: item.unitId,
+        amount: item.amount,
+      } as IngredientPlanItem;
+    });
+  }, [plan]);
+
+  const buildPayload = useCallback((): PlanPayload => ({
+    days,
+    targetMacros: { ...targetMacros },
+    plan: sanitizePlanItems(),
+  }), [days, targetMacros, sanitizePlanItems]);
+
+  const applySavedPlan = useCallback(
+    (saved: PlanRead, message?: string) => {
+      const rawPayload = (saved.payload ?? {}) as Partial<PlanPayload>;
+      const normalizedDays =
+        typeof rawPayload.days === "number" && rawPayload.days > 0 ? Math.floor(rawPayload.days) : 1;
+      const normalizedTarget: PlanPayload["targetMacros"] = {
+        calories: Number(rawPayload.targetMacros?.calories ?? 0),
+        protein: Number(rawPayload.targetMacros?.protein ?? 0),
+        carbs: Number(rawPayload.targetMacros?.carbs ?? 0),
+        fat: Number(rawPayload.targetMacros?.fat ?? 0),
+        fiber: Number(rawPayload.targetMacros?.fiber ?? 0),
+      };
+      const normalizedPlan: PlanItem[] = Array.isArray(rawPayload.plan)
+        ? rawPayload.plan
+            .map((item) => {
+              if (!item || typeof item !== "object" || !("type" in item)) {
+                return null;
+              }
+              if ((item as PlanItem).type === "food") {
+                const overrides: Record<string, FoodOverride> = {};
+                const rawOverrides = (item as FoodPlanItem).overrides ?? {};
+                Object.entries(rawOverrides).forEach(([key, override]) => {
+                  if (!override) return;
+                  overrides[key] = {
+                    unitId: Number((override as FoodOverride).unitId ?? 0),
+                    quantity: Number((override as FoodOverride).quantity ?? 0),
+                  };
+                });
+                return {
+                  type: "food" as const,
+                  foodId: String((item as FoodPlanItem).foodId ?? ""),
+                  portions: Number((item as FoodPlanItem).portions ?? 0) || 0,
+                  overrides,
+                } as FoodPlanItem;
+              }
+              if ((item as PlanItem).type === "ingredient") {
+                return {
+                  type: "ingredient" as const,
+                  ingredientId: String((item as IngredientPlanItem).ingredientId ?? ""),
+                  unitId: Number((item as IngredientPlanItem).unitId ?? 0) || 0,
+                  amount: Number((item as IngredientPlanItem).amount ?? 0) || 0,
+                } as IngredientPlanItem;
+              }
+              return null;
+            })
+            .filter(Boolean) as PlanItem[]
+        : [];
+
+      setDays(normalizedDays);
+      setDaysError(false);
+      setTargetMacros(normalizedTarget);
+      setPlan(normalizedPlan);
+      setOpen({});
+      setActivePlan({
+        id: saved.id ?? null,
+        label: saved.label ?? null,
+        updatedAt: saved.updated_at ?? saved.created_at ?? null,
+      });
+      setSaveLabel(saved.label ?? "");
+      lastSavedPayloadRef.current = {
+        days: normalizedDays,
+        targetMacros: normalizedTarget,
+        plan: normalizedPlan.map((item) =>
+          item.type === "food" ? { ...item, overrides: { ...item.overrides } } : { ...item }
+        ),
+      };
+      setIsDirty(false);
+      setStatusMessage(message ?? `Loaded plan "${saved.label}"`);
+      setSaveError(null);
+    },
+    [lastSavedPayloadRef, setStatusMessage]
+  );
+
+  useEffect(() => {
+    const current = buildPayload();
+    const last = lastSavedPayloadRef.current;
+    if (!last) {
+      lastSavedPayloadRef.current = current;
+      setIsDirty(hasContent);
+      return;
+    }
+    const dirty =
+      last.days !== current.days ||
+      JSON.stringify(last.targetMacros) !== JSON.stringify(current.targetMacros) ||
+      JSON.stringify(last.plan) !== JSON.stringify(current.plan);
+    setIsDirty(dirty);
+  }, [buildPayload, hasContent]);
+
+  useEffect(() => {
+    const state = location.state as { savedPlan?: PlanRead } | null;
+    if (state?.savedPlan) {
+      applySavedPlan(state.savedPlan, `Loaded plan "${state.savedPlan.label}"`);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [applySavedPlan, location.pathname, location.state, navigate]);
+
+  useEffect(() => {
+    if (isDirty) {
+      setStatusMessage(null);
+    }
+  }, [isDirty]);
 
   // Change unit while preserving total grams
   const handleUnitChange = (
@@ -341,9 +511,135 @@ function Planning() {
     }
   };
 
+  const handleOpenSaveDialog = () => {
+    setSaveError(null);
+    setSaveLabel(activePlan.label ?? "");
+    setSaveDialogOpen(true);
+  };
+
+  const handleCloseSaveDialog = () => {
+    if (saving) {
+      return;
+    }
+    setSaveDialogOpen(false);
+    setSaveError(null);
+  };
+
+  const handleSaveAsNewPlan = async () => {
+    const trimmed = saveLabel.trim();
+    if (!trimmed) {
+      setSaveError("Plan name is required");
+      return;
+    }
+    setSaving("create");
+    try {
+      const payload = buildPayload();
+      const saved = await createPlan(trimmed, payload);
+      applySavedPlan(saved, `Saved plan "${saved.label}"`);
+      setSaveDialogOpen(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Failed to save plan");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleUpdateExistingPlan = async () => {
+    if (activePlan.id === null) {
+      await handleSaveAsNewPlan();
+      return;
+    }
+    const trimmed = saveLabel.trim();
+    if (!trimmed) {
+      setSaveError("Plan name is required");
+      return;
+    }
+    setSaving("update");
+    try {
+      const payload = buildPayload();
+      const updated = await updatePlan(activePlan.id, { label: trimmed, payload });
+      applySavedPlan(updated, `Updated plan "${updated.label}"`);
+      setSaveDialogOpen(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Failed to update plan");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleResetPlan = () => {
+    if ((isDirty || activePlan.id !== null) &&
+      !window.confirm("Discard the current plan? Unsaved changes will be lost.")) {
+      return;
+    }
+    setDays(1);
+    setDaysError(false);
+    setTargetMacros({ ...ZERO_MACROS });
+    setPlan([]);
+    setOpen({});
+    setActivePlan({ id: null, label: null, updatedAt: null });
+    lastSavedPayloadRef.current = null;
+    setIsDirty(false);
+    setStatusMessage(null);
+    setSaveLabel("");
+  };
+
+  const handleManagePlans = () => {
+    navigate("/data", { state: { tab: "plans" } });
+  };
+
   return (
-    <Box sx={{ p: 2 }}>
-      <h1>Planning</h1>
+    <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={2}
+        alignItems={{ xs: "flex-start", md: "center" }}
+        justifyContent="space-between"
+      >
+        <Box>
+          <Typography variant="h4" component="h1">Planning</Typography>
+          {activePlan.label ? (
+            <Typography variant="body2" color="text.secondary">
+              {`Editing saved plan "${activePlan.label}"`}
+              {isDirty
+                ? " (unsaved changes)"
+                : activePlan.updatedAt
+                ? ` (last saved ${formatPlanTimestamp(activePlan.updatedAt)})`
+                : ""}
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Build a plan and save it for later.
+            </Typography>
+          )}
+        </Box>
+        <Stack direction="row" spacing={1} flexWrap="wrap">
+          <Button
+            variant="outlined"
+            startIcon={<ResetIcon />}
+            onClick={handleResetPlan}
+            disabled={!canResetPlan}
+          >
+            New Empty Plan
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<ManageIcon />}
+            onClick={handleManagePlans}
+          >
+            Manage Saved Plans
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<SaveIcon />}
+            onClick={handleOpenSaveDialog}
+          >
+            Save Plan
+          </Button>
+        </Stack>
+      </Stack>
+
+      {statusMessage && <Alert severity="success">{statusMessage}</Alert>}
 
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 3 }}>
         <TextField
@@ -812,6 +1108,48 @@ function Planning() {
           </Table>
         </TableContainer>
       </Box>
+      <Dialog open={saveDialogOpen} onClose={handleCloseSaveDialog} fullWidth maxWidth="xs">
+        <DialogTitle>Save Plan</DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <TextField
+            label="Plan name"
+            value={saveLabel}
+            onChange={(event) => setSaveLabel(event.target.value)}
+            autoFocus
+          />
+          {activePlan.label && (
+            <Typography variant="body2" color="text.secondary">
+              {`Currently editing "${activePlan.label}". Choose whether to update it or save as new.`}
+            </Typography>
+          )}
+          {saveError && <Alert severity="error">{saveError}</Alert>}
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
+          <Button onClick={handleCloseSaveDialog} disabled={saving !== null}>
+            Cancel
+          </Button>
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            {activePlan.id !== null && (
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={() => void handleUpdateExistingPlan()}
+                disabled={saving === "create"}
+              >
+                Update Plan
+              </Button>
+            )}
+            <Button
+              variant="contained"
+              onClick={() => void handleSaveAsNewPlan()}
+              disabled={saving === "update"}
+            >
+              Save as New
+            </Button>
+          </Stack>
+        </DialogActions>
+      </Dialog>
+
       <IngredientModal
         open={ingredientModalOpen}
         mode="edit"
