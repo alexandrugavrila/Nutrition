@@ -121,25 +121,28 @@ function Invoke-Up {
     exit 1
   }
 
-    Write-Host "Applying database migrations..."
-    # Ensure Alembic resolves relative paths from Backend/ where alembic.ini lives
-    docker compose -p $proj exec -T backend sh -lc "cd /app/Backend && python -m alembic -c alembic.ini upgrade head"
-    if ($LASTEXITCODE -ne 0) {
-      Write-Error "Database migration failed with exit code $LASTEXITCODE."
-      exit $LASTEXITCODE
-    }
-
     & "$PSScriptRoot/../env/activate-venv.ps1"
     if ($dataMode -eq '-prod') {
-      Write-Host "Importing production data..."
-      & python Database/import_from_csv.py --production
+      Write-Host "Restoring latest backup dump..."
+      & "$PSScriptRoot/../db/restore.ps1" -UpgradeAfter
+      if ($LASTEXITCODE -ne 0) {
+        Write-Error "Database restore failed with exit code $LASTEXITCODE."
+        exit $LASTEXITCODE
+      }
     } else {
+      Write-Host "Applying database migrations..."
+      # Ensure Alembic resolves relative paths from Backend/ where alembic.ini lives
+      docker compose -p $proj exec -T backend sh -lc "cd /app/Backend && python -m alembic -c alembic.ini upgrade head"
+      if ($LASTEXITCODE -ne 0) {
+        Write-Error "Database migration failed with exit code $LASTEXITCODE."
+        exit $LASTEXITCODE
+      }
       Write-Host "Importing test data..."
       & python Database/import_from_csv.py --test
-    }
-    if ($LASTEXITCODE -ne 0) {
-      Write-Error "Data import failed with exit code $LASTEXITCODE."
-      exit $LASTEXITCODE
+      if ($LASTEXITCODE -ne 0) {
+        Write-Error "Data import failed with exit code $LASTEXITCODE."
+        exit $LASTEXITCODE
+      }
     }
 
     Write-Host "Done." -ForegroundColor Green
