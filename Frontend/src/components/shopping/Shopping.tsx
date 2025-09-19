@@ -2,8 +2,8 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   Box,
-  Button,
   CircularProgress,
+  IconButton,
   MenuItem,
   Paper,
   Select,
@@ -14,8 +14,10 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
 
 import { useData } from "@/contexts/DataContext";
 import apiClient from "@/apiClient";
@@ -26,11 +28,37 @@ import type { ShoppingListItem } from "@/utils/shopping";
 import { formatCellNumber } from "@/utils/utils";
 import IngredientModal from "@/components/common/IngredientModal";
 import type { components } from "@/api-types";
+import useHoverable from "@/hooks/useHoverable";
 
 type IngredientRead = components["schemas"]["IngredientRead"];
 type IngredientUpdate = components["schemas"]["IngredientUpdate"];
 type IngredientWithSelection = IngredientRead & {
   shoppingUnitId?: number | string | null;
+};
+
+type HoverableEditWrapperProps = {
+  onEdit: () => void;
+  children: React.ReactNode;
+};
+
+const HoverableEditWrapper: React.FC<HoverableEditWrapperProps> = ({
+  onEdit,
+  children,
+}) => {
+  const { hovered, bind } = useHoverable();
+
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }} {...bind}>
+      {children}
+      {hovered && (
+        <Tooltip title="Edit ingredient (add units, nutrition, tags)">
+          <IconButton size="small" aria-label="edit ingredient" onClick={onEdit}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      )}
+    </Box>
+  );
 };
 
 type ActivePlanState = {
@@ -334,48 +362,45 @@ function Shopping() {
 
                 return (
                   <TableRow key={item.ingredientId ?? item.name}>
-                    <TableCell>{item.name}</TableCell>
+                    <TableCell>
+                      <HoverableEditWrapper
+                        onEdit={() => openIngredientModal(contextIngredient)}
+                      >
+                        <Typography component="span">{item.name}</Typography>
+                      </HoverableEditWrapper>
+                    </TableCell>
                     <TableCell>
                       <Stack spacing={1}>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Select
-                            size="small"
-                            value={selectValue}
-                            onChange={(event) =>
-                              handlePreferredUnitChange(
-                                ingredientId,
-                                event.target.value,
-                              )
-                            }
-                          >
-                            <MenuItem value={CLEAR_SELECTION_VALUE}>No preference</MenuItem>
-                            {(contextIngredient.units ?? []).map((unit) => {
-                              const optionValue =
-                                unit.id === null || unit.id === undefined
-                                  ? NULL_UNIT_SENTINEL
-                                  : String(unit.id);
-                              const grams = Number(unit.grams);
-                              const gramsLabel = Number.isFinite(grams)
-                                ? formatCellNumber(grams)
-                                : unit.grams;
-                              return (
-                                <MenuItem
-                                  key={`${optionValue}-${unit.name}`}
-                                  value={optionValue}
-                                >
-                                  {unit.name} ({gramsLabel} g)
-                                </MenuItem>
-                              );
-                            })}
-                          </Select>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => openIngredientModal(contextIngredient)}
-                          >
-                            Manage units
-                          </Button>
-                        </Stack>
+                        <Select
+                          size="small"
+                          value={selectValue}
+                          onChange={(event) =>
+                            handlePreferredUnitChange(
+                              ingredientId,
+                              event.target.value,
+                            )
+                          }
+                        >
+                          <MenuItem value={CLEAR_SELECTION_VALUE}>No preference</MenuItem>
+                          {(contextIngredient.units ?? []).map((unit) => {
+                            const optionValue =
+                              unit.id === null || unit.id === undefined
+                                ? NULL_UNIT_SENTINEL
+                                : String(unit.id);
+                            const grams = Number(unit.grams);
+                            const gramsLabel = Number.isFinite(grams)
+                              ? formatCellNumber(grams)
+                              : unit.grams;
+                            return (
+                              <MenuItem
+                                key={`${optionValue}-${unit.name}`}
+                                value={optionValue}
+                              >
+                                {unit.name} ({gramsLabel} g)
+                              </MenuItem>
+                            );
+                          })}
+                        </Select>
                         {preferredLabel && (
                           <Typography>
                             Preferred: {preferredLabel}
