@@ -101,7 +101,7 @@ Nutrition/
 ## Core Concepts
 
 - **Backend** – FastAPI routes under `Backend/routes`, models in `Backend/models`, migrations in `Backend/migrations`.
-- **Frontend** – React application under `Frontend/` with shared state in `Frontend/src/context`.
+- **Frontend** – React application under `Frontend/` with shared state in `Frontend/src/contexts`.
 - **Database** – Postgres schema managed by Alembic; branch scripts seed either test or production-style fixtures.
 - **Automation** – Helper scripts keep API artifacts (OpenAPI + TypeScript types) and migrations in sync.
 
