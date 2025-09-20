@@ -109,9 +109,9 @@ Nutrition/
 
 ## API Highlights
 
-- `GET /ingredients` / `POST /ingredients` – list and create ingredients.
-- `GET /foods` / `POST /foods` – list and create composite foods.
-- `GET /ingredients/possible_tags` / `GET /foods/possible_tags` – discover available filters.
+- `GET /api/ingredients` / `POST /api/ingredients` – list and create ingredients.
+- `GET /api/foods` / `POST /api/foods` – list and create composite foods.
+- `GET /api/ingredients/possible_tags` / `GET /api/foods/possible_tags` – discover available filters.
 
 Detailed endpoint documentation is available at `http://localhost:<DEV_BACKEND_PORT>/docs` when the backend container is running.
 
