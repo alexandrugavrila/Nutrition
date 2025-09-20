@@ -7,7 +7,6 @@ import {
   MenuItem,
   Paper,
   Select,
-  Stack,
   Table,
   TableBody,
   TableCell,
@@ -65,31 +64,6 @@ type ActivePlanState = {
   id: number | null;
   label: string | null;
   updatedAt: string | null;
-};
-
-const formatUnitLabel = (
-  units: ShoppingListItem["unitTotals"],
-  divisor = 1,
-): string => {
-  if (!units || units.length === 0) {
-    return "-";
-  }
-  const safeDivisor = divisor > 0 ? divisor : 1;
-  const labels = units
-    .map((unit) => {
-      const quantity = unit.quantity / safeDivisor;
-      if (quantity <= 0) return null;
-      const formatted = formatCellNumber(quantity);
-      const name = unit.unitName || "units";
-      return `${formatted} ${name}`;
-    })
-    .filter(Boolean) as string[];
-
-  if (labels.length === 0) {
-    return "-";
-  }
-
-  return labels.join(" + ");
 };
 
 const formatPreferredUnit = (
@@ -379,7 +353,8 @@ function Shopping() {
             <TableHead>
               <TableRow>
                 <TableCell>Ingredient</TableCell>
-                <TableCell>Quantity Needed</TableCell>
+                <TableCell>Shopping Unit</TableCell>
+                <TableCell align="right">Need to Buy</TableCell>
                 <TableCell align="right">Weight (g)</TableCell>
                 {normalizedDays > 1 && (
                   <TableCell align="right">Per Day (g)</TableCell>
@@ -420,52 +395,49 @@ function Shopping() {
                       </HoverableEditWrapper>
                     </TableCell>
                     <TableCell>
-                      <Stack spacing={1}>
-                        <Select
-                          size="small"
-                          value={selectValue}
-                          onChange={(event) =>
-                            handlePreferredUnitChange(
-                              ingredientId,
-                              event.target.value,
-                            )
-                          }
-                        >
-                          <MenuItem value={CLEAR_SELECTION_VALUE}>No preference</MenuItem>
-                          {(contextIngredient.units ?? []).map((unit) => {
-                            const optionValue = toOptionValue(unit.id);
-                            const grams = Number(unit.grams);
-                            const gramsLabel = Number.isFinite(grams)
-                              ? formatCellNumber(grams)
-                              : unit.grams;
-                            return (
-                              <MenuItem
-                                key={`${optionValue}-${unit.name}`}
-                                value={optionValue}
-                              >
-                                {unit.name} ({gramsLabel} g)
-                              </MenuItem>
-                            );
-                          })}
-                        </Select>
-                        {preferredLabel && (
-                          <Typography>
-                            Preferred: {preferredLabel}
-                            {normalizedDays > 1 && preferredPerDay
-                              ? ` • ${preferredPerDay} per day`
-                              : ""}
-                          </Typography>
-                        )}
-                        <Typography variant="body2" color="text.secondary">
-                          Plan totals: {formatUnitLabel(item.unitTotals)}
-                          {normalizedDays > 1
-                            ? ` • ${formatUnitLabel(
-                                item.unitTotals,
-                                normalizedDays,
-                              )} per day`
-                            : ""}
+                      <Select
+                        size="small"
+                        value={selectValue}
+                        onChange={(event) =>
+                          handlePreferredUnitChange(
+                            ingredientId,
+                            event.target.value,
+                          )
+                        }
+                      >
+                        <MenuItem value={CLEAR_SELECTION_VALUE}>No preference</MenuItem>
+                        {(contextIngredient.units ?? []).map((unit) => {
+                          const optionValue = toOptionValue(unit.id);
+                          const grams = Number(unit.grams);
+                          const gramsLabel = Number.isFinite(grams)
+                            ? formatCellNumber(grams)
+                            : unit.grams;
+                          return (
+                            <MenuItem
+                              key={`${optionValue}-${unit.name}`}
+                              value={optionValue}
+                            >
+                              {unit.name} ({gramsLabel} g)
+                            </MenuItem>
+                          );
+                        })}
+                      </Select>
+                    </TableCell>
+                    <TableCell align="right">
+                      {preferredLabel ? (
+                        <>
+                          <Typography component="div">{preferredLabel}</Typography>
+                          {normalizedDays > 1 && preferredPerDay && (
+                            <Typography variant="body2" color="text.secondary">
+                              {preferredPerDay} per day
+                            </Typography>
+                          )}
+                        </>
+                      ) : (
+                        <Typography color="text.secondary">
+                          Select a unit
                         </Typography>
-                      </Stack>
+                      )}
                     </TableCell>
                     <TableCell align="right">
                       {formatCellNumber(item.totalGrams)}
