@@ -38,33 +38,39 @@ INGREDIENT_LOAD_OPTIONS = [
 
 
 def ingredient_to_read(ingredient: Ingredient) -> IngredientRead:
-    """Convert an Ingredient to IngredientRead and ensure base 'g' unit is visible.
+    """Convert an Ingredient to IngredientRead and ensure base 'g' unit is visible."""
 
-    - Do not mutate the database here.
-    - If the ingredient has no 'g' unit yet, include a synthetic 'g' (grams == 1)
-      in the response so the UI always sees it on initial load.
-    """
-    read = IngredientRead.model_validate(ingredient)
-
-    read.shopping_unit = None
-    read.shopping_unit_id = None
+    resolved_unit = None
+    resolved_unit_id = None
     if ingredient.shopping_unit:
-        selected_unit = ingredient.shopping_unit.unit
-        selected_unit_id = ingredient.shopping_unit.unit_id
-        if selected_unit is None and selected_unit_id is not None:
-            selected_unit = next(
+        resolved_unit = ingredient.shopping_unit.unit
+        resolved_unit_id = ingredient.shopping_unit.unit_id
+        if resolved_unit is None and resolved_unit_id is not None:
+            resolved_unit = next(
                 (
                     unit
                     for unit in (ingredient.units or [])
-                    if unit.id == selected_unit_id
+                    if unit.id == resolved_unit_id
                 ),
                 None,
             )
-        if selected_unit is not None:
-            read.shopping_unit = IngredientUnit.model_validate(selected_unit)
-            read.shopping_unit_id = selected_unit.id
-        else:
-            read.shopping_unit_id = selected_unit_id
+
+    payload = {
+        "id": ingredient.id,
+        "name": ingredient.name,
+        "nutrition": ingredient.nutrition,
+        "units": list(ingredient.units or []),
+        "tags": list(ingredient.tags or []),
+        "shopping_unit": resolved_unit if resolved_unit is not None else None,
+        "shopping_unit_id": None,
+    }
+
+    if resolved_unit is not None and getattr(resolved_unit, "id", None) is not None:
+        payload["shopping_unit_id"] = resolved_unit.id
+    elif resolved_unit_id is not None:
+        payload["shopping_unit_id"] = resolved_unit_id
+
+    read = IngredientRead.model_validate(payload)
 
     has_g = any((getattr(u, "name", None) == "g") for u in (read.units or []))
     if not has_g:
