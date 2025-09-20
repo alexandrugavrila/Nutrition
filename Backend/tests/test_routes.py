@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from Backend.models import PossibleIngredientTag, PossibleFoodTag
 
@@ -16,6 +16,30 @@ def test_get_possible_ingredient_tags(client: TestClient, engine) -> None:
     assert names == ["Spicy", "Sweet"]
 
 
+def test_post_possible_ingredient_tag_reuses_existing_record(
+    client: TestClient, engine
+) -> None:
+    payload = {"name": " Savory "}
+
+    create_response = client.post("/api/ingredients/possible_tags", json=payload)
+    assert create_response.status_code == 201
+    created_tag = create_response.json()
+    assert created_tag["name"] == "Savory"
+    assert created_tag["id"] is not None
+
+    duplicate_response = client.post(
+        "/api/ingredients/possible_tags", json={"name": "Savory"}
+    )
+    assert duplicate_response.status_code in (200, 201)
+    duplicate_tag = duplicate_response.json()
+    assert duplicate_tag == created_tag
+
+    with Session(engine) as session:
+        tags = session.exec(select(PossibleIngredientTag)).all()
+        assert len(tags) == 1
+        assert tags[0].id == created_tag["id"]
+
+
 def test_get_possible_food_tags(client: TestClient, engine) -> None:
     with Session(engine) as session:
         session.add(PossibleFoodTag(name="Breakfast"))
@@ -26,6 +50,30 @@ def test_get_possible_food_tags(client: TestClient, engine) -> None:
     assert response.status_code == 200
     names = [tag["name"] for tag in response.json()]
     assert names == ["Breakfast", "Dinner"]
+
+
+def test_post_possible_food_tag_reuses_existing_record(
+    client: TestClient, engine
+) -> None:
+    payload = {"name": " Comfort "}
+
+    create_response = client.post("/api/foods/possible_tags", json=payload)
+    assert create_response.status_code == 201
+    created_tag = create_response.json()
+    assert created_tag["name"] == "Comfort"
+    assert created_tag["id"] is not None
+
+    duplicate_response = client.post(
+        "/api/foods/possible_tags", json={"name": "Comfort"}
+    )
+    assert duplicate_response.status_code in (200, 201)
+    duplicate_tag = duplicate_response.json()
+    assert duplicate_tag == created_tag
+
+    with Session(engine) as session:
+        tags = session.exec(select(PossibleFoodTag)).all()
+        assert len(tags) == 1
+        assert tags[0].id == created_tag["id"]
 
 
 def test_update_nonexistent_ingredient_returns_404(client: TestClient) -> None:
