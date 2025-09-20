@@ -8,10 +8,11 @@ import type { components, operations } from "@/api-types";
 type IngredientRead = components["schemas"]["IngredientRead"];
 type IngredientUnitUpdate = components["schemas"]["IngredientUnitUpdate"];
 type IngredientUnitCreate = components["schemas"]["IngredientUnitCreate"];
+type IngredientShoppingUnitSelection = components["schemas"]["IngredientShoppingUnitSelection"];
 type IngredientRequest = operations["add_ingredient_api_ingredients__post"]["requestBody"]["content"]["application/json"];
 
 type IngredientFormState = {
-  ingredient: IngredientRead & { selectedUnitId?: number | string | null };
+  ingredient: IngredientRead & { shoppingUnitId?: number | string | null };
   needsClearForm: boolean;
   needsFillForm: boolean;
 };
@@ -50,7 +51,7 @@ const initializeEmptyIngredient = (): IngredientFormState["ingredient"] => ({
     fiber: 0,
   },
   tags: [],
-  selectedUnitId: "0",
+  shoppingUnitId: "0",
 });
 
 const createInitialState = (): IngredientFormState => ({
@@ -87,6 +88,62 @@ const buildRequestPayload = (ingredient: IngredientFormState["ingredient"]): Ing
     delete (payload as { id?: number }).id;
   }
 
+  // Remove local-only helper property
+  delete (payload as { shoppingUnitId?: unknown }).shoppingUnitId;
+
+  const normalizeShoppingUnitId = (value: unknown): number | null => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed === "") return null;
+      const numeric = Number(trimmed);
+      if (Number.isFinite(numeric)) {
+        return numeric;
+      }
+    }
+    return null;
+  };
+
+  const normalizedId = normalizeShoppingUnitId(ingredient.shoppingUnitId);
+  if ("shopping_unit_id" in payload) {
+    delete (payload as { shopping_unit_id?: number | null }).shopping_unit_id;
+  }
+  if ("shopping_unit" in payload) {
+    delete (payload as { shopping_unit?: IngredientShoppingUnitSelection | null }).shopping_unit;
+  }
+
+  if (normalizedId !== null) {
+    (payload as { shopping_unit_id?: number | null }).shopping_unit_id = normalizedId;
+  } else {
+    const match = (ingredient.units ?? []).find((unit) => {
+      if (unit.id === ingredient.shoppingUnitId) return true;
+      if (
+        typeof ingredient.shoppingUnitId === "string" &&
+        unit.id !== null &&
+        unit.id !== undefined &&
+        String(unit.id) === ingredient.shoppingUnitId
+      ) {
+        return true;
+      }
+      return false;
+    });
+
+    if (ingredient.shoppingUnitId === null) {
+      (payload as { shopping_unit_id?: number | null }).shopping_unit_id = null;
+    } else if (match) {
+      const selection: IngredientShoppingUnitSelection = {
+        unit_id:
+          typeof match.id === "number" && Number.isFinite(match.id)
+            ? match.id
+            : undefined,
+        name: match.name,
+        grams: Number(match.grams),
+      };
+      (payload as { shopping_unit?: IngredientShoppingUnitSelection }).shopping_unit = selection;
+    }
+  }
+
   return payload;
 };
 
@@ -94,27 +151,30 @@ export const useIngredientForm = () => {
   const { setIngredientsNeedsRefetch, startRequest, endRequest } = useData();
   const [state, dispatch] = useSessionStorageReducer(reducer, createInitialState, "ingredient-form-state-v1");
 
-  const loadIngredient = useCallback((initial?: IngredientRead | null) => {
-    if (initial) {
-      dispatch({ type: "SET_INGREDIENT", payload: { ...initial } });
-      dispatch({ type: "SET_FILL_FORM", payload: true });
-    } else {
-      dispatch({ type: "SET_INGREDIENT", payload: initializeEmptyIngredient() });
-    }
-  }, []);
+  const loadIngredient = useCallback(
+    (initial?: IngredientRead | null) => {
+      if (initial) {
+        dispatch({ type: "SET_INGREDIENT", payload: { ...initial } });
+        dispatch({ type: "SET_FILL_FORM", payload: true });
+      } else {
+        dispatch({ type: "SET_INGREDIENT", payload: initializeEmptyIngredient() });
+      }
+    },
+    [dispatch],
+  );
 
   const clearForm = useCallback(() => {
     dispatch({ type: "SET_INGREDIENT", payload: initializeEmptyIngredient() });
     dispatch({ type: "SET_CLEAR_FORM", payload: true });
-  }, []);
+  }, [dispatch]);
 
   const acknowledgeClearFlag = useCallback(() => {
     dispatch({ type: "SET_CLEAR_FORM", payload: false });
-  }, []);
+  }, [dispatch]);
 
   const acknowledgeFillFlag = useCallback(() => {
     dispatch({ type: "SET_FILL_FORM", payload: false });
-  }, []);
+  }, [dispatch]);
 
   const save = useCallback(
     async ({ mode, onSaved, autoClearOnAdd = true }: SaveOptions) => {

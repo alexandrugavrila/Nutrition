@@ -50,7 +50,7 @@ function IngredientForm({ ingredientToEditData }: IngredientFormProps) {
         }
       },
     });
-  }, [isEditMode, save]);
+  }, [isEditMode, save, setIsEditMode]);
 
   const handleIngredientDelete = useCallback(() => {
     remove({

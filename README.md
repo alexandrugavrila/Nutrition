@@ -43,7 +43,9 @@ A full-stack nutrition planning and tracking app built with:
    ```pwsh
    pwsh ./scripts/docker/compose.ps1 up data -test
    ```
-   - Replace `-test` with `-prod` to restore the latest branch backup (falls back to CSV seeding if no dump exists).
+   - Replace `-test` with `-prod` to restore the latest branch backup (errors if no dump is available).
+     When no dump exists yet, run the CSV importer manually after the stack starts: `pwsh ./scripts/db/import-from-csv.ps1`
+     (or `./scripts/db/import-from-csv.sh`).
    - Add `type -test` to run on the dedicated test ports (used by the end-to-end suite).
 
    The script prints the branch-specific ports and waits until the services are ready:
@@ -101,7 +103,7 @@ Nutrition/
 ## Core Concepts
 
 - **Backend** – FastAPI routes under `Backend/routes`, models in `Backend/models`, migrations in `Backend/migrations`.
-- **Frontend** – React application under `Frontend/` with shared state in `Frontend/src/context`.
+- **Frontend** – React application under `Frontend/` with shared state in `Frontend/src/contexts`.
 - **Database** – Postgres schema managed by Alembic; branch scripts seed either test or production-style fixtures.
 - **Automation** – Helper scripts keep API artifacts (OpenAPI + TypeScript types) and migrations in sync.
 
@@ -109,9 +111,9 @@ Nutrition/
 
 ## API Highlights
 
-- `GET /ingredients` / `POST /ingredients` – list and create ingredients.
-- `GET /foods` / `POST /foods` – list and create composite foods.
-- `GET /ingredients/possible_tags` / `GET /foods/possible_tags` – discover available filters.
+- `GET /api/ingredients` / `POST /api/ingredients` – list and create ingredients.
+- `GET /api/foods` / `POST /api/foods` – list and create composite foods.
+- `GET /api/ingredients/possible_tags` / `GET /api/foods/possible_tags` – discover available filters.
 
 Detailed endpoint documentation is available at `http://localhost:<DEV_BACKEND_PORT>/docs` when the backend container is running.
 
@@ -136,13 +138,15 @@ erDiagram
 
 </details>
 
+Frontend state mirrors the API schema, so food tags reference the shared `PossibleFoodTag` definitions surfaced by `/api/foods/possible_tags`.
+
 <details>
 <summary>Frontend Structures (Mermaid)</summary>
 
 ```mermaid
 classDiagram
   class Ingredient { id; name; Nutrition nutrition; IngredientUnit[] units }
-  class Food { id; name; FoodIngredient[] ingredients; FoodTag[] tags }
+  class Food { id; name; FoodIngredient[] ingredients; PossibleFoodTag[] tags }
 ```
 
 </details>

@@ -14,7 +14,9 @@ type Ingredient = components["schemas"]["IngredientRead"];
 type PossibleIngredientTag = components["schemas"]["PossibleIngredientTag"];
 type Food = components["schemas"]["FoodRead"];
 type PossibleFoodTag = components["schemas"]["PossibleFoodTag"];
-type IngredientWithSelection = Ingredient & { selectedUnitId: number | null };
+type IngredientWithSelection = Ingredient & {
+  shoppingUnitId: number | string | null;
+};
 
 interface DataContextValue {
   ingredients: IngredientWithSelection[];
@@ -118,6 +120,17 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         .path("/api/ingredients/")
         .method("get")
         .create()({});
+      const normalizeUnitId = (value: unknown): number | string | null => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === "string" && value.trim() === "") return null;
+        if (typeof value === "string") {
+          const numeric = Number(value);
+          return Number.isFinite(numeric) ? numeric : value;
+        }
+        if (typeof value === "number" && Number.isFinite(value)) return value;
+        return null;
+      };
+
       const processed = data.map((ingredient) => {
         const unitsWithFloatGrams =
           ingredient.units?.map((unit) => {
@@ -129,18 +142,25 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
               grams: parseFloat(String(unit.grams)),
             };
           }) ?? [];
+        const resolvedShoppingUnitId = normalizeUnitId(
+          (ingredient as Ingredient & { shopping_unit_id?: unknown }).shopping_unit_id ??
+            (ingredient as Ingredient & { shopping_unit?: { id?: unknown } }).shopping_unit?.id ??
+            null,
+        );
         const defaultUnit =
           unitsWithFloatGrams.find((unit) => unit.name === "g" && unit.grams === 1) ||
           unitsWithFloatGrams.find((unit) => unit.grams === 1) ||
           unitsWithFloatGrams[0];
-        const selectedUnitId =
+        const fallbackUnitId =
           defaultUnit && defaultUnit.id !== undefined && defaultUnit.id !== null
             ? defaultUnit.id
             : null;
+        const shoppingUnitId =
+          resolvedShoppingUnitId !== null ? resolvedShoppingUnitId : fallbackUnitId;
         return {
           ...ingredient,
           units: unitsWithFloatGrams,
-          selectedUnitId,
+          shoppingUnitId,
         };
       });
       setIngredients(processed);

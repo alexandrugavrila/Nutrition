@@ -52,13 +52,13 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
 
   const handleUnitChange = (event, ingredientId) => {
     const rawValue = event.target.value;
-    let selectedUnitId = null;
+    let shoppingUnitId: number | string | null = null;
     if (rawValue !== "" && rawValue !== null && rawValue !== undefined) {
       if (typeof rawValue === "number") {
-        selectedUnitId = rawValue;
+        shoppingUnitId = rawValue;
       } else {
         const parsed = Number(rawValue);
-        selectedUnitId = Number.isNaN(parsed) ? null : parsed;
+        shoppingUnitId = Number.isNaN(parsed) ? rawValue : parsed;
       }
     }
     setIngredients((prevIngredients) =>
@@ -66,7 +66,7 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
         ingredient.id === ingredientId
           ? {
               ...ingredient,
-              selectedUnitId,
+              shoppingUnitId,
             }
           : ingredient
       )
@@ -85,7 +85,7 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
     if (!ingredient.units || ingredient.units.length === 0) {
       return null;
     }
-    const selectedId = ingredient.selectedUnitId;
+    const selectedId = ingredient.shoppingUnitId;
     if (selectedId === null || selectedId === undefined || selectedId === "") {
       return (
         ingredient.units.find((unit) => unit.name === "g" && unit.grams === 1) ||
@@ -215,7 +215,7 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
                   <TableCell>{ingredient.name}</TableCell>
                   <TableCell>
                     <Select
-                      value={ingredient.selectedUnitId ?? ""}
+          value={ingredient.shoppingUnitId ?? ""}
                       size="small"
                       displayEmpty
                       renderValue={() => selectedUnit?.name ?? ""}

@@ -10,6 +10,7 @@ from .ingredient_tag import IngredientTagLink
 
 if TYPE_CHECKING:  # pragma: no cover - only for type checking
     from .schemas import IngredientCreate
+    from .ingredient_shopping_unit import IngredientShoppingUnit
 
 
 class Ingredient(SQLModel, table=True):
@@ -27,6 +28,13 @@ class Ingredient(SQLModel, table=True):
     units: List[IngredientUnit] = Relationship(
         back_populates="ingredient",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+    shopping_unit: Optional["IngredientShoppingUnit"] = Relationship(
+        back_populates="ingredient",
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "uselist": False,
+        },
     )
     tags: List[PossibleIngredientTag] = Relationship(
         back_populates="ingredients", link_model=IngredientTagLink

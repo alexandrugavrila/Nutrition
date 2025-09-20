@@ -55,7 +55,16 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
     if (!ingredient) return;
 
     const units = ingredient.units || [];
-    const selectedUnit = units.find((unit) => unit.id === ingredient.selectedUnitId) || units[0];
+    const selectedUnit =
+      units.find((unit) => {
+        const target = ingredient.shoppingUnitId;
+        if (target == null) return false;
+        if (unit.id == null) return false;
+        if (typeof target === "string" && !Number.isNaN(Number(target))) {
+          return Number(unit.id) === Number(target);
+        }
+        return String(unit.id) === String(target);
+      }) || units[0];
     const parsedGrams = parseFloat(String(selectedUnit?.grams ?? 1));
     const safeMultiplier = Number.isFinite(parsedGrams) && parsedGrams > 0 ? parsedGrams : 1;
 

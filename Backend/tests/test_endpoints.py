@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from Backend.models import (
     Ingredient,
@@ -184,3 +184,121 @@ def test_food_endpoints(client: TestClient, engine, case: str) -> None:
         response = client.get("/api/foods/possible_tags")
         assert response.status_code == 200
         assert any(tag["name"] == "Snack" for tag in response.json())
+
+
+def test_food_create_with_synthetic_unit_id_resolves_to_real_unit(
+    client: TestClient, engine
+) -> None:
+    """Creating a food with ``unit_id`` 0 should link to the ingredient's real unit."""
+
+    with Session(engine) as session:
+        ingredient = Ingredient(
+            name="Synthetic Unit Ingredient",
+            units=[
+                IngredientUnit(name="g", grams=1),
+                IngredientUnit(name="cup", grams=120),
+            ],
+        )
+        session.add(ingredient)
+        session.commit()
+        session.refresh(ingredient)
+        ingredient_id = ingredient.id
+        canonical_unit_id = next(u.id for u in ingredient.units if u.name == "g")
+
+    payload = {
+        "name": "Synthetic Salad",
+        "ingredients": [
+            {
+                "ingredient_id": ingredient_id,
+                "unit_id": 0,
+                "unit_quantity": 2.5,
+            }
+        ],
+        "tags": [],
+    }
+
+    response = client.post("/api/foods/", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+
+    assert data["name"] == "Synthetic Salad"
+    assert len(data["ingredients"]) == 1
+    ingredient_payload = data["ingredients"][0]
+    assert ingredient_payload["unit_id"] == canonical_unit_id
+    assert ingredient_payload["ingredient_id"] == ingredient_id
+    assert ingredient_payload["unit_quantity"] == pytest.approx(2.5)
+
+    with Session(engine) as session:
+        rows = session.exec(select(FoodIngredient)).all()
+        assert len(rows) == 1
+        fi = rows[0]
+        assert fi.food_id == data["id"]
+        assert fi.ingredient_id == ingredient_id
+        assert fi.unit_id == canonical_unit_id
+        assert fi.unit_quantity == pytest.approx(2.5)
+
+
+def test_food_update_with_synthetic_unit_id_preserves_other_fields(
+    client: TestClient, engine
+) -> None:
+    """Updating with ``unit_id`` 0 should resolve to the real unit without side effects."""
+
+    with Session(engine) as session:
+        ingredient = Ingredient(
+            name="Existing Ingredient",
+            units=[IngredientUnit(name="g", grams=1)],
+        )
+        session.add(ingredient)
+        session.commit()
+        session.refresh(ingredient)
+        ingredient_id = ingredient.id
+        canonical_unit_id = ingredient.units[0].id
+
+        food = Food(
+            name="Original Food",
+            ingredients=[
+                FoodIngredient(
+                    ingredient_id=ingredient_id,
+                    unit_id=canonical_unit_id,
+                    unit_quantity=1.0,
+                )
+            ],
+        )
+        session.add(food)
+        session.commit()
+        session.refresh(food)
+        food_id = food.id
+
+    update_payload = {
+        "name": "Updated Food",
+        "ingredients": [
+            {
+                "ingredient_id": ingredient_id,
+                "unit_id": 0,
+                "unit_quantity": 3.75,
+            }
+        ],
+        "tags": [],
+    }
+
+    response = client.put(f"/api/foods/{food_id}", json=update_payload)
+    assert response.status_code == 200
+    updated = response.json()
+
+    assert updated["id"] == food_id
+    assert updated["name"] == "Updated Food"
+    assert updated["tags"] == []
+    assert len(updated["ingredients"]) == 1
+    updated_ingredient = updated["ingredients"][0]
+    assert updated_ingredient["ingredient_id"] == ingredient_id
+    assert updated_ingredient["unit_id"] == canonical_unit_id
+    assert updated_ingredient["unit_quantity"] == pytest.approx(3.75)
+
+    with Session(engine) as session:
+        rows = session.exec(select(FoodIngredient)).all()
+        assert len(rows) == 1
+        fi = rows[0]
+        assert fi.food_id == food_id
+        assert fi.ingredient_id == ingredient_id
+        assert fi.unit_id == canonical_unit_id
+        assert fi.unit_quantity == pytest.approx(3.75)

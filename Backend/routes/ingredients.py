@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -6,11 +6,18 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from ..db import get_db
-from ..models import Ingredient, IngredientUnit, Nutrition, PossibleIngredientTag
+from ..models import (
+    Ingredient,
+    IngredientShoppingUnit,
+    IngredientUnit,
+    Nutrition,
+    PossibleIngredientTag,
+)
 from ..models.schemas import (
     IngredientCreate,
     IngredientRead,
     IngredientUpdate,
+    IngredientShoppingUnitSelection,
 )
 from sqlmodel import SQLModel
 
@@ -22,15 +29,49 @@ class TagCreate(SQLModel):
 
 router = APIRouter(prefix="/ingredients", tags=["ingredients"])
 
+INGREDIENT_LOAD_OPTIONS = [
+    selectinload(Ingredient.nutrition),
+    selectinload(Ingredient.units),
+    selectinload(Ingredient.tags),
+    selectinload(Ingredient.shopping_unit).selectinload(IngredientShoppingUnit.unit),
+]
+
 
 def ingredient_to_read(ingredient: Ingredient) -> IngredientRead:
-    """Convert an Ingredient to IngredientRead and ensure base 'g' unit is visible.
+    """Convert an Ingredient to IngredientRead and ensure base 'g' unit is visible."""
 
-    - Do not mutate the database here.
-    - If the ingredient has no 'g' unit yet, include a synthetic 'g' (grams == 1)
-      in the response so the UI always sees it on initial load.
-    """
-    read = IngredientRead.model_validate(ingredient)
+    resolved_unit = None
+    resolved_unit_id = None
+    if ingredient.shopping_unit:
+        resolved_unit = ingredient.shopping_unit.unit
+        resolved_unit_id = ingredient.shopping_unit.unit_id
+        if resolved_unit is None and resolved_unit_id is not None:
+            resolved_unit = next(
+                (
+                    unit
+                    for unit in (ingredient.units or [])
+                    if unit.id == resolved_unit_id
+                ),
+                None,
+            )
+
+    payload = {
+        "id": ingredient.id,
+        "name": ingredient.name,
+        "nutrition": ingredient.nutrition,
+        "units": list(ingredient.units or []),
+        "tags": list(ingredient.tags or []),
+        "shopping_unit": resolved_unit if resolved_unit is not None else None,
+        "shopping_unit_id": None,
+    }
+
+    if resolved_unit is not None and getattr(resolved_unit, "id", None) is not None:
+        payload["shopping_unit_id"] = resolved_unit.id
+    elif resolved_unit_id is not None:
+        payload["shopping_unit_id"] = resolved_unit_id
+
+    read = IngredientRead.model_validate(payload)
+
     has_g = any((getattr(u, "name", None) == "g") for u in (read.units or []))
     if not has_g:
         # Append a synthetic base unit; id is None since it may not exist yet in DB
@@ -55,10 +96,116 @@ def ensure_g_unit_present(ingredient_obj: Ingredient) -> None:
     ingredient_obj.units = units
 
 
+def _coerce_optional_int(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        candidate = value.strip()
+        if not candidate:
+            return None
+        try:
+            return int(candidate)
+        except ValueError:
+            return None
+    return None
+
+
+def _resolve_shopping_unit(
+    ingredient: Ingredient,
+    requested_id: Optional[Any],
+    payload: Optional[IngredientShoppingUnitSelection],
+) -> Optional[IngredientUnit]:
+    units = list(ingredient.units or [])
+    if not units:
+        if requested_id is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="Preferred shopping unit must reference an existing unit.",
+            )
+        return None
+
+    def match_by_id(raw_id: Any) -> Optional[IngredientUnit]:
+        normalized = _coerce_optional_int(raw_id)
+        if normalized is None:
+            return None
+        match = next((unit for unit in units if unit.id == normalized), None)
+        if match is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Preferred shopping unit must belong to the ingredient.",
+            )
+        return match
+
+    unit = match_by_id(requested_id)
+    if unit is not None:
+        return unit
+
+    payload_obj: Optional[IngredientShoppingUnitSelection]
+    if payload is not None and not isinstance(payload, IngredientShoppingUnitSelection):
+        payload_obj = IngredientShoppingUnitSelection.model_validate(payload)
+    else:
+        payload_obj = payload
+
+    if payload_obj is not None:
+        candidate = match_by_id(
+            getattr(payload_obj, "unit_id", None) or getattr(payload_obj, "id", None)
+        )
+        if candidate is not None:
+            return candidate
+
+        name = getattr(payload_obj, "name", None)
+        grams = getattr(payload_obj, "grams", None)
+        normalized_name = name.strip().lower() if isinstance(name, str) else None
+        grams_value: Optional[float] = None
+        if grams is not None:
+            try:
+                grams_value = float(grams)
+            except (TypeError, ValueError):
+                grams_value = None
+
+        if normalized_name:
+            matching = [
+                unit
+                for unit in units
+                if (unit.name or "").strip().lower() == normalized_name
+            ]
+            if grams_value is not None:
+                matching = [
+                    unit
+                    for unit in matching
+                    if unit.grams is not None
+                    and abs(float(unit.grams) - grams_value) < 1e-9
+                ]
+            if matching:
+                return matching[0]
+
+    return None
+
+
+def apply_shopping_unit_selection(
+    ingredient: Ingredient,
+    requested_id: Optional[Any],
+    payload: Optional[IngredientShoppingUnitSelection],
+) -> None:
+    unit = _resolve_shopping_unit(ingredient, requested_id, payload)
+    if unit is None:
+        ingredient.shopping_unit = None
+        return
+
+    if ingredient.shopping_unit is None:
+        ingredient.shopping_unit = IngredientShoppingUnit(unit=unit)
+    else:
+        ingredient.shopping_unit.unit = unit
+        ingredient.shopping_unit.unit_id = unit.id
+
+
 @router.get("/", response_model=List[IngredientRead])
 def get_all_ingredients(db: Session = Depends(get_db)) -> List[IngredientRead]:
     """Return all ingredients."""
-    ingredients = db.exec(select(Ingredient)).all()
+    statement = select(Ingredient).options(*INGREDIENT_LOAD_OPTIONS)
+    ingredients = db.exec(statement).all()
     return [ingredient_to_read(ing) for ing in ingredients]
 
 
@@ -93,7 +240,10 @@ def add_possible_tag(tag: TagCreate, db: Session = Depends(get_db)) -> PossibleI
 @router.get("/{ingredient_id}", response_model=IngredientRead)
 def get_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> IngredientRead:
     """Retrieve a single ingredient by ID."""
-    ingredient = db.get(Ingredient, ingredient_id)
+    statement = select(Ingredient).options(*INGREDIENT_LOAD_OPTIONS).where(
+        Ingredient.id == ingredient_id
+    )
+    ingredient = db.exec(statement).one_or_none()
     if not ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
     return ingredient_to_read(ingredient)
@@ -114,17 +264,19 @@ def add_ingredient(
     db.add(ingredient_obj)
 
     try:
+        db.flush()
+        apply_shopping_unit_selection(
+            ingredient_obj,
+            ingredient.shopping_unit_id,
+            ingredient.shopping_unit,
+        )
         db.commit()
     except IntegrityError:
         # Likely a unique constraint violation on name; return the existing record
         db.rollback()
         statement = (
             select(Ingredient)
-            .options(
-                selectinload(Ingredient.nutrition),
-                selectinload(Ingredient.units),
-                selectinload(Ingredient.tags),
-            )
+            .options(*INGREDIENT_LOAD_OPTIONS)
             .where(Ingredient.name == ingredient_obj.name)
         )
         existing = db.exec(statement).one()
@@ -132,11 +284,7 @@ def add_ingredient(
 
     statement = (
         select(Ingredient)
-        .options(
-            selectinload(Ingredient.nutrition),
-            selectinload(Ingredient.units),
-            selectinload(Ingredient.tags),
-        )
+        .options(*INGREDIENT_LOAD_OPTIONS)
         .where(Ingredient.id == ingredient_obj.id)
     )
     ingredient_obj = db.exec(statement).one()
@@ -157,14 +305,8 @@ def update_ingredient(
     the payload are left unchanged.
     """
     # Load ingredient with related collections for safe updates
-    statement = (
-        select(Ingredient)
-        .options(
-            selectinload(Ingredient.nutrition),
-            selectinload(Ingredient.units),
-            selectinload(Ingredient.tags),
-        )
-        .where(Ingredient.id == ingredient_id)
+    statement = select(Ingredient).options(*INGREDIENT_LOAD_OPTIONS).where(
+        Ingredient.id == ingredient_id
     )
     ingredient = db.exec(statement).one_or_none()
     if not ingredient:
@@ -224,20 +366,22 @@ def update_ingredient(
 
     try:
         db.add(ingredient)
+        db.flush()
+        payload_fields = ingredient_data.model_dump(exclude_unset=True)
+        if "shopping_unit_id" in payload_fields or "shopping_unit" in payload_fields:
+            apply_shopping_unit_selection(
+                ingredient,
+                ingredient_data.shopping_unit_id,
+                ingredient_data.shopping_unit,
+            )
         db.commit()
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc))
 
     # Re-load to include related fields
-    statement = (
-        select(Ingredient)
-        .options(
-            selectinload(Ingredient.nutrition),
-            selectinload(Ingredient.units),
-            selectinload(Ingredient.tags),
-        )
-        .where(Ingredient.id == ingredient.id)
+    statement = select(Ingredient).options(*INGREDIENT_LOAD_OPTIONS).where(
+        Ingredient.id == ingredient.id
     )
     ingredient = db.exec(statement).one()
     return ingredient_to_read(ingredient)
