@@ -671,7 +671,7 @@ function Planning() {
             startIcon={<ManageIcon />}
             onClick={handleManagePlans}
           >
-            Manage Saved Plans
+            Load or Manage Saved Plans
           </Button>
           <Button
             variant="contained"
