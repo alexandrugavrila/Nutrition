@@ -269,7 +269,7 @@ function Shopping() {
       try {
         const payload = buildUpdatePayload(ingredient, parsed);
         await apiClient
-          .path(`/api/ingredients/${ingredientId}`)
+          .path("/api/ingredients/{ingredient_id}", ingredientId)
           .method("put")
           .create()({ body: payload });
         setIngredientsNeedsRefetch(true);
@@ -426,10 +426,15 @@ function Shopping() {
                     <TableCell align="right">
                       {preferredLabel ? (
                         <>
-                          <Typography component="div">{preferredLabel}</Typography>
+                          <Typography component="div">
+                            <Box component="span" sx={{ fontWeight: 600 }}>
+                              Plan totals:
+                            </Box>{" "}
+                            {preferredLabel}
+                          </Typography>
                           {normalizedDays > 1 && preferredPerDay && (
                             <Typography variant="body2" color="text.secondary">
-                              {preferredPerDay} per day
+                              Per day: {preferredPerDay}
                             </Typography>
                           )}
                         </>
