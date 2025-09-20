@@ -22,7 +22,7 @@ class Settings:
     # Database URL resolution maintains historical precedence:
     # 1) SQLALCHEMY_DATABASE_URI (legacy)
     # 2) DATABASE_URL (current)
-    # 3) default used by docker-compose (service name `db`)
+    # 3) fallback to a local SQLite file when nothing is configured
     database_url: str
 
     # Create tables on startup (opt-in; default off)
@@ -33,15 +33,19 @@ class Settings:
 
     @staticmethod
     def load() -> "Settings":
-        db_url = (
-            os.getenv("SQLALCHEMY_DATABASE_URI")
-            or os.getenv(
-                "DATABASE_URL",
-                "postgresql://nutrition_user:nutrition_pass@db:5432/nutrition",
-            )
-        )
+        db_url = os.getenv("SQLALCHEMY_DATABASE_URI") or os.getenv("DATABASE_URL")
 
-        auto_create = _to_bool(os.getenv("DB_AUTO_CREATE"), default=False)
+        if not db_url:
+            # Fall back to a local SQLite database so the API can boot outside the
+            # docker-compose stack without any additional configuration.  The
+            # relative path keeps the file inside the repository root which makes
+            # it easy to inspect or reset during development.
+            db_url = "sqlite:///./nutrition.db"
+
+        auto_create_default = db_url.lower().startswith("sqlite")
+        auto_create = _to_bool(
+            os.getenv("DB_AUTO_CREATE"), default=auto_create_default
+        )
 
         # Comma-separated list or "*"
         origins_raw = os.getenv("CORS_ALLOW_ORIGINS", "*")
