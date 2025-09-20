@@ -99,7 +99,9 @@ pwsh ./scripts/docker/compose.ps1 down
 # add `type -test` to target the test stack
 ```
 
-`down` removes branch-specific volumes by default for clean isolation. Pass `-- [compose args]` if you need custom Docker flags.
+`down` removes branch-specific volumes by default for clean isolation. The wrapper does not forward extra Docker Compose flags for
+this subcommand—if you need a different teardown (for example, keeping volumes or removing additional resources) run `docker
+compose` directly with the branch project name that `up` prints (e.g. `docker compose -p nutrition-my-branch down`).
 
 Restart services:
 
