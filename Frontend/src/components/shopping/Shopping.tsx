@@ -107,6 +107,55 @@ const formatPreferredUnit = (
 const CLEAR_SELECTION_VALUE = "__CLEAR_SHOPPING_UNIT__";
 const NULL_UNIT_SENTINEL = "__NULL_UNIT__";
 
+const toOptionValue = (
+  unitId: number | string | null | undefined,
+): string => {
+  if (unitId === NULL_UNIT_SENTINEL) {
+    return NULL_UNIT_SENTINEL;
+  }
+  if (unitId === null || unitId === undefined) {
+    return NULL_UNIT_SENTINEL;
+  }
+  return String(unitId);
+};
+
+const resolvePlanFallbackSelection = (
+  item: ShoppingListItem,
+): string => {
+  const preferredUnitId = item.preferredUnitTotal?.unitId;
+  if (preferredUnitId !== null && preferredUnitId !== undefined) {
+    return toOptionValue(preferredUnitId);
+  }
+
+  const firstAvailableUnit =
+    item.unitTotals.find((unit) => unit.unitId !== null && unit.unitId !== undefined) ??
+    item.unitTotals[0];
+
+  if (firstAvailableUnit) {
+    return toOptionValue(firstAvailableUnit.unitId);
+  }
+
+  return CLEAR_SELECTION_VALUE;
+};
+
+const deriveSelectionValue = (
+  selection: number | string | null | undefined,
+  fallback: string,
+): string => {
+  if (selection === NULL_UNIT_SENTINEL) {
+    return NULL_UNIT_SENTINEL;
+  }
+  if (
+    selection === null ||
+    selection === undefined ||
+    selection === CLEAR_SELECTION_VALUE ||
+    (typeof selection === "string" && selection.trim() === "")
+  ) {
+    return fallback;
+  }
+  return String(selection);
+};
+
 function Shopping() {
   const {
     foods,
@@ -246,7 +295,7 @@ function Shopping() {
       try {
         const payload = buildUpdatePayload(ingredient, parsed);
         await apiClient
-          .path("/api/ingredients/{ingredient_id}", ingredientId)
+          .path(`/api/ingredients/${ingredientId}`)
           .method("put")
           .create()({ body: payload });
         setIngredientsNeedsRefetch(true);
@@ -350,10 +399,11 @@ function Shopping() {
                     ? ingredientLookup.get(String(ingredientId))
                     : null) ??
                   (item.ingredient as IngredientWithSelection);
-                const selectValue =
-                  contextIngredient.shoppingUnitId == null
-                    ? CLEAR_SELECTION_VALUE
-                    : String(contextIngredient.shoppingUnitId);
+                const fallbackSelectValue = resolvePlanFallbackSelection(item);
+                const selectValue = deriveSelectionValue(
+                  contextIngredient.shoppingUnitId,
+                  fallbackSelectValue,
+                );
                 const preferredLabel = formatPreferredUnit(item.preferredUnitTotal);
                 const preferredPerDay = formatPreferredUnit(
                   item.preferredUnitTotal,
@@ -383,10 +433,7 @@ function Shopping() {
                         >
                           <MenuItem value={CLEAR_SELECTION_VALUE}>No preference</MenuItem>
                           {(contextIngredient.units ?? []).map((unit) => {
-                            const optionValue =
-                              unit.id === null || unit.id === undefined
-                                ? NULL_UNIT_SENTINEL
-                                : String(unit.id);
+                            const optionValue = toOptionValue(unit.id);
                             const grams = Number(unit.grams);
                             const gramsLabel = Number.isFinite(grams)
                               ? formatCellNumber(grams)
