@@ -43,7 +43,9 @@ A full-stack nutrition planning and tracking app built with:
    ```pwsh
    pwsh ./scripts/docker/compose.ps1 up data -test
    ```
-   - Replace `-test` with `-prod` to restore the latest branch backup (falls back to CSV seeding if no dump exists).
+   - Replace `-test` with `-prod` to restore the latest branch backup (errors if no dump is available).
+     When no dump exists yet, run the CSV importer manually after the stack starts: `pwsh ./scripts/db/import-from-csv.ps1`
+     (or `./scripts/db/import-from-csv.sh`).
    - Add `type -test` to run on the dedicated test ports (used by the end-to-end suite).
 
    The script prints the branch-specific ports and waits until the services are ready:
