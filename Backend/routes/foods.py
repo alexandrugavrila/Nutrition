@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, SQLModel
@@ -6,11 +6,89 @@ from sqlalchemy.orm import selectinload
 
 from sqlalchemy import delete
 from ..db import get_db
-from ..models import Food, PossibleFoodTag, Ingredient, FoodIngredient
+from ..models import (
+    Food,
+    PossibleFoodTag,
+    Ingredient,
+    FoodIngredient,
+    IngredientUnit,
+)
 from ..models.schemas import FoodCreate, FoodRead, FoodUpdate
 from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(prefix="/foods", tags=["foods"])
+
+
+def _lookup_base_unit_id(db: Session, ingredient_id: int) -> Optional[int]:
+    """Resolve the canonical unit id for synthetic "1g" selections."""
+
+    statement = select(IngredientUnit).where(
+        IngredientUnit.ingredient_id == ingredient_id
+    )
+    units = [u for u in db.exec(statement).all() if getattr(u, "id", None) is not None]
+    if not units:
+        return None
+
+    def _grams_value(unit: IngredientUnit) -> Optional[float]:
+        grams = getattr(unit, "grams", None)
+        if grams is None:
+            return None
+        try:
+            return float(grams)
+        except (TypeError, ValueError):  # pragma: no cover - defensive
+            return None
+
+    def _is_exact_gram(unit: IngredientUnit) -> bool:
+        grams_value = _grams_value(unit)
+        name = (getattr(unit, "name", "") or "").strip().lower()
+        return (
+            name == "g"
+            and grams_value is not None
+            and abs(grams_value - 1.0) < 1e-9
+        )
+
+    for unit in units:
+        if _is_exact_gram(unit):
+            return unit.id
+
+    for unit in units:
+        grams_value = _grams_value(unit)
+        if grams_value is not None and abs(grams_value - 1.0) < 1e-9:
+            return unit.id
+
+    return units[0].id
+
+
+def _normalize_unit_id(
+    db: Session,
+    cache: Dict[int, Optional[int]],
+    ingredient_id: Optional[int],
+    raw_unit_id: Optional[int],
+) -> Optional[int]:
+    """Translate synthetic unit identifiers (0) to real database ids."""
+
+    if isinstance(raw_unit_id, str):
+        stripped = raw_unit_id.strip()
+        if not stripped:
+            return None
+        try:
+            raw_unit_id = int(stripped)
+        except ValueError:
+            return None
+
+    if raw_unit_id is None:
+        return None
+
+    if raw_unit_id != 0:
+        return raw_unit_id
+
+    if ingredient_id is None:
+        return None
+
+    if ingredient_id not in cache:
+        cache[ingredient_id] = _lookup_base_unit_id(db, ingredient_id)
+
+    return cache[ingredient_id]
 
 
 @router.get("/", response_model=List[FoodRead])
@@ -65,12 +143,17 @@ def get_food(food_id: int, db: Session = Depends(get_db)) -> FoodRead:
 @router.post("/", response_model=FoodRead, status_code=201)
 def add_food(food: FoodCreate, db: Session = Depends(get_db)) -> FoodRead:
     """Create a new food."""
-    # Normalize unit_id values: treat 0 (synthetic 1g) as None for DB FK integrity
+    # Normalize unit_id values: map the synthetic 0 placeholder to a real DB unit id
     normalized_ingredients = []
+    unit_cache: Dict[int, Optional[int]] = {}
     for fi in food.ingredients:
         fi_dict = fi.model_dump()
-        if fi_dict.get("unit_id") == 0:
-            fi_dict["unit_id"] = None
+        fi_dict["unit_id"] = _normalize_unit_id(
+            db,
+            unit_cache,
+            fi_dict.get("ingredient_id"),
+            fi_dict.get("unit_id"),
+        )
         normalized_ingredients.append(fi_dict)
 
     food_obj = Food.from_create(
@@ -111,11 +194,15 @@ def update_food(
     food.name = food_data.name
     db.exec(delete(FoodIngredient).where(FoodIngredient.food_id == food_id))
     food.ingredients = []
+    unit_cache: Dict[int, Optional[int]] = {}
     for fi_data in food_data.ingredients:
         fi_payload = fi_data.model_dump()
-        # Normalize synthetic unit id 0 to None
-        if fi_payload.get("unit_id") == 0:
-            fi_payload["unit_id"] = None
+        fi_payload["unit_id"] = _normalize_unit_id(
+            db,
+            unit_cache,
+            fi_payload.get("ingredient_id"),
+            fi_payload.get("unit_id"),
+        )
         fi_obj = FoodIngredient.model_validate(fi_payload)
         fi_obj.food_id = food_id
         food.ingredients.append(fi_obj)
