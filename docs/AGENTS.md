@@ -24,16 +24,17 @@ This repository contains a full-stack nutrition planning and tracking applicatio
 - Launch with `pwsh ./scripts/docker/compose.ps1 up data -test` (or `.ps1 data -prod`); stop with `pwsh ./scripts/docker/compose.ps1 down`.
 - Add `type -test` to run on the dedicated test ports used by the e2e suite.
 - Containers and ports are isolated per branch through the helper scripts, so multiple branches can run simultaneously.
-- `data -prod` now restores the latest branch dump via `scripts/db/restore.ps1 -UpgradeAfter`; `data -test` keeps the CSV importer path.
+- `pwsh ./scripts/docker/compose.ps1 up data -prod` restores the latest branch dump via `scripts/db/restore.ps1 -UpgradeAfter`, while `./scripts/docker/compose.sh up data -prod` still imports the production CSV fixtures.
 - Startup waits for Postgres and the backend dependency install before seeding data.
 
 ---
 
 ## Database workflows
 - Run `pwsh ./scripts/db/backup.ps1` / `./scripts/db/backup.sh` before destructive changes to capture a branch-local dump.
-- Restore with `pwsh ./scripts/db/restore.ps1 [-UpgradeAfter]` (Bash variant available); compose `data -prod` already invokes this flow.
+- Restore with `pwsh ./scripts/db/restore.ps1 [-UpgradeAfter]`; compose `data -prod` already invokes this flow on PowerShell, but the Bash compose helper does not restore dumps.
+- If `restore.ps1` fails there is no automatic fallback. Manually export production CSV fixtures (`pwsh ./scripts/db/export-to-csv.ps1 -Production`) and re-import them with `pwsh ./scripts/db/import-from-csv.ps1` when you need to reseed without a dump.
 - Export the current tables via `pwsh ./scripts/db/export-to-csv.ps1 [-Production|-Test]` or `./scripts/db/export-to-csv.sh --output-dir <path>` when you need editable CSV snapshots.
-- The CSV importer (`pwsh ./scripts/db/import-from-csv.ps1`) remains the test-data path and fallback when no dump exists.
+- The CSV importer (`pwsh ./scripts/db/import-from-csv.ps1`) remains the test-data path and manual fallback when no dump exists or a restore cannot be completed.
 
 ---
 
@@ -78,7 +79,7 @@ Maintenance rules:
 ---
 
 ## Script parity checks
-- Scripts in `scripts/` have PowerShell (`.ps1`) and Bash (`.sh`) variants unless noted. Keep both variants in sync when editing.
+- Scripts in `scripts/` have PowerShell (`.ps1`) and Bash (`.sh`) variants unless noted. Keep both variants in sync when editing, and document intentional differences such as the Docker compose helpers (`compose.ps1` restores dumps; `compose.sh` seeds from CSV).
 
 ---
 
