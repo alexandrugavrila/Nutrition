@@ -136,13 +136,15 @@ erDiagram
 
 </details>
 
+Frontend state mirrors the API schema, so food tags reference the shared `PossibleFoodTag` definitions surfaced by `/api/foods/possible_tags`.
+
 <details>
 <summary>Frontend Structures (Mermaid)</summary>
 
 ```mermaid
 classDiagram
   class Ingredient { id; name; Nutrition nutrition; IngredientUnit[] units }
-  class Food { id; name; FoodIngredient[] ingredients; FoodTag[] tags }
+  class Food { id; name; FoodIngredient[] ingredients; PossibleFoodTag[] tags }
 ```
 
 </details>
