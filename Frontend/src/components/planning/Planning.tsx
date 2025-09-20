@@ -280,9 +280,19 @@ function Planning() {
       setIsDirty(false);
       setStatusMessage(message ?? `Loaded plan "${saved.label}"`);
       setSaveError(null);
-    },
-    [lastSavedPayloadRef, setStatusMessage]
-  );
+  }, [
+    lastSavedPayloadRef,
+    setActivePlan,
+    setDays,
+    setDaysError,
+    setIsDirty,
+    setOpen,
+    setPlan,
+    setSaveError,
+    setSaveLabel,
+    setStatusMessage,
+    setTargetMacros,
+  ]);
 
   useEffect(() => {
     const current = buildPayload();

@@ -147,8 +147,15 @@ function FoodForm({ foodToEditData }) {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks-exhaustive-deps
-  }, [foodToEdit, isOpen, isEditMode, hasContent]);
+  }, [
+    foodToEdit,
+    isOpen,
+    isEditMode,
+    hasContent,
+    startRequest,
+    endRequest,
+    setFoodsNeedsRefetch,
+  ]);
 
   const handleFoodDelete = () => {
     if (foodToEdit) {
@@ -212,13 +219,13 @@ function FoodForm({ foodToEditData }) {
     if (needsClearForm) {
       dispatch({ type: "SET_CLEAR_FORM", payload: false });
     }
-  }, [needsClearForm]); // Reset needsClearForm flag after it's been used
+  }, [needsClearForm, dispatch]); // Reset needsClearForm flag after it's been used
 
   useEffect(() => {
     if (needsFillForm) {
       dispatch({ type: "SET_FILL_FORM", payload: false });
     }
-  }, [needsFillForm]); // Reset needsFillForm flag after it's been used
+  }, [needsFillForm, dispatch]); // Reset needsFillForm flag after it's been used
   //#endregion Effects
 
   return (
