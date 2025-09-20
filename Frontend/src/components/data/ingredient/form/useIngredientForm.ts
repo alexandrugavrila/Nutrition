@@ -151,27 +151,30 @@ export const useIngredientForm = () => {
   const { setIngredientsNeedsRefetch, startRequest, endRequest } = useData();
   const [state, dispatch] = useSessionStorageReducer(reducer, createInitialState, "ingredient-form-state-v1");
 
-  const loadIngredient = useCallback((initial?: IngredientRead | null) => {
-    if (initial) {
-      dispatch({ type: "SET_INGREDIENT", payload: { ...initial } });
-      dispatch({ type: "SET_FILL_FORM", payload: true });
-    } else {
-      dispatch({ type: "SET_INGREDIENT", payload: initializeEmptyIngredient() });
-    }
-  }, []);
+  const loadIngredient = useCallback(
+    (initial?: IngredientRead | null) => {
+      if (initial) {
+        dispatch({ type: "SET_INGREDIENT", payload: { ...initial } });
+        dispatch({ type: "SET_FILL_FORM", payload: true });
+      } else {
+        dispatch({ type: "SET_INGREDIENT", payload: initializeEmptyIngredient() });
+      }
+    },
+    [dispatch],
+  );
 
   const clearForm = useCallback(() => {
     dispatch({ type: "SET_INGREDIENT", payload: initializeEmptyIngredient() });
     dispatch({ type: "SET_CLEAR_FORM", payload: true });
-  }, []);
+  }, [dispatch]);
 
   const acknowledgeClearFlag = useCallback(() => {
     dispatch({ type: "SET_CLEAR_FORM", payload: false });
-  }, []);
+  }, [dispatch]);
 
   const acknowledgeFillFlag = useCallback(() => {
     dispatch({ type: "SET_FILL_FORM", payload: false });
-  }, []);
+  }, [dispatch]);
 
   const save = useCallback(
     async ({ mode, onSaved, autoClearOnAdd = true }: SaveOptions) => {
