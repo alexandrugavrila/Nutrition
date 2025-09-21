@@ -202,15 +202,23 @@ foreach ($wt in $worktrees | Sort-Object Branch, Path) {
     }
 }
 
+$currentBranch = Get-LastLine (Invoke-Git @('rev-parse','--abbrev-ref','HEAD'))
+$hasValidCurrentBranch = $currentBranch -and $currentBranch -ne 'HEAD'
+
 $defaultBase = "$Remote/main"
-try {
-    $remoteHead = Get-LastLine (Invoke-Git @('symbolic-ref',"refs/remotes/$Remote/HEAD"))
-    if ($remoteHead) {
-        $remoteHeadName = $remoteHead -replace "^refs/remotes/$Remote/", ''
-        if ($remoteHeadName) { $defaultBase = "$Remote/$remoteHeadName" }
+if ($hasValidCurrentBranch) {
+    $defaultBase = $currentBranch
+}
+else {
+    try {
+        $remoteHead = Get-LastLine (Invoke-Git @('symbolic-ref',"refs/remotes/$Remote/HEAD"))
+        if ($remoteHead) {
+            $remoteHeadName = $remoteHead -replace "^refs/remotes/$Remote/", ''
+            if ($remoteHeadName) { $defaultBase = "$Remote/$remoteHeadName" }
+        }
+    } catch {
+        # ignore
     }
-} catch {
-    # ignore
 }
 
 if (-not $Branch) {
@@ -342,14 +350,7 @@ else {
     }
 
     if (-not $remoteHasBranch) {
-        $prompt = "Enter base ref to create '$Branch' from (default: $defaultBase)"
-        $baseInput = Read-Host $prompt
-        if ([string]::IsNullOrWhiteSpace($baseInput)) {
-            $baseRef = $defaultBase
-        }
-        else {
-            $baseRef = $baseInput.Trim()
-        }
+        $baseRef = $defaultBase
         if (-not $baseRef) {
             Write-Host 'Aborting.'
             Set-Location $initialLocation
