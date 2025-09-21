@@ -20,9 +20,12 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
   };
 
   const handleFieldEdit = (key, value) => {
-    // Allow empty, integers, and decimals while typing (e.g. "1.")
-    const isValidPartialNumber = value === "" || /^(\\d+)?([.,]\\d*)?$/.test(value);
-    if (!isValidPartialNumber) return;
+    const sanitizedValue = typeof value === "string" ? value.replace(",", ".") : String(value ?? "");
+    const partialNumberPattern = /^(\d+)?(\.\d*)?$/;
+    const isValidPartialNumber = sanitizedValue === "" || partialNumberPattern.test(sanitizedValue) || sanitizedValue === ".";
+    if (!isValidPartialNumber) {
+      return;
+    }
 
     setDisplayedNutrition({
       ...displayNutrition,
