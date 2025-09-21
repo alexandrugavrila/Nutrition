@@ -49,7 +49,13 @@ import useHoverable from "@/hooks/useHoverable";
 import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type { PlanRead } from "@/utils/planApi";
 import { createPlan, updatePlan } from "@/utils/planApi";
-import type { FoodOverride, FoodPlanItem, IngredientPlanItem, PlanItem, PlanPayload } from "@/utils/planningTypes";
+import type {
+  FoodOverride,
+  FoodPlanItem,
+  IngredientPlanItem,
+  PlanItem,
+  PlanPayload,
+} from "@/utils/planningTypes";
 
 const formatPlanTimestamp = (value?: string | null) => {
   if (!value) return "";
@@ -62,6 +68,8 @@ type NameWithEditProps = {
   name: string;
   onEdit: () => void;
 };
+
+type MacroKey = keyof PlanPayload["targetMacros"];
 
 const NameWithEdit: React.FC<NameWithEditProps> = ({ name, onEdit }) => {
   const { hovered, bind } = useHoverable();
@@ -91,6 +99,14 @@ function Planning() {
   const [targetMacros, setTargetMacros] = useSessionStorageState<PlanPayload["targetMacros"]>("planning-target-macros", () => ({
     ...ZERO_MACROS,
   }));
+  const macroKeys = useMemo(() => Object.keys(targetMacros) as MacroKey[], [targetMacros]);
+  const [macroInputs, setMacroInputs] = useState<Record<MacroKey, string>>(() =>
+    macroKeys.reduce((acc, macro) => {
+      acc[macro] = targetMacros[macro].toString();
+      return acc;
+    }, {} as Record<MacroKey, string>),
+  );
+  const [activeMacro, setActiveMacro] = useState<MacroKey | null>(null);
   const [plan, setPlan] = useSessionStorageState<PlanItem[]>("planning-plan", () => []); // FoodPlanItem or IngredientPlanItem
 
   const [activePlan, setActivePlan] = useSessionStorageState<{
@@ -128,6 +144,31 @@ function Planning() {
     [plan, days, targetMacros]
   );
   const canResetPlan = hasContent || activePlan.id !== null;
+
+  useEffect(() => {
+    setMacroInputs((prev) => {
+      let changed = false;
+      const next = { ...prev } as Record<MacroKey, string>;
+
+      macroKeys.forEach((macro) => {
+        if (activeMacro === macro) {
+          if (!(macro in next)) {
+            next[macro] = targetMacros[macro].toString();
+            changed = true;
+          }
+          return;
+        }
+
+        const newValue = targetMacros[macro].toString();
+        if (next[macro] !== newValue) {
+          next[macro] = newValue;
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
+    });
+  }, [targetMacros, macroKeys, activeMacro]);
 
 
   useEffect(() => {
@@ -705,18 +746,47 @@ function Planning() {
           error={daysError}
           helperText={daysError ? "Days must be at least 1" : ""}
         />
-        {Object.keys(targetMacros).map((macro) => (
+        {macroKeys.map((macro) => (
           <TextField
             key={macro}
             type="number"
             label={`Target ${macro}`}
-            value={targetMacros[macro]}
-            onChange={(e) =>
-              setTargetMacros({
-                ...targetMacros,
-                [macro]: parseFloat(e.target.value) || 0,
-              })
-            }
+            value={macroInputs[macro] ?? "0"}
+            onFocus={() => {
+              setActiveMacro(macro);
+              setMacroInputs((prev) => {
+                const current = prev[macro];
+                if (current === "0") {
+                  return { ...prev, [macro]: "" };
+                }
+                return prev;
+              });
+            }}
+            onChange={(e) => {
+              const { value } = e.target;
+              setMacroInputs((prev) => ({
+                ...prev,
+                [macro]: value,
+              }));
+              setTargetMacros((prev) => ({
+                ...prev,
+                [macro]: value === "" ? 0 : Number.parseFloat(value) || 0,
+              }));
+            }}
+            onBlur={() => {
+              setActiveMacro(null);
+              const currentValue = macroInputs[macro]?.trim() ?? "";
+              if (currentValue === "" || Number.isNaN(Number.parseFloat(currentValue))) {
+                setMacroInputs((prev) => ({
+                  ...prev,
+                  [macro]: "0",
+                }));
+                setTargetMacros((prev) => ({
+                  ...prev,
+                  [macro]: 0,
+                }));
+              }
+            }}
           />
         ))}
       </Box>

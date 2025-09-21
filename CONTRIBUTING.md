@@ -126,24 +126,151 @@ Multiple branches can run simultaneously because each stack has a unique project
 
 ## Database Utilities
 
-All database helpers live under `scripts/db/` and respect the current branch's environment variables.
+All database helpers live under `scripts/db/` and respect the current branch's environment variables. Detailed usage for every script—including call chains and flags—lives in the [Script catalog](#script-catalog--call-graph), but the short list below highlights the most common flows.
 
-- `pwsh ./scripts/db/backup.ps1` / `./scripts/db/backup.sh`  
+- `pwsh ./scripts/db/backup.ps1` / `./scripts/db/backup.sh`
   Writes `Database/backups/<sanitized>-<timestamp>.dump` plus metadata (Alembic revision, git SHA).
-- `pwsh ./scripts/db/restore.ps1 [-ResetSchema] [-UpgradeAfter] [<file>]`  
+- `pwsh ./scripts/db/restore.ps1 [-ResetSchema] [-UpgradeAfter] [<file>]`
   Restores the most recent dump for the branch or a provided file. `-ResetSchema` drops/recreates the public schema; `-UpgradeAfter` reapplies migrations.
-- `pwsh ./scripts/db/export-to-csv.ps1 [-Production|-Test] [-OutputDir <path>]`  
+- `pwsh ./scripts/db/export-to-csv.ps1 [-Production|-Test] [-OutputDir <path>]`
   Writes the current database tables to CSV (defaults to production data). Bash: `./scripts/db/export-to-csv.sh`.
-- `pwsh ./scripts/db/import-from-csv.ps1 [-test|-production]`  
+- `pwsh ./scripts/db/import-from-csv.ps1 [-test|-production]`
   Loads CSV seed data into the running container; used automatically for `compose.ps1 up data -test`.
-- `pwsh ./scripts/db/check-migration-drift.ps1`  
+- `pwsh ./scripts/db/check-migration-drift.ps1`
   Compares the migration state between the database and `Backend/migrations`.
-- `pwsh ./scripts/db/update-api-schema.ps1`  
+- `pwsh ./scripts/db/update-api-schema.ps1`
   Spins up a temporary backend, regenerates `Backend/openapi.json`, and updates `Frontend/src/api-types.ts`.
-- `pwsh ./scripts/db/sync-api-and-migrations.ps1`  
+- `pwsh ./scripts/db/sync-api-and-migrations.ps1`
   One-stop command: runs Alembic autogenerate, formats new migrations, updates OpenAPI + TS types, runs drift checks, and prompts you to commit generated artifacts.
 
 Most scripts accept Bash equivalents with the same flags.
+
+---
+
+## Script Catalog & Call Graph
+
+The repository keeps Bash and PowerShell twins for every contributor-facing script. Use either flavor on any platform; functionality and options match unless noted.
+
+### Testing and quality gates
+
+- `scripts/run-tests.ps1` / `scripts/run-tests.sh`
+  - Purpose: run backend unit tests, frontend unit tests, optional OpenAPI/migration sync, and optional end-to-end API tests.
+  - Flags:
+    - PowerShell: `-e2e`, `-sync`, `-full` (equivalent to both flags).
+    - Bash: `--e2e`, `--sync`, `--full` (plus `-h|--help`).
+  - Call graph:
+    - When sync flags are present, calls `scripts/db/sync-api-and-migrations.ps1|.sh`.
+      - That script invokes `scripts/db/update-api-schema.ps1|.sh` to regenerate `Backend/openapi.json` and `Frontend/src/api-types.ts`.
+      - Afterwards it runs `scripts/db/check-migration-drift.ps1|.sh`, which shells into `scripts/db/check_migration_drift.py` to autogenerate and (if needed) adopt migrations via Alembic.
+    - When e2e flags are present, calls `scripts/tests/run-e2e-tests.ps1|.sh`.
+    - Always sources `scripts/lib/venv.ps1|.sh` to ensure the virtual environment is active.
+
+- `scripts/tests/run-e2e-tests.ps1` / `scripts/tests/run-e2e-tests.sh`
+  - Purpose: spin up a branch-isolated Docker Compose test stack, wait for the backend to become healthy, then execute `pytest -m e2e` against `Backend/tests/test_e2e_api.py`.
+  - Flags: accepts additional pytest arguments (pass-through). Both variants honour `-h|--help`.
+  - Call graph: loads helpers from `scripts/lib/venv.*`, `scripts/lib/branch-env.*`, and `scripts/lib/compose-utils.*`; always shells into `scripts/docker/compose.ps1|.sh` (`up ...` to start, `down ...` to tear down).
+
+### Docker stack management
+
+- `scripts/docker/compose.ps1` / `scripts/docker/compose.sh`
+  - Purpose: orchestrate Docker Compose stacks with branch-specific project names, port offsets, and data seed flows.
+  - Subcommands (common to both shells):
+    - `up [type <-dev|-test>] data <-test|-prod> [service...]`
+    - `down [type <-dev|-test>]`
+    - `restart [type <-dev|-test>] data <-test|-prod>`
+  - Behavior:
+    - `type -test` remaps the dev ports/volumes to the dedicated `TEST_*` values for isolated stacks.
+    - `data -prod` seeds production fixtures. PowerShell restores the latest branch backup via `scripts/db/restore.ps1 -UpgradeAfter`; Bash seeds CSV fixtures via `Database/import_from_csv.py --production`.
+    - Writes resolved ports to `$COMPOSE_ENV_FILE` when present so callers (for example the e2e runner) can source them.
+    - Ensures migrations run and seed data loads after startup, and provides graceful teardown including volume cleanup.
+  - Call graph: loads `scripts/lib/branch-env.*`, `scripts/lib/worktree.sh` (Bash variant), and `scripts/lib/compose-utils.*`; PowerShell also imports `scripts/env/activate-venv.ps1` when applying test data.
+
+### Environment and worktree helpers
+
+- `scripts/env/activate-venv.ps1` / `scripts/env/activate-venv.sh`
+  - Purpose: create/activate `.venv`, install Python requirements, and keep `Frontend/node_modules` in sync with `package-lock.json`.
+  - Flags: none; respects environment overrides `VENV_PATH`, `REQUIREMENTS_PATH`, and `FRONTEND_PATH`.
+
+- `scripts/env/check.ps1` / `scripts/env/check.sh`
+  - Purpose: verify the current directory is the correct worktree for the branch, ensure the default branch stays in the primary clone, and confirm the correct virtual environment is active.
+  - Flags:
+    - PowerShell: `-Fix`, `-Quiet`.
+    - Bash: `--fix`.
+  - Call graph: relies on `scripts/lib/branch-env.*` and `scripts/lib/worktree.sh`; PowerShell version can invoke `scripts/env/activate-venv.ps1` during fixes.
+
+- `scripts/switch-worktree-branch.ps1`
+  - Purpose: interactively pick a branch, jump to its dedicated worktree (creating it if needed), optionally open VS Code, optionally start Docker Compose, and always activate the virtualenv.
+  - Flags/parameters: `-Branch`, `-Remote`, `-SkipVSCode`, `-NewVSCodeWindow`, `-StartWorkspaceStack`, and `-Data <test|prod>` (required with `-StartWorkspaceStack`).
+  - Call graph: invokes `scripts/env/activate-venv.ps1` and `scripts/docker/compose.ps1` when the corresponding switches are selected.
+
+### Repository maintenance
+
+- `scripts/repo/check.ps1` / `scripts/repo/check.sh`
+  - Purpose: one-stop repository hygiene command; optionally skip stages.
+  - Flags:
+    - PowerShell: `-SkipSync`, `-SkipAudit`, `-SkipContainers` plus pass-through `-SyncArgs` for nested branch sync options.
+    - Bash: `--skip-sync`, `--skip-audit`, `--skip-containers` and `--` to forward arguments to branch sync.
+  - Call graph:
+    - Runs `scripts/repo/sync-branches.ps1|.sh` unless skipped.
+      - PowerShell flags: `-NoFetch`, `-YesToAll`, `-DryRun`.
+      - Bash flags: `--no-fetch`, `--yes`, `--dry-run`, `-h|--help`.
+    - Runs `scripts/repo/audit-worktrees.ps1|.sh` (no flags) to validate branch↔worktree mappings and naming conventions; prompts before removing orphans.
+    - Runs `scripts/repo/audit-container-sets.ps1|.sh` (no flags, honours `$CONTAINER_SET_PREFIX`) to locate Compose stacks without matching branches; prompts before removal and exits non-zero if unresolved stacks remain.
+
+### Database management
+
+- `scripts/db/backup.ps1` / `scripts/db/backup.sh`
+  - Purpose: capture a branch-local Postgres dump and write companion metadata.
+  - Flags: none.
+  - Call graph: loads `scripts/lib/branch-env.*` and `scripts/lib/compose-utils.*`; PowerShell variant falls back to running pg_dump inside the container when the host CLI is unavailable.
+
+- `scripts/db/restore.ps1` / `scripts/db/restore.sh`
+  - Purpose: restore a custom-format dump into the branch-local database and optionally upgrade afterward.
+  - Flags:
+    - PowerShell: `-UpgradeAfter`, `-FailOnMismatch`, `-ResetSchema`, optional positional `DumpPath`.
+    - Bash: `--upgrade-after`, `--fail-on-mismatch`, `--reset-schema`, optional dump file argument, `-h|--help`.
+  - Behavior: auto-selects the newest dump for the current branch (falling back to `main` when necessary), refuses to touch non-localhost databases, can drop/recreate the `public` schema, and compares backup Alembic revision metadata against repo heads.
+
+- `scripts/db/import-from-csv.ps1` / `scripts/db/import-from-csv.sh`
+  - Purpose: load CSV fixtures into the running branch database.
+  - Flags: exactly one of `-production`/`--production` or `-test`/`--test`.
+  - Call graph: ensures venv activation and running containers before executing `python Database/import_from_csv.py` with the matching flag.
+
+- `scripts/db/export-to-csv.ps1` / `scripts/db/export-to-csv.sh`
+  - Purpose: export tables from the branch database into CSV fixtures.
+  - Flags: choose data set with `-Production`/`--production` or `-Test`/`--test` (default is production) and optionally specify `-OutputDir`/`--output-dir <path>`.
+  - Behavior: resolves output directories to absolute paths when possible and runs `python Database/export_to_csv.py` with the assembled arguments.
+
+- `scripts/db/update-api-schema.ps1` / `scripts/db/update-api-schema.sh`
+  - Purpose: launch the FastAPI app with Uvicorn, fetch `openapi.json`, and regenerate frontend TypeScript types via `openapi-typescript`.
+  - Flags: none.
+  - Call graph: both variants source `scripts/lib/venv.*` and `scripts/lib/python.*`; PowerShell version additionally leverages `scripts/lib/log.ps1` for status output.
+
+- `scripts/db/sync-api-and-migrations.ps1` / `scripts/db/sync-api-and-migrations.sh`
+  - Purpose: unify API schema updates with migration drift detection.
+  - Flags: PowerShell uses `-Auto` (alias `-y`); Bash accepts `-y` or `CI=true` to auto-confirm prompts.
+  - Call graph: ensures the virtual environment is active, runs `update-api-schema`, then `check-migration-drift`, and summarises whether migrations were adopted.
+
+- `scripts/db/check-migration-drift.ps1` / `scripts/db/check-migration-drift.sh`
+  - Purpose: execute `scripts/db/check_migration_drift.py`, which spins up a disposable Postgres container, autogenerates a migration to detect drift, and optionally adopts it.
+  - Flags: pass-through arguments to the Python script (currently none).
+
+- `scripts/db/check_migration_drift.py`
+  - Purpose: shared core for drift detection; returns exit code `0` when clean or after successful adoption, `2` when drift persists after adoption, `1` on failure.
+  - Behavior: cleans temporary revisions, starts a Postgres container on `TEST_DB_PORT` (or random port), runs Alembic autogenerate twice, renames adopted files with a timestamp slug, and removes temporary containers/files.
+
+### Shared libraries
+
+The `scripts/lib/` directory contains reusable helpers that other scripts source:
+
+- `branch-env.ps1` / `branch-env.sh`: compute sanitized branch names, Compose project identifiers, and branch-specific port offsets.
+- `compose-utils.ps1` / `compose-utils.sh`: inspect Compose stacks, ensure branch containers are running, and expose the dedicated test project name.
+- `worktree.sh`: enforce the worktree naming convention (used by Bash scripts such as the Compose wrapper and environment checks).
+- `venv.ps1` / `venv.sh`: activate the per-worktree virtualenv, bootstrapping dependencies as required.
+- `python.ps1` / `python.sh`: resolve the appropriate Python interpreter/arguments.
+- `log.ps1`: provide consistent status output helpers for PowerShell scripts.
+
+Refer back to this section whenever you touch a script—any new flag, behavior change, or entry point must be reflected here.
 
 ---
 
