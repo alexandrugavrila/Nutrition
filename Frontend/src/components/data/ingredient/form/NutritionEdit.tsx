@@ -1,5 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { TextField } from "@mui/material";
+
+const roundToTwoDecimalPlaces = (value: number): number => {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+};
 
 function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) {
   const [multiplier, setMultiplier] = useState(1);
@@ -29,12 +37,24 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
       [key]: value,
     });
   };
+  const getRoundedDisplayNutrition = useCallback(
+    (targetMultiplier: number) => ({
+      calories: roundToTwoDecimalPlaces((ingredient?.nutrition?.calories ?? 0) * targetMultiplier),
+      protein: roundToTwoDecimalPlaces((ingredient?.nutrition?.protein ?? 0) * targetMultiplier),
+      carbohydrates: roundToTwoDecimalPlaces((ingredient?.nutrition?.carbohydrates ?? 0) * targetMultiplier),
+      fat: roundToTwoDecimalPlaces((ingredient?.nutrition?.fat ?? 0) * targetMultiplier),
+      fiber: roundToTwoDecimalPlaces((ingredient?.nutrition?.fiber ?? 0) * targetMultiplier),
+    }),
+    [ingredient],
+  );
+
   const handleFieldEditFinish = () => {
     // Normalize blanks and parse to numbers (support ',' as decimal)
     const normalized = Object.keys(displayNutrition).reduce((acc, key) => {
       const raw = displayNutrition[key];
       const parsed = parseFloat(String(raw).replace(",", "."));
-      return { ...acc, [key]: isNaN(parsed) ? 0 : parsed };
+      const numericValue = Number.isNaN(parsed) ? 0 : roundToTwoDecimalPlaces(parsed);
+      return { ...acc, [key]: numericValue };
     }, {});
 
     setDisplayedNutrition(normalized);
@@ -73,15 +93,9 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
     }
 
     if (!needsClearForm) {
-      setDisplayedNutrition({
-        calories: (ingredient.nutrition?.calories ?? 0) * safeMultiplier,
-        protein: (ingredient.nutrition?.protein ?? 0) * safeMultiplier,
-        carbohydrates: (ingredient.nutrition?.carbohydrates ?? 0) * safeMultiplier,
-        fat: (ingredient.nutrition?.fat ?? 0) * safeMultiplier,
-        fiber: (ingredient.nutrition?.fiber ?? 0) * safeMultiplier,
-      });
+      setDisplayedNutrition(getRoundedDisplayNutrition(safeMultiplier));
     }
-  }, [ingredient, multiplier, needsClearForm]); // Sync displayed nutrition when units or base values change
+  }, [ingredient, multiplier, needsClearForm, getRoundedDisplayNutrition]); // Sync displayed nutrition when units or base values change
 
   useEffect(() => {
     if (needsClearForm) {
@@ -108,15 +122,9 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
 
   useEffect(() => {
     if (needsFillForm) {
-      setDisplayedNutrition({
-        calories: (ingredient.nutrition?.calories ?? 0) * multiplier,
-        protein: (ingredient.nutrition?.protein ?? 0) * multiplier,
-        carbohydrates: (ingredient.nutrition?.carbohydrates ?? 0) * multiplier,
-        fat: (ingredient.nutrition?.fat ?? 0) * multiplier,
-        fiber: (ingredient.nutrition?.fiber ?? 0) * multiplier,
-      });
+      setDisplayedNutrition(getRoundedDisplayNutrition(multiplier));
     }
-  }, [needsFillForm, ingredient, multiplier]); // Fills the form on needsFillForm
+  }, [needsFillForm, ingredient, multiplier, getRoundedDisplayNutrition]); // Fills the form on needsFillForm
 
   return (
     <div style={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
