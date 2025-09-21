@@ -13,13 +13,22 @@
     Suppress launching VS Code after switching.
 .PARAMETER NewVSCodeWindow
     Open the worktree in a new VS Code window instead of reusing the current one.
+.PARAMETER StartWorkspaceStack
+    Start the Docker Compose stack once the worktree is opened. The project's
+    virtual environment is always activated.
+.PARAMETER Data
+    Required when -StartWorkspaceStack is supplied. Chooses which data set to load
+    when starting Docker Compose (test or prod).
 #>
 [CmdletBinding()]
 param(
     [string]$Branch,
     [string]$Remote = 'origin',
     [switch]$SkipVSCode,
-    [switch]$NewVSCodeWindow
+    [switch]$NewVSCodeWindow,
+    [switch]$StartWorkspaceStack,
+    [ValidateSet('test','prod')]
+    [string]$Data
 )
 
 $ErrorActionPreference = 'Stop'
@@ -158,6 +167,39 @@ function Open-VSCode {
     }
 }
 
+function Activate-VirtualEnvironment {
+    Write-Host ''
+    Write-Host 'Activating virtual environment...'
+    & "$PSScriptRoot/env/activate-venv.ps1"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to activate virtual environment (exit code $LASTEXITCODE)."
+    }
+}
+
+function Start-WorkspaceStack {
+    param(
+        [Parameter(Mandatory = $true)][ValidateSet('test','prod')][string]$DataMode
+    )
+
+    $mode = $DataMode.ToLowerInvariant()
+    Write-Host ''
+    Write-Host "Starting Docker Compose stack using '$mode' data..."
+    & "$PSScriptRoot/docker/compose.ps1" @('up','data',"-$mode")
+    if ($LASTEXITCODE -ne 0) {
+        throw "Docker Compose failed to start (exit code $LASTEXITCODE)."
+    }
+}
+
+if ($StartWorkspaceStack -and -not $Data) {
+    Write-Error '-Data test|prod must be provided when using -StartWorkspaceStack.'
+    exit 1
+}
+
+if ($Data -and -not $StartWorkspaceStack) {
+    Write-Error '-Data can only be used together with -StartWorkspaceStack.'
+    exit 1
+}
+
 $initialLocation = Get-Location
 
 $repoRootRaw = Get-LastLine (Invoke-Git @('rev-parse','--show-toplevel'))
@@ -288,6 +330,10 @@ if ($targetPath) {
     if (-not $SkipVSCode) {
         Open-VSCode -Path $targetPath -NewWindow:$NewVSCodeWindow
     }
+    Activate-VirtualEnvironment
+    if ($StartWorkspaceStack) {
+        Start-WorkspaceStack -DataMode $Data
+    }
     return
 }
 
@@ -386,4 +432,8 @@ foreach ($line in $finalSummary) {
 
 if (-not $SkipVSCode) {
     Open-VSCode -Path $targetPath -NewWindow:$NewVSCodeWindow
+}
+Activate-VirtualEnvironment
+if ($StartWorkspaceStack) {
+    Start-WorkspaceStack -DataMode $Data
 }
