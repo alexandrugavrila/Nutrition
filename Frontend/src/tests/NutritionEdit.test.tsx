@@ -44,4 +44,34 @@ describe("NutritionEdit", () => {
 
     expect(caloriesInput).toHaveValue("123");
   });
+
+  it("clears default zero values when a macro field receives focus", async () => {
+    const dispatch = vi.fn();
+    const zeroIngredient = {
+      ...buildIngredient(),
+      nutrition: {
+        calories: 0,
+        protein: 0,
+        carbohydrates: 0,
+        fat: 0,
+        fiber: 0,
+      },
+    };
+
+    render(
+      <NutritionEdit
+        ingredient={zeroIngredient}
+        dispatch={dispatch}
+        needsClearForm={false}
+        needsFillForm={false}
+      />,
+    );
+
+    const proteinInput = screen.getByLabelText(/Protein/i);
+    expect(proteinInput).toHaveValue("0");
+
+    await userEvent.click(proteinInput);
+
+    expect(proteinInput).toHaveValue("");
+  });
 });

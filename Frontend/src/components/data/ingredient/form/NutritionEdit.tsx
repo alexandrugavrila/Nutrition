@@ -27,6 +27,43 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
     },
   };
 
+  const shouldClearOnFocus = (value: unknown) => {
+    if (value === "" || value == null) {
+      return false;
+    }
+
+    if (typeof value === "number") {
+      return value === 0;
+    }
+
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed === "") {
+        return false;
+      }
+
+      const normalized = trimmed.replace(",", ".");
+      const parsed = Number.parseFloat(normalized);
+      return !Number.isNaN(parsed) && parsed === 0;
+    }
+
+    return false;
+  };
+
+  const handleFieldFocus = (key) => {
+    setDisplayedNutrition((prev) => {
+      const current = prev[key];
+      if (!shouldClearOnFocus(current)) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [key]: "",
+      };
+    });
+  };
+
   const handleFieldEdit = (key, value) => {
     // Allow empty, integers, and decimals while typing (e.g. "1.")
     const isValidPartialNumber = value === "" || /^(\d+)?([.,]\d*)?$/.test(value);
@@ -133,6 +170,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
       <TextField
         label="Calories"
         value={displayNutrition.calories}
+        onFocus={() => handleFieldFocus("calories")}
         onChange={(e) => handleFieldEdit("calories", e.target.value)}
         onBlur={handleFieldEditFinish}
         variant="outlined"
@@ -145,6 +183,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
       <TextField
         label="Protein"
         value={displayNutrition.protein}
+        onFocus={() => handleFieldFocus("protein")}
         onChange={(e) => handleFieldEdit("protein", e.target.value)}
         onBlur={handleFieldEditFinish}
         variant="outlined"
@@ -157,6 +196,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
       <TextField
         label="Carbs"
         value={displayNutrition.carbohydrates}
+        onFocus={() => handleFieldFocus("carbohydrates")}
         onChange={(e) => handleFieldEdit("carbohydrates", e.target.value)}
         onBlur={handleFieldEditFinish}
         variant="outlined"
@@ -169,6 +209,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
       <TextField
         label="Fat"
         value={displayNutrition.fat}
+        onFocus={() => handleFieldFocus("fat")}
         onChange={(e) => handleFieldEdit("fat", e.target.value)}
         onBlur={handleFieldEditFinish}
         variant="outlined"
@@ -181,6 +222,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
       <TextField
         label="Fiber"
         value={displayNutrition.fiber}
+        onFocus={() => handleFieldFocus("fiber")}
         onChange={(e) => handleFieldEdit("fiber", e.target.value)}
         onBlur={handleFieldEditFinish}
         variant="outlined"
