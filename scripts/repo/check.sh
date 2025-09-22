@@ -10,10 +10,14 @@ Usage: scripts/repo/check.sh [options]
 
 Runs sync-branches followed by audit-worktrees and container-set auditing. Non-control options are passed
 to sync-branches. Use --skip-sync, --skip-audit, or --skip-containers to bypass individual steps.
+
+Options:
+  --yes            Answer "yes" to all confirmations in downstream scripts.
 USAGE
 }
 
 SYNC_ARGS=()
+CONTAINER_ARGS=()
 SKIP_SYNC=false
 SKIP_AUDIT=false
 SKIP_CONTAINERS=false
@@ -28,6 +32,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-containers)
       SKIP_CONTAINERS=true
+      ;;
+    --yes)
+      SYNC_ARGS+=("$1")
+      CONTAINER_ARGS+=("$1")
       ;;
     -h|--help)
       usage
@@ -59,5 +67,5 @@ if [[ "$SKIP_AUDIT" == false ]]; then
 fi
 
 if [[ "$SKIP_CONTAINERS" == false ]]; then
-  "$SCRIPT_DIR/audit-container-sets.sh"
+  "$SCRIPT_DIR/audit-container-sets.sh" "${CONTAINER_ARGS[@]}"
 fi

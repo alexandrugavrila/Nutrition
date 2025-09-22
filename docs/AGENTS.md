@@ -80,6 +80,7 @@ Maintenance rules:
 
 ## Script parity checks
 - Scripts in `scripts/` have PowerShell (`.ps1`) and Bash (`.sh`) variants unless noted. Keep both variants in sync when editing, and document intentional differences such as the Docker compose helpers (`compose.ps1` restores dumps; `compose.sh` seeds from CSV).
+- The `Script catalog & call graph` section in `CONTRIBUTING.md` is the canonical reference for script entry points and flags. Any script change (behavior, flags, new helper, removed helper) must update that section.
 
 ---
 

@@ -3,6 +3,10 @@
 # convention and reports container sets that no longer correspond to any existing
 # local or remote branch.
 
+param(
+  [switch]$YesToAll
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -145,10 +149,29 @@ foreach ($proj in $projectSet | Sort-Object) {
     Write-Info "Container set '$proj' has no matching branch (checked sanitized names: $names)."
 
     $response = ''
+    $isInteractive = $true
     try {
-      $response = Read-Host "Remove this orphaned container set? (y/N)"
+      if ([Console]::IsInputRedirected -or [Console]::IsOutputRedirected) {
+        $isInteractive = $false
+      }
     } catch {
-      $response = ''
+      $isInteractive = $false
+    }
+
+    if ($YesToAll) {
+      Write-Info "Automatically removing container set '$proj' (-YesToAll specified)."
+      $response = 'y'
+    } elseif ($isInteractive) {
+      try {
+        $response = Read-Host "Remove this orphaned container set? (y/N)"
+      } catch {
+        $response = ''
+        $isInteractive = $false
+      }
+    }
+
+    if (-not $YesToAll -and -not $isInteractive) {
+      Write-Info "Non-interactive shell detected; skipping automatic removal for '$proj'."
     }
 
     if ($response -match '^[Yy]$') {
