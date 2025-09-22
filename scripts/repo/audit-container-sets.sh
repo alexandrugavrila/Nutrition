@@ -6,6 +6,36 @@
 
 set -euo pipefail
 
+usage() {
+  cat <<'USAGE'
+Usage: scripts/repo/audit-container-sets.sh [options]
+
+Options:
+  --yes      Automatically confirm removal of orphaned container sets.
+  -h, --help Show this help message.
+USAGE
+}
+
+YES_TO_ALL=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --yes)
+      YES_TO_ALL=true
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      printf '[CONTAINER AUDIT] ERROR: Unknown option: %s\n' "$1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+  shift
+done
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
 
@@ -173,7 +203,10 @@ for entry in "${orphans[@]}"; do
   project="${entry%%|*}"
   candidate_str="${entry#*|}"
   response=""
-  if [[ "$interactive" == true ]]; then
+  if [[ "$YES_TO_ALL" == true ]]; then
+    info "Automatically removing container set '$project' (--yes specified)."
+    response="y"
+  elif [[ "$interactive" == true ]]; then
     read -r -p "Remove orphaned container set '$project'? (y/N) " response || response=""
   else
     info "Non-interactive shell detected; skipping automatic removal for '$project'."
