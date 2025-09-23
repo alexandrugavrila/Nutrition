@@ -127,7 +127,10 @@ function Planning() {
   const [isDirty, setIsDirty] = useState(false);
 
   const [selectedType, setSelectedType] = useSessionStorageState("planning-selected-type", "food");
-  const [selectedFoodId, setSelectedFoodId] = useSessionStorageState("planning-selected-food-id", "");
+  const [selectedFoodId, setSelectedFoodId] = useSessionStorageState(
+    "planning-selected-food-id",
+    "",
+  );
   const [selectedPortions, setSelectedPortions] = useSessionStorageState<number>("planning-selected-portions", 1);
   const [selectedIngredientId, setSelectedIngredientId] = useSessionStorageState("planning-selected-ingredient-id", "");
   const [selectedIngredientUnitId, setSelectedIngredientUnitId] = useSessionStorageState("planning-selected-ingredient-unit-id", "");
@@ -435,7 +438,9 @@ function Planning() {
     if (selectedType === "food") {
       if (!selectedFoodId || selectedPortions <= 0) return;
       const existingIndex = plan.findIndex(
-        (p) => p.type === "food" && p.foodId === selectedFoodId
+        (p) =>
+          p.type === "food" &&
+          String(p.foodId ?? "") === String(selectedFoodId ?? ""),
       );
       if (existingIndex >= 0) {
         const updated = [...plan];
@@ -447,7 +452,9 @@ function Planning() {
         setPlan(updated);
       } else {
         // Build default overrides from the selected food's ingredients
-        const food = foods.find((f) => f.id === selectedFoodId);
+        const food = foods.find(
+          (f) => String(f.id ?? "") === String(selectedFoodId ?? ""),
+        );
         const overrides: Record<string, FoodOverride> = {};
         food?.ingredients.forEach((ing) => {
           overrides[ing.ingredient_id] = {
@@ -548,7 +555,9 @@ function Planning() {
   const calculateItemMacros = useCallback(
     (item: PlanItem) => {
       if (item.type === "food") {
-        const food = foods.find((m) => m.id === item.foodId);
+        const food = foods.find(
+          (m) => String(m.id ?? "") === String(item.foodId ?? ""),
+        );
         const macros = calculateFoodMacros(food, item.overrides);
         return {
           calories: macros.calories * item.portions,
@@ -808,11 +817,11 @@ function Planning() {
               select
               label="Food"
               value={selectedFoodId}
-              onChange={(e) => setSelectedFoodId(e.target.value)}
+              onChange={(e) => setSelectedFoodId(String(e.target.value))}
               sx={{ minWidth: 200 }}
             >
               {foods.map((food) => (
-                <MenuItem key={food.id} value={food.id}>
+                <MenuItem key={food.id} value={String(food.id)}>
                   {food.name}
                 </MenuItem>
               ))}
@@ -926,7 +935,9 @@ function Planning() {
         <TableBody>
           {plan.map((item, index) => {
             if (item.type === "food") {
-              const food = foods.find((m) => m.id === item.foodId);
+              const food = foods.find(
+                (m) => String(m.id ?? "") === String(item.foodId ?? ""),
+              );
               const macros = calculateFoodMacros(food, item.overrides);
               return (
                 <React.Fragment key={`food-${item.foodId}`}>
