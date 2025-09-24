@@ -132,9 +132,9 @@ function FoodForm({ foodToEditData }) {
       try {
         const payload = buildFoodPayload(foodToEdit);
         await apiClient
-          .path("/api/foods/{food_id}")
+          .path(`/api/foods/${foodToEdit.id}`)
           .method("put")
-          .create()({ path: { food_id: foodToEdit.id }, body: payload });
+          .create()({ body: payload });
         setFoodsNeedsRefetch(true);
       } catch (e) {
         console.error("Autosave error:", e);
