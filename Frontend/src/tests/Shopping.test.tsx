@@ -92,7 +92,8 @@ describe("Shopping component", () => {
     render(<Shopping />);
 
     const row = await screen.findByRole("row", { name: /Oats/i });
-    expect(within(row).getByText(/Plan totals:/i)).toBeInTheDocument();
+    const cells = within(row).getAllByRole("cell");
+    expect(cells[2]).toHaveTextContent(/^1$/);
 
     const unitSelect = within(row).getByRole("combobox");
     await userEvent.click(unitSelect);
