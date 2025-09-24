@@ -99,10 +99,7 @@ describe("Shopping component", () => {
     await userEvent.click(screen.getByRole("option", { name: /cup/i }));
 
     await waitFor(() => {
-      expect(mockedClient.path).toHaveBeenCalledWith(
-        "/api/ingredients/{ingredient_id}",
-        1,
-      );
+      expect(mockedClient.path).toHaveBeenCalledWith("/api/ingredients/1");
       expect(mockedClient.method).toHaveBeenCalledWith("put");
       expect(mockedClient.create).toHaveBeenCalled();
       expect(startRequest).toHaveBeenCalled();

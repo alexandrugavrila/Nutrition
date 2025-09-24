@@ -269,7 +269,7 @@ function Shopping() {
       try {
         const payload = buildUpdatePayload(ingredient, parsed);
         await apiClient
-          .path("/api/ingredients/{ingredient_id}", ingredientId)
+          .path(`/api/ingredients/${ingredientId}`)
           .method("put")
           .create()({ body: payload });
         setIngredientsNeedsRefetch(true);
