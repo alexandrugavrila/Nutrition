@@ -93,7 +93,7 @@ describe("Shopping component", () => {
 
     const row = await screen.findByRole("row", { name: /Oats/i });
     const cells = within(row).getAllByRole("cell");
-    expect(cells[2]).toHaveTextContent(/^1$/);
+    expect(cells[2]).toHaveTextContent(/^1 g$/);
 
     const unitSelect = within(row).getByRole("combobox");
     await userEvent.click(unitSelect);

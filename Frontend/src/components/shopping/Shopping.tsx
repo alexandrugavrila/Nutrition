@@ -324,7 +324,10 @@ function Shopping() {
   } else {
     content = (
       <Box sx={{ mt: 3 }}>
-        <TableContainer component={Paper}>
+        <TableContainer
+          component={Paper}
+          sx={{ width: { xs: "100%", sm: "fit-content" }, maxWidth: "100%", mx: "auto" }}
+        >
           <Table>
             <TableHead>
               <TableRow>
@@ -359,8 +362,11 @@ function Shopping() {
                   item.preferredUnitTotal ??
                   item.unitTotals[0] ??
                   null;
+                const displayUnitName = displayUnitTotal?.unitName?.trim() ?? "";
                 const quantityLabel = displayUnitTotal
-                  ? formatCellNumber(displayUnitTotal.quantity)
+                  ? displayUnitName
+                    ? `${formatCellNumber(displayUnitTotal.quantity)} ${displayUnitName}`
+                    : `${formatCellNumber(displayUnitTotal.quantity)}`
                   : "—";
 
                 return (
@@ -386,16 +392,12 @@ function Shopping() {
                         <MenuItem value={CLEAR_SELECTION_VALUE}>No preference</MenuItem>
                         {(contextIngredient.units ?? []).map((unit) => {
                           const optionValue = toOptionValue(unit.id);
-                          const grams = Number(unit.grams);
-                          const gramsLabel = Number.isFinite(grams)
-                            ? formatCellNumber(grams)
-                            : unit.grams;
                           return (
                             <MenuItem
                               key={`${optionValue}-${unit.name}`}
                               value={optionValue}
                             >
-                              {unit.name} ({gramsLabel} g)
+                              {unit.name}
                             </MenuItem>
                           );
                         })}
