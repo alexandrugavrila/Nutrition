@@ -66,18 +66,6 @@ type ActivePlanState = {
   updatedAt: string | null;
 };
 
-const formatPreferredUnit = (
-  preferred: ShoppingListItem["preferredUnitTotal"],
-  divisor = 1,
-): string | null => {
-  if (!preferred) return null;
-  const safeDivisor = divisor > 0 ? divisor : 1;
-  const quantity = preferred.quantity / safeDivisor;
-  if (!Number.isFinite(quantity) || quantity <= 0) return null;
-  const label = preferred.unitName || "units";
-  return `${formatCellNumber(quantity)} ${label}`;
-};
-
 const CLEAR_SELECTION_VALUE = "__CLEAR_SHOPPING_UNIT__";
 const NULL_UNIT_SENTINEL = "__NULL_UNIT__";
 
@@ -300,12 +288,7 @@ function Shopping() {
   }, []);
 
   const planIsEmpty = !plan || plan.length === 0;
-  const totalWeight = useMemo(
-    () => items.reduce((sum, item) => sum + item.totalGrams, 0),
-    [items],
-  );
   const normalizedDays = Number.isFinite(days) && days > 0 ? days : 1;
-  const perDayWeight = totalWeight / normalizedDays;
   const planLabel = activePlan.label?.trim()
     ? `Based on plan "${activePlan.label}"`
     : "Based on current plan";
@@ -341,13 +324,6 @@ function Shopping() {
   } else {
     content = (
       <Box sx={{ mt: 3 }}>
-        <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>
-          {items.length} unique ingredients • {normalizedDays} day
-          {normalizedDays !== 1 ? "s" : ""} • {formatCellNumber(totalWeight)} g total
-          {normalizedDays > 1
-            ? ` (${formatCellNumber(perDayWeight)} g per day)`
-            : ""}
-        </Typography>
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
@@ -355,10 +331,6 @@ function Shopping() {
                 <TableCell>Ingredient</TableCell>
                 <TableCell>Shopping Unit</TableCell>
                 <TableCell align="right">Need to Buy</TableCell>
-                <TableCell align="right">Weight (g)</TableCell>
-                {normalizedDays > 1 && (
-                  <TableCell align="right">Per Day (g)</TableCell>
-                )}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -379,11 +351,17 @@ function Shopping() {
                   contextIngredient.shoppingUnitId,
                   fallbackSelectValue,
                 );
-                const preferredLabel = formatPreferredUnit(item.preferredUnitTotal);
-                const preferredPerDay = formatPreferredUnit(
-                  item.preferredUnitTotal,
-                  normalizedDays,
+                const selectedUnitTotal = item.unitTotals.find(
+                  (unit) => toOptionValue(unit.unitId) === selectValue,
                 );
+                const displayUnitTotal =
+                  selectedUnitTotal ??
+                  item.preferredUnitTotal ??
+                  item.unitTotals[0] ??
+                  null;
+                const quantityLabel = displayUnitTotal
+                  ? formatCellNumber(displayUnitTotal.quantity)
+                  : "—";
 
                 return (
                   <TableRow key={item.ingredientId ?? item.name}>
@@ -424,34 +402,8 @@ function Shopping() {
                       </Select>
                     </TableCell>
                     <TableCell align="right">
-                      {preferredLabel ? (
-                        <>
-                          <Typography component="div">
-                            <Box component="span" sx={{ fontWeight: 600 }}>
-                              Plan totals:
-                            </Box>{" "}
-                            {preferredLabel}
-                          </Typography>
-                          {normalizedDays > 1 && preferredPerDay && (
-                            <Typography variant="body2" color="text.secondary">
-                              Per day: {preferredPerDay}
-                            </Typography>
-                          )}
-                        </>
-                      ) : (
-                        <Typography color="text.secondary">
-                          Select a unit
-                        </Typography>
-                      )}
+                      <Typography component="span">{quantityLabel}</Typography>
                     </TableCell>
-                    <TableCell align="right">
-                      {formatCellNumber(item.totalGrams)}
-                    </TableCell>
-                    {normalizedDays > 1 && (
-                      <TableCell align="right">
-                        {formatCellNumber(item.totalGrams / normalizedDays)}
-                      </TableCell>
-                    )}
                   </TableRow>
                 );
               })}
