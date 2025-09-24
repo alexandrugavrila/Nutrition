@@ -33,6 +33,8 @@ interface DataContextValue {
   setIngredientsNeedsRefetch: React.Dispatch<React.SetStateAction<boolean>>;
   setFoodsNeedsRefetch: React.Dispatch<React.SetStateAction<boolean>>;
   fetching: boolean;
+  hydrating: boolean;
+  hydrated: boolean;
   startRequest: () => void;
   endRequest: () => void;
   addPossibleIngredientTag: (name: string) => Promise<PossibleIngredientTag | null>;
@@ -57,6 +59,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [foodsNeedsRefetch, setFoodsNeedsRefetch] = useState(false);
   const [activeRequests, setActiveRequests] = useState(0);
   const fetching = activeRequests > 0;
+  const [hydrating, setHydrating] = useState(true);
+  const hydrated = !hydrating;
 
   const startRequest = useCallback(() => {
     setActiveRequests((prev) => prev + 1);
@@ -290,10 +294,21 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   //#region Effects
   useEffect(() => {
-    fetchIngredients();
-    fetchPossibleIngredientTags();
-    fetchFoods();
-    fetchPossibleFoodTags();
+    let isMounted = true;
+    const hydrate = async () => {
+      const ingredientsPromise = fetchIngredients();
+      const foodsPromise = fetchFoods();
+      fetchPossibleIngredientTags();
+      fetchPossibleFoodTags();
+      await Promise.allSettled([ingredientsPromise, foodsPromise]);
+      if (isMounted) {
+        setHydrating(false);
+      }
+    };
+    hydrate();
+    return () => {
+      isMounted = false;
+    };
   }, [
     fetchIngredients,
     fetchPossibleIngredientTags,
@@ -331,6 +346,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     setIngredientsNeedsRefetch,
     setFoodsNeedsRefetch,
     fetching,
+    hydrating,
+    hydrated,
     startRequest,
     endRequest,
     addPossibleIngredientTag,
