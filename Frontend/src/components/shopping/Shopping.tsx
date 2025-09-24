@@ -123,6 +123,7 @@ function Shopping() {
     foods,
     ingredients,
     fetching,
+    hydrating,
     setIngredients,
     setIngredientsNeedsRefetch,
     startRequest,
@@ -294,7 +295,7 @@ function Shopping() {
     : "Based on current plan";
 
   let content: React.ReactNode;
-  if (fetching) {
+  if (hydrating) {
     content = (
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 3 }}>
         <CircularProgress />
@@ -426,7 +427,7 @@ function Shopping() {
         {normalizedDays > 1 ? ` • ${normalizedDays} days` : ""}
       </Typography>
       {content}
-      {!fetching && !planIsEmpty && items.length > 0 && issues.length > 0 && (
+      {!hydrating && !planIsEmpty && items.length > 0 && issues.length > 0 && (
         <Alert severity="warning" sx={{ mt: 3 }}>
           Some items could not be combined:
           <Box component="ul" sx={{ mt: 1, pl: 3, mb: 0 }}>

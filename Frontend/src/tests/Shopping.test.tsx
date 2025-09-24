@@ -75,6 +75,8 @@ describe("Shopping component", () => {
       ingredients: [baseIngredient],
       foods: [],
       fetching: false,
+      hydrating: false,
+      hydrated: true,
       setIngredients: vi.fn(),
       setIngredientsNeedsRefetch,
       startRequest,
