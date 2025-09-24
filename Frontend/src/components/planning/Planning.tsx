@@ -57,6 +57,29 @@ import type {
   PlanPayload,
 } from "@/utils/planningTypes";
 
+const GRAM_UNIT_SENTINEL = 0;
+
+const normalizePlanUnitId = (value: unknown): number => {
+  if (value === null || value === undefined || value === "") {
+    return GRAM_UNIT_SENTINEL;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return GRAM_UNIT_SENTINEL;
+};
+
+const getUnitOptionValue = (unitId: number | null | undefined): string =>
+  unitId === null || unitId === undefined
+    ? String(GRAM_UNIT_SENTINEL)
+    : String(unitId);
+
 const formatPlanTimestamp = (value?: string | null) => {
   if (!value) return "";
   const date = new Date(value);
@@ -198,12 +221,14 @@ function Planning() {
       return;
     }
 
-    const hasMatch = units.some((unit) => String(unit.id ?? "") === String(selectedIngredientUnitId));
+    const hasMatch = units.some(
+      (unit) => getUnitOptionValue(unit.id) === selectedIngredientUnitId,
+    );
     if (!hasMatch) {
       const fallback = units.find((unit) => Number(unit.grams) === 1) ?? units[0];
-      const fallbackId = fallback?.id == null ? "" : String(fallback.id);
-      if (fallbackId !== selectedIngredientUnitId) {
-        setSelectedIngredientUnitId(fallbackId);
+      const fallbackValue = fallback ? getUnitOptionValue(fallback.id) : "";
+      if (fallbackValue !== selectedIngredientUnitId) {
+        setSelectedIngredientUnitId(fallbackValue);
       }
     }
   }, [
@@ -225,11 +250,11 @@ function Planning() {
         const overrides: Record<string, FoodOverride> = {};
         Object.entries(item.overrides ?? {}).forEach(([key, value]) => {
           if (!value) {
-            overrides[key] = { unitId: 0, quantity: 0 };
+            overrides[key] = { unitId: GRAM_UNIT_SENTINEL, quantity: 0 };
             return;
           }
           overrides[key] = {
-            unitId: typeof value.unitId === "number" ? value.unitId : Number(value.unitId ?? 0),
+            unitId: normalizePlanUnitId(value.unitId),
             quantity: typeof value.quantity === "number" ? value.quantity : Number(value.quantity ?? 0),
           };
         });
@@ -243,7 +268,7 @@ function Planning() {
       return {
         type: "ingredient",
         ingredientId: item.ingredientId,
-        unitId: item.unitId,
+        unitId: normalizePlanUnitId(item.unitId),
         amount: item.amount,
       } as IngredientPlanItem;
     });
@@ -279,7 +304,7 @@ function Planning() {
                 Object.entries(rawOverrides).forEach(([key, override]) => {
                   if (!override) return;
                   overrides[key] = {
-                    unitId: Number((override as FoodOverride).unitId ?? 0),
+                    unitId: normalizePlanUnitId((override as FoodOverride).unitId),
                     quantity: Number((override as FoodOverride).quantity ?? 0),
                   };
                 });
@@ -294,7 +319,7 @@ function Planning() {
                 return {
                   type: "ingredient" as const,
                   ingredientId: String((item as IngredientPlanItem).ingredientId ?? ""),
-                  unitId: Number((item as IngredientPlanItem).unitId ?? 0) || 0,
+                  unitId: normalizePlanUnitId((item as IngredientPlanItem).unitId),
                   amount: Number((item as IngredientPlanItem).amount ?? 0) || 0,
                 } as IngredientPlanItem;
               }
@@ -380,10 +405,17 @@ function Planning() {
     // Helper to get grams for a unit of an ingredient
     const getUnitGrams = (ingredientId: string, unitId: number) => {
       const ing = ingredients.find((i) => i.id === ingredientId);
+      const units = ing?.units ?? [];
       const unit =
-        ing?.units.find((u) => u.id === unitId) ||
-        ing?.units.find((u) => u.name === "1g") ||
-        ing?.units[0];
+        units.find((u) => {
+          if (u.id === null || u.id === undefined) {
+            return unitId === GRAM_UNIT_SENTINEL;
+          }
+          return u.id === unitId;
+        }) ||
+        units.find((u) => Number(u.grams) === 1) ||
+        units.find((u) => u.name === "1g") ||
+        units[0];
       return unit?.grams ?? 0;
     };
 
@@ -458,7 +490,7 @@ function Planning() {
         const overrides: Record<string, FoodOverride> = {};
         food?.ingredients.forEach((ing) => {
           overrides[ing.ingredient_id] = {
-            unitId: ing.unit_id,
+            unitId: normalizePlanUnitId(ing.unit_id),
             quantity: ing.unit_quantity ?? 0,
           };
         });
@@ -479,7 +511,7 @@ function Planning() {
         {
           type: "ingredient",
           ingredientId: selectedIngredientId,
-          unitId: Number(selectedIngredientUnitId) || 0,
+          unitId: normalizePlanUnitId(selectedIngredientUnitId),
           amount: selectedIngredientAmount,
         },
       ]);
@@ -507,7 +539,7 @@ function Planning() {
         foodItem.overrides = {
           ...foodItem.overrides,
           [ingredientId]: {
-            unitId: current?.unitId ?? 0,
+            unitId: normalizePlanUnitId(current?.unitId),
             quantity: value,
           },
         };
@@ -539,7 +571,7 @@ function Planning() {
       }
       return macrosForIngredientPortion({
         ingredient: dataIngredient,
-        unitId: override?.unitId ?? ingredient.unit_id,
+        unitId: normalizePlanUnitId(override?.unitId ?? ingredient.unit_id),
         quantity: override?.quantity ?? ingredient.unit_quantity,
       });
     },
@@ -569,7 +601,7 @@ function Planning() {
       }
       return calculateIngredientMacros({
         ingredient_id: item.ingredientId,
-        unit_id: item.unitId,
+        unit_id: normalizePlanUnitId(item.unitId),
         unit_quantity: item.amount,
       });
     },
@@ -853,7 +885,7 @@ function Planning() {
                 const fallbackUnit =
                   ing?.units?.find((u) => Number(u.grams) === 1) ?? ing?.units?.[0];
                 setSelectedIngredientUnitId(
-                  fallbackUnit?.id == null ? "" : String(fallbackUnit.id),
+                  fallbackUnit ? getUnitOptionValue(fallbackUnit.id) : "",
                 );
               }}
               sx={{ minWidth: 200 }}
@@ -865,26 +897,30 @@ function Planning() {
               ))}
             </TextField>
             <TextField
-                  select
-                  label="Unit"
-                  value={selectedIngredientUnitId}
-                  onChange={(e) =>
-                    setSelectedIngredientUnitId(e.target.value)
-                  }
-                  sx={{ minWidth: 120 }}
-                  key={`add-unit-${
-                    (ingredients.find((i) => String(i.id) === String(selectedIngredientId))?.units
-                      ?.length) ?? 0
-                  }`}
-                >
-                  {(ingredients.find((i) => String(i.id) === String(selectedIngredientId))?.units || []).map(
-                    (unit) => (
-                      <MenuItem key={unit.id} value={unit.id == null ? "" : String(unit.id)}>
-                        {unit.name}
-                      </MenuItem>
-                    )
-                  )}
-                </TextField>
+              select
+              label="Unit"
+              value={selectedIngredientUnitId}
+              onChange={(e) => setSelectedIngredientUnitId(e.target.value)}
+              sx={{ minWidth: 120 }}
+              key={`add-unit-${
+                (ingredients.find((i) => String(i.id) === String(selectedIngredientId))?.units?.length) ??
+                0
+              }`}
+            >
+              {(ingredients.find((i) => String(i.id) === String(selectedIngredientId))?.units || []).map(
+                (unit) => {
+                  const optionValue = getUnitOptionValue(unit.id);
+                  return (
+                    <MenuItem
+                      key={unit.id ?? `${selectedIngredientId ?? "ingredient"}-${unit.name}`}
+                      value={optionValue}
+                    >
+                      {unit.name}
+                    </MenuItem>
+                  );
+                },
+              )}
+            </TextField>
             <TextField
               type="number"
               label="Amount"
@@ -1018,7 +1054,9 @@ function Planning() {
                             {food?.ingredients.map((ingredient) => {
                               const dataIngredient = findIngredientInLookup(ingredientLookup, ingredient.ingredient_id);
                               const override = item.overrides[ingredient.ingredient_id];
-                              const unitId = override?.unitId ?? ingredient.unit_id;
+                              const unitId = normalizePlanUnitId(
+                                override?.unitId ?? ingredient.unit_id,
+                              );
                               const quantity = override?.quantity ?? ingredient.unit_quantity;
                               const ingMacros = calculateIngredientMacros(
                                 ingredient,
@@ -1033,13 +1071,13 @@ function Planning() {
                                     />
                                   </TableCell>
                                   <TableCell>
-                                    <TextField
-                                      select
-                                      value={unitId}
-                                      onChange={(e) =>
-                                        handleUnitChange(
-                                          index,
-                                          parseInt(e.target.value, 10),
+                                  <TextField
+                                    select
+                                    value={unitId}
+                                    onChange={(e) =>
+                                      handleUnitChange(
+                                        index,
+                                          normalizePlanUnitId(e.target.value),
                                           { ingredientId: ingredient.ingredient_id }
                                         )
                                       }
@@ -1049,7 +1087,10 @@ function Planning() {
                                       }`}
                                     >
                                       {(dataIngredient?.units || []).map((u) => (
-                                        <MenuItem key={u.id} value={u.id}>
+                                        <MenuItem
+                                          key={u.id ?? `${ingredient.ingredient_id}-${u.name}`}
+                                          value={normalizePlanUnitId(u.id)}
+                                        >
                                           {u.name}
                                         </MenuItem>
                                       ))}
@@ -1125,9 +1166,10 @@ function Planning() {
               );
             } else {
               const ingredient = findIngredientInLookup(ingredientLookup, item.ingredientId);
+              const normalizedUnitId = normalizePlanUnitId(item.unitId);
               const macros = calculateIngredientMacros({
                 ingredient_id: item.ingredientId,
-                unit_id: item.unitId,
+                unit_id: normalizedUnitId,
                 unit_quantity: item.amount,
               });
               return (
@@ -1167,9 +1209,9 @@ function Planning() {
                       </IconButton>
                       <TextField
                         select
-                        value={item.unitId}
+                        value={normalizedUnitId}
                         onChange={(e) =>
-                          handleUnitChange(index, parseInt(e.target.value, 10))
+                          handleUnitChange(index, normalizePlanUnitId(e.target.value))
                         }
                         sx={{ minWidth: 120 }}
                         key={`single-item-unit-${item.ingredientId}-${
@@ -1177,7 +1219,10 @@ function Planning() {
                         }`}
                       >
                         {(ingredient?.units || []).map((u) => (
-                          <MenuItem key={u.id} value={u.id}>
+                          <MenuItem
+                            key={u.id ?? `${item.ingredientId}-${u.name}`}
+                            value={normalizePlanUnitId(u.id)}
+                          >
                             {u.name}
                           </MenuItem>
                         ))}
