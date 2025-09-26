@@ -389,7 +389,6 @@ function Shopping() {
                           )
                         }
                       >
-                        <MenuItem value={CLEAR_SELECTION_VALUE}>No preference</MenuItem>
                         {(contextIngredient.units ?? []).map((unit) => {
                           const optionValue = toOptionValue(unit.id);
                           return (
