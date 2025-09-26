@@ -80,6 +80,40 @@ const getUnitOptionValue = (unitId: number | null | undefined): string =>
     ? String(GRAM_UNIT_SENTINEL)
     : String(unitId);
 
+const toFiniteNumber = (value: unknown): number => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const ingredientSupportsUnit = (
+  ingredient: IngredientRead | undefined,
+  unitId: number,
+): boolean => {
+  if (!ingredient || !Array.isArray(ingredient.units) || ingredient.units.length === 0) {
+    return true;
+  }
+  return ingredient.units.some(
+    (unit) => normalizePlanUnitId(unit.id) === unitId,
+  );
+};
+
+const fallbackUnitIdForIngredient = (ingredient: IngredientRead | undefined): number => {
+  if (!ingredient || !Array.isArray(ingredient.units) || ingredient.units.length === 0) {
+    return GRAM_UNIT_SENTINEL;
+  }
+  const gramUnit = ingredient.units.find(
+    (unit) => toFiniteNumber(unit.grams) === 1,
+  );
+  if (gramUnit) {
+    return normalizePlanUnitId(gramUnit.id);
+  }
+  const firstUnit = ingredient.units[0];
+  return normalizePlanUnitId(firstUnit?.id ?? null);
+};
+
 const formatPlanTimestamp = (value?: string | null) => {
   if (!value) return "";
   const date = new Date(value);
@@ -391,6 +425,125 @@ function Planning() {
       setStatusMessage(null);
     }
   }, [isDirty]);
+
+  useEffect(() => {
+    if (plan.length === 0) {
+      return;
+    }
+
+    let changed = false;
+    const adjustedPlan = plan.map((item) => {
+      if (item.type === "ingredient") {
+        const ingredient = findIngredientInLookup(
+          ingredientLookup,
+          (item as IngredientPlanItem).ingredientId,
+        );
+        const normalizedUnitId = normalizePlanUnitId((item as IngredientPlanItem).unitId);
+        if (!ingredientSupportsUnit(ingredient, normalizedUnitId)) {
+          const fallbackUnitId = fallbackUnitIdForIngredient(ingredient);
+          if (fallbackUnitId !== normalizedUnitId) {
+            changed = true;
+            return {
+              ...(item as IngredientPlanItem),
+              unitId: fallbackUnitId,
+            } as IngredientPlanItem;
+          }
+        }
+        return item;
+      }
+
+      if (item.type === "food") {
+        const foodItem = item as FoodPlanItem;
+        const overrides: Record<string, FoodOverride> = { ...foodItem.overrides };
+        let overridesChanged = false;
+
+        Object.entries(overrides).forEach(([key, override]) => {
+          if (!override) return;
+          const dataIngredient = findIngredientInLookup(ingredientLookup, key);
+          if (!dataIngredient) return;
+          const normalizedOverrideUnitId = normalizePlanUnitId(override.unitId);
+          if (ingredientSupportsUnit(dataIngredient, normalizedOverrideUnitId)) {
+            const normalizedQuantity = toFiniteNumber(override.quantity);
+            if (normalizedQuantity !== override.quantity) {
+              overridesChanged = true;
+              overrides[key] = {
+                ...override,
+                quantity: normalizedQuantity,
+              };
+            }
+            return;
+          }
+          const fallbackUnitId = fallbackUnitIdForIngredient(dataIngredient);
+          const normalizedQuantity = toFiniteNumber(override.quantity);
+          if (
+            fallbackUnitId !== normalizedOverrideUnitId ||
+            normalizedQuantity !== override.quantity
+          ) {
+            overridesChanged = true;
+            overrides[key] = {
+              unitId: fallbackUnitId,
+              quantity: normalizedQuantity,
+            };
+          }
+        });
+
+        const food = foods.find(
+          (f) => String(f.id ?? "") === String(foodItem.foodId ?? ""),
+        );
+        food?.ingredients?.forEach((foodIngredient) => {
+          const ingredientId = foodIngredient.ingredient_id;
+          if (ingredientId === null || ingredientId === undefined) return;
+          const dataIngredient = findIngredientInLookup(ingredientLookup, ingredientId);
+          if (!dataIngredient) return;
+          const normalizedDefaultUnitId = normalizePlanUnitId(foodIngredient.unit_id);
+          if (ingredientSupportsUnit(dataIngredient, normalizedDefaultUnitId)) {
+            return;
+          }
+
+          const key = String(ingredientId);
+          const existingOverride = overrides[key];
+          if (existingOverride) {
+            const normalizedExistingUnitId = normalizePlanUnitId(existingOverride.unitId);
+            if (ingredientSupportsUnit(dataIngredient, normalizedExistingUnitId)) {
+              const normalizedQuantity = toFiniteNumber(existingOverride.quantity);
+              if (normalizedQuantity !== existingOverride.quantity) {
+                overridesChanged = true;
+                overrides[key] = {
+                  ...existingOverride,
+                  quantity: normalizedQuantity,
+                };
+              }
+              return;
+            }
+          }
+
+          const fallbackUnitId = fallbackUnitIdForIngredient(dataIngredient);
+          const normalizedQuantity = toFiniteNumber(
+            existingOverride?.quantity ?? foodIngredient.unit_quantity,
+          );
+          overridesChanged = true;
+          overrides[key] = {
+            unitId: fallbackUnitId,
+            quantity: normalizedQuantity,
+          };
+        });
+
+        if (overridesChanged) {
+          changed = true;
+          return {
+            ...foodItem,
+            overrides,
+          } as FoodPlanItem;
+        }
+      }
+
+      return item;
+    });
+
+    if (changed) {
+      setPlan(adjustedPlan);
+    }
+  }, [plan, foods, ingredientLookup, setPlan]);
 
   // Change unit while preserving total grams
   const handleUnitChange = (

@@ -75,6 +75,8 @@ describe("Shopping component", () => {
       ingredients: [baseIngredient],
       foods: [],
       fetching: false,
+      hydrating: false,
+      hydrated: true,
       setIngredients: vi.fn(),
       setIngredientsNeedsRefetch,
       startRequest,
@@ -92,17 +94,15 @@ describe("Shopping component", () => {
     render(<Shopping />);
 
     const row = await screen.findByRole("row", { name: /Oats/i });
-    expect(within(row).getByText(/Plan totals:/i)).toBeInTheDocument();
+    const cells = within(row).getAllByRole("cell");
+    expect(cells[2]).toHaveTextContent(/^1 g$/);
 
     const unitSelect = within(row).getByRole("combobox");
     await userEvent.click(unitSelect);
     await userEvent.click(screen.getByRole("option", { name: /cup/i }));
 
     await waitFor(() => {
-      expect(mockedClient.path).toHaveBeenCalledWith(
-        "/api/ingredients/{ingredient_id}",
-        1,
-      );
+      expect(mockedClient.path).toHaveBeenCalledWith("/api/ingredients/1");
       expect(mockedClient.method).toHaveBeenCalledWith("put");
       expect(mockedClient.create).toHaveBeenCalled();
       expect(startRequest).toHaveBeenCalled();
