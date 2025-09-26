@@ -122,7 +122,6 @@ function Shopping() {
   const {
     foods,
     ingredients,
-    fetching,
     hydrating,
     setIngredients,
     setIngredientsNeedsRefetch,
