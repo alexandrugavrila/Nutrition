@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Button, TextField, Select, MenuItem, Dialog, TableContainer, Table, TableHead, TableRow, TableCell, Paper, TableBody, IconButton, Stack } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 import { useData } from "@/contexts/DataContext";
 import IngredientTable from "@/components/data/ingredient/IngredientTable";
@@ -66,6 +67,21 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
     dispatch({ type: "SET_FOOD", payload: { ...food, ingredients: [...food.ingredients, buildFoodIngredient(ingredient)] } });
     handleCloseIngredientsDialog();
   };
+
+  const handleRemoveIngredient = useCallback(
+    (targetIndex) => {
+      const updatedIngredients = food.ingredients.filter((_, ingredientIndex) => ingredientIndex !== targetIndex);
+      dispatch({ type: "SET_FOOD", payload: { ...food, ingredients: updatedIngredients } });
+      setUnitQuantities(
+        updatedIngredients.reduce((acc, ingredient, index) => {
+          const quantity = ingredient.unit_quantity;
+          acc[index] = quantity != null ? quantity.toString() : "";
+          return acc;
+        }, /** @type {Record<number, string>} */ ({}))
+      );
+    },
+    [dispatch, food]
+  );
 
   const handleOpenIngredientEditor = (ingredientId) => {
     const dataIngredient = findIngredientInLookup(ingredientLookup, ingredientId) ?? null;
@@ -245,6 +261,14 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
                         title="Edit ingredient (add units, nutrition, tags)"
                       >
                         <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        aria-label="Remove ingredient"
+                        size="small"
+                        onClick={() => handleRemoveIngredient(index)}
+                        title="Remove ingredient from food"
+                      >
+                        <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Stack>
                   </TableCell>

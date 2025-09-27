@@ -1,42 +1,96 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Button, Select, MenuItem, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
+} from "@mui/material";
+import type { SelectChangeEvent } from "@mui/material/Select";
+
+import type { components } from "@/api-types";
+
+type IngredientRead = components["schemas"]["IngredientRead"];
+type IngredientUnit = NonNullable<IngredientRead["units"]>[number];
 
 const NULL_UNIT_VALUE = "__NULL_UNIT__";
 
-function AddUnitDialog({ open, onClose, onAddUnit }) {
+type UnitDialogProps = {
+  open: boolean;
+  mode: "add" | "edit";
+  initialUnit?: IngredientUnit | null;
+  onClose: () => void;
+  onSubmit: (name: string, grams: number) => void;
+};
+
+const formatUnitGrams = (value: IngredientUnit["grams"] | undefined): string => {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  return typeof value === "number" ? value.toString() : String(value);
+};
+
+function UnitDialog({ open, mode, initialUnit = null, onClose, onSubmit }: UnitDialogProps) {
   const [unitName, setUnitName] = useState("");
   const [unitGrams, setUnitGrams] = useState("");
-  const [validationError, setValidationError] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const handleAddUnit = () => {
-    if (!unitName.trim()) {
+  useEffect(() => {
+    if (open) {
+      setUnitName(initialUnit?.name ?? "");
+      setUnitGrams(formatUnitGrams(initialUnit?.grams));
+      setValidationError(null);
+    }
+  }, [initialUnit, open]);
+
+  const handleSubmit = () => {
+    const trimmedName = unitName.trim();
+    const trimmedGrams = unitGrams.trim();
+
+    if (!trimmedName) {
       setValidationError("Unit name cannot be empty");
       return;
     }
-    const gramsFloat = parseFloat(unitGrams);
-    if (isNaN(gramsFloat) || gramsFloat <= 0 || !/^(\d*\.?\d{0,4})$/.test(unitGrams)) {
+
+    if (!trimmedGrams || Number.isNaN(Number.parseFloat(trimmedGrams))) {
       setValidationError("Please enter a valid grams value up to 4 decimal places");
       return;
     }
-    onAddUnit(unitName, gramsFloat.toFixed(4));
-    setUnitName("");
-    setUnitGrams("");
+
+    if (!/^(\d*\.?\d{0,4})$/.test(trimmedGrams)) {
+      setValidationError("Please enter a valid grams value up to 4 decimal places");
+      return;
+    }
+
+    const gramsFloat = Number.parseFloat(trimmedGrams);
+    if (gramsFloat <= 0) {
+      setValidationError("Please enter a valid grams value up to 4 decimal places");
+      return;
+    }
+
+    const normalizedGrams = Number.parseFloat(gramsFloat.toFixed(4));
+    onSubmit(trimmedName, normalizedGrams);
     onClose();
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}>
-      <DialogTitle>Add Unit</DialogTitle>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+      <DialogTitle>{mode === "edit" ? "Edit Unit" : "Add Unit"}</DialogTitle>
       <DialogContent>
         <TextField
           label="Unit name"
           variant="outlined"
           value={unitName}
           onChange={(e) => setUnitName(e.target.value)}
-          error={Boolean(validationError && validationError.includes("Unit name"))}
-          helperText={validationError && validationError.includes("Unit name") ? validationError : ""}
+          error={Boolean(validationError && validationError.includes("name"))}
+          helperText={validationError && validationError.includes("name") ? validationError : ""}
+          fullWidth
+          margin="dense"
         />
         <TextField
           label="Unit grams"
@@ -44,7 +98,13 @@ function AddUnitDialog({ open, onClose, onAddUnit }) {
           value={unitGrams}
           onChange={(e) => setUnitGrams(e.target.value)}
           error={Boolean(validationError && validationError.includes("grams"))}
-          helperText={validationError && validationError.includes("grams") ? validationError : "Enter a number up to 4 decimal places"}
+          helperText={
+            validationError && validationError.includes("grams")
+              ? validationError
+              : "Enter a number up to 4 decimal places"
+          }
+          fullWidth
+          margin="dense"
         />
       </DialogContent>
       <DialogActions>
@@ -52,24 +112,51 @@ function AddUnitDialog({ open, onClose, onAddUnit }) {
         <Button
           variant="contained"
           color="primary"
-          onClick={handleAddUnit}>
-          Add
+          onClick={handleSubmit}
+        >
+          {mode === "edit" ? "Save" : "Add"}
         </Button>
       </DialogActions>
     </Dialog>
   );
 }
 
-function UnitEdit({ ingredient, dispatch, needsClearForm }) {
-  const [showAddUnitDialog, setShowAddUnitDialog] = useState(false);
+type UnitEditProps = {
+  ingredient: IngredientRead & { shoppingUnitId?: number | string | null };
+  dispatch: React.Dispatch<{ type: string; payload?: unknown }>;
+  needsClearForm: boolean;
+};
+
+function UnitEdit({ ingredient, dispatch, needsClearForm }: UnitEditProps) {
+  const [dialogMode, setDialogMode] = useState<UnitDialogProps["mode"]>("add");
+  const [showDialog, setShowDialog] = useState(false);
+
+  const units = useMemo(() => ingredient.units ?? [], [ingredient.units]);
+
+  const selectedUnit = useMemo(() => {
+    const target = ingredient.shoppingUnitId;
+
+    if (target === null || target === undefined) {
+      return units.find((unit) => unit.id === null || unit.id === undefined) ?? null;
+    }
+
+    return (
+      units.find((unit) => {
+        if (unit.id === null || unit.id === undefined) {
+          return false;
+        }
+        return String(unit.id) === String(target);
+      }) ?? null
+    );
+  }, [ingredient.shoppingUnitId, units]);
 
   const handleSelectedUnitChange = useCallback(
-    (event) => {
+    (event: SelectChangeEvent<string>) => {
       const { value } = event.target;
       const normalizedValue =
         value === NULL_UNIT_VALUE || value === "" || value === undefined ? null : value;
       const matchingUnit =
-        ingredient.units?.find((unit) => {
+        units.find((unit) => {
           if (unit.id == null && normalizedValue == null) return true;
           if (unit.id == null || normalizedValue == null) return false;
           return String(unit.id) === String(normalizedValue);
@@ -77,13 +164,16 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }) {
       const updatedUnitId = matchingUnit
         ? matchingUnit.id ?? normalizedValue
         : normalizedValue;
-      dispatch({ type: "SET_INGREDIENT", payload: { ...ingredient, shoppingUnitId: updatedUnitId } });
+      dispatch({
+        type: "SET_INGREDIENT",
+        payload: { ...ingredient, shoppingUnitId: updatedUnitId ?? null },
+      });
     },
-    [ingredient, dispatch]
+    [dispatch, ingredient, units]
   );
 
   const handleAddUnit = useCallback(
-    (name, grams) => {
+    (name: string, grams: number) => {
       const tempId = crypto.randomUUID();
       const newUnit = {
         id: tempId,
@@ -95,12 +185,72 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }) {
         type: "SET_INGREDIENT",
         payload: {
           ...ingredient,
-          units: [...ingredient.units, newUnit],
+          units: [...units, newUnit],
           shoppingUnitId: tempId,
         },
       });
     },
-    [dispatch, ingredient]
+    [dispatch, ingredient, units]
+  );
+
+  const handleEditUnit = useCallback(
+    (name: string, grams: number) => {
+      if (!selectedUnit) return;
+
+      const updatedUnits = units.map((unit) => {
+        if (unit.id == null && selectedUnit.id == null) {
+          return unit === selectedUnit ? { ...unit, name, grams } : unit;
+        }
+        if (unit.id == null || selectedUnit.id == null) {
+          return unit;
+        }
+        return String(unit.id) === String(selectedUnit.id) ? { ...unit, name, grams } : unit;
+      });
+
+      dispatch({
+        type: "SET_INGREDIENT",
+        payload: {
+          ...ingredient,
+          units: updatedUnits,
+        },
+      });
+    },
+    [dispatch, ingredient, selectedUnit, units]
+  );
+
+  const handleRemoveUnit = useCallback(() => {
+    if (!selectedUnit) return;
+
+    const filteredUnits = units.filter((unit) => {
+      if (unit.id == null && selectedUnit.id == null) {
+        return unit !== selectedUnit;
+      }
+      if (unit.id == null || selectedUnit.id == null) {
+        return true;
+      }
+      return String(unit.id) !== String(selectedUnit.id);
+    });
+
+    const nextUnit = filteredUnits[0] ?? null;
+    dispatch({
+      type: "SET_INGREDIENT",
+      payload: {
+        ...ingredient,
+        units: filteredUnits,
+        shoppingUnitId: nextUnit ? nextUnit.id ?? null : null,
+      },
+    });
+  }, [dispatch, ingredient, selectedUnit, units]);
+
+  const handleDialogSubmit = useCallback(
+    (name: string, grams: number) => {
+      if (dialogMode === "edit") {
+        handleEditUnit(name, grams);
+      } else {
+        handleAddUnit(name, grams);
+      }
+    },
+    [dialogMode, handleAddUnit, handleEditUnit]
   );
 
   useEffect(() => {
@@ -113,10 +263,19 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }) {
   }, [needsClearForm, dispatch, ingredient]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
-      <div>
+    <Box
+      sx={{
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 1,
+        p: 2,
+      }}
+    >
+      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+        Unit
+      </Typography>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
         <Select
-          style={{ textAlign: "center" }}
           labelId="unit-select-label"
           id="unit-select"
           value={
@@ -124,24 +283,53 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }) {
               ? NULL_UNIT_VALUE
               : String(ingredient.shoppingUnitId)
           }
-          onChange={handleSelectedUnitChange}>
-          {ingredient.units &&
-            ingredient.units.map((unit) => (
-              <MenuItem
-                key={unit.id ?? `unit-${unit.name}`}
-                value={unit.id == null ? NULL_UNIT_VALUE : String(unit.id)}>
-                {unit.name}
-              </MenuItem>
-            ))}
+          onChange={handleSelectedUnitChange}
+          fullWidth
+          size="small"
+        >
+          {units.map((unit) => (
+            <MenuItem
+              key={unit.id ?? `unit-${unit.name}`}
+              value={unit.id == null ? NULL_UNIT_VALUE : String(unit.id)}
+            >
+              {unit.name}
+            </MenuItem>
+          ))}
         </Select>
-        <Button onClick={() => setShowAddUnitDialog(true)}>Add Unit</Button>
-      </div>
-      <AddUnitDialog
-        open={showAddUnitDialog}
-        onClose={() => setShowAddUnitDialog(false)}
-        onAddUnit={handleAddUnit}
+        <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-start" }}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setDialogMode("add");
+              setShowDialog(true);
+            }}
+          >
+            Add
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              if (!selectedUnit) return;
+              setDialogMode("edit");
+              setShowDialog(true);
+            }}
+            disabled={!selectedUnit}
+          >
+            Edit
+          </Button>
+          <Button variant="outlined" color="error" onClick={handleRemoveUnit} disabled={!selectedUnit}>
+            Remove
+          </Button>
+        </Box>
+      </Box>
+      <UnitDialog
+        open={showDialog}
+        mode={dialogMode}
+        initialUnit={dialogMode === "edit" ? selectedUnit : null}
+        onClose={() => setShowDialog(false)}
+        onSubmit={handleDialogSubmit}
       />
-    </div>
+    </Box>
   );
 }
 
