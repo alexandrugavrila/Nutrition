@@ -40,14 +40,15 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
     );
   };
 
-  const handleIngredientDoubleClick = (ingredient) => {
-    onIngredientDoubleClick(ingredient);
-  };
-
   const handleIngredientClick = (event, ingredient) => {
     if (event.ctrlKey) {
       onIngredientCtrlClick(ingredient);
     }
+  };
+
+  const handleIngredientSelect = (event, ingredient) => {
+    event.stopPropagation();
+    onIngredientDoubleClick(ingredient);
   };
 
   const handleUnitChange = (event, ingredientId) => {
@@ -201,6 +202,7 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
               <TableCell>Carbs</TableCell>
               <TableCell>Fat</TableCell>
               <TableCell>Fiber</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -210,7 +212,7 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
               return (
                 <TableRow
                   key={ingredient.id}
-                  onDoubleClick={() => handleIngredientDoubleClick(ingredient)}
+                  onDoubleClick={() => onIngredientDoubleClick(ingredient)}
                   onClick={(event) => handleIngredientClick(event, ingredient)}>
                   <TableCell>{ingredient.name}</TableCell>
                   <TableCell>
@@ -235,6 +237,14 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
                   <TableCell>{formatCellNumber((ingredient.nutrition?.carbohydrates ?? 0) * gramsPerUnit)}</TableCell>
                   <TableCell>{formatCellNumber((ingredient.nutrition?.fat ?? 0) * gramsPerUnit)}</TableCell>
                   <TableCell>{formatCellNumber((ingredient.nutrition?.fiber ?? 0) * gramsPerUnit)}</TableCell>
+                  <TableCell align="right">
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={(event) => handleIngredientSelect(event, ingredient)}>
+                      Select
+                    </Button>
+                  </TableCell>
                 </TableRow>
               );
             })}
