@@ -2,11 +2,16 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   Box,
+  Button,
   CircularProgress,
   IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
   MenuItem,
   Paper,
   Select,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
@@ -16,14 +21,16 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import EditIcon from "@mui/icons-material/Edit";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 
 import { useData } from "@/contexts/DataContext";
 import apiClient from "@/apiClient";
 import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type { PlanItem } from "@/utils/planningTypes";
 import { aggregateShoppingList } from "@/utils/shopping";
-import type { ShoppingListItem } from "@/utils/shopping";
+import type { ShoppingListItem, ShoppingListUnitTotal } from "@/utils/shopping";
 import { formatCellNumber } from "@/utils/utils";
 import IngredientModal from "@/components/common/IngredientModal";
 import type { components } from "@/api-types";
@@ -143,6 +150,13 @@ function Shopping() {
     () => aggregateShoppingList({ plan, foods, ingredients }),
     [plan, foods, ingredients],
   );
+
+  const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
+  const [exportFeedback, setExportFeedback] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error";
+  }>({ open: false, message: "", severity: "success" });
 
   const ingredientLookup = useMemo(() => {
     const map = new Map<string, IngredientWithSelection>();
@@ -293,6 +307,181 @@ function Shopping() {
     ? `Based on plan "${activePlan.label}"`
     : "Based on current plan";
 
+  const resolveItemDetails = useCallback(
+    (item: ShoppingListItem) => {
+      const ingredientId =
+        typeof item.ingredient.id === "number"
+          ? item.ingredient.id
+          : item.ingredient.id != null
+          ? Number(item.ingredient.id)
+          : null;
+
+      const contextIngredient =
+        (ingredientId != null
+          ? ingredientLookup.get(String(ingredientId))
+          : null) ?? (item.ingredient as IngredientWithSelection);
+
+      const fallbackSelectValue = resolvePlanFallbackSelection(item);
+      const selectValue = deriveSelectionValue(
+        contextIngredient.shoppingUnitId,
+        fallbackSelectValue,
+      );
+
+      const selectedUnitTotal = item.unitTotals.find(
+        (unit) => toOptionValue(unit.unitId) === selectValue,
+      );
+
+      const displayUnitTotal: ShoppingListUnitTotal | null =
+        selectedUnitTotal ??
+        item.preferredUnitTotal ??
+        item.unitTotals[0] ??
+        null;
+
+      const unitName = displayUnitTotal?.unitName?.trim() ?? "";
+      const quantityLabel = displayUnitTotal
+        ? unitName
+          ? `${formatCellNumber(displayUnitTotal.quantity)} ${unitName}`
+          : `${formatCellNumber(displayUnitTotal.quantity)}`
+        : "—";
+
+      return {
+        ingredientId,
+        contextIngredient,
+        selectValue,
+        displayUnitTotal,
+        quantityLabel,
+      };
+    },
+    [ingredientLookup],
+  );
+
+  const exportRows = useMemo(
+    () =>
+      items.map((item) => {
+        const { displayUnitTotal } = resolveItemDetails(item);
+        const unitName = displayUnitTotal?.unitName?.trim() ?? "";
+        const quantityValue = displayUnitTotal
+          ? formatCellNumber(displayUnitTotal.quantity)
+          : "";
+        const textParts = [quantityValue, unitName, item.name]
+          .map((part) => (part == null ? "" : String(part).trim()))
+          .filter((part) => part !== "");
+        const textLine = textParts.join(" ") || String(item.name ?? "");
+
+        return {
+          name: item.name,
+          quantityValue,
+          unitName,
+          textLine,
+        };
+      }),
+    [items, resolveItemDetails],
+  );
+
+  const handleExportMenuOpen = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      setExportAnchorEl(event.currentTarget);
+    },
+    [],
+  );
+
+  const handleExportMenuClose = useCallback(() => {
+    setExportAnchorEl(null);
+  }, []);
+
+  const showExportFeedback = useCallback((
+    message: string,
+    severity: "success" | "error",
+  ) => {
+    setExportFeedback({ open: true, message, severity });
+  }, []);
+
+  const handleExportText = useCallback(async () => {
+    setExportAnchorEl(null);
+    const text = exportRows.map((row) => row.textLine).join("\n");
+
+    if (!text) {
+      showExportFeedback("Nothing to copy", "error");
+      return;
+    }
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        showExportFeedback("Shopping list copied to clipboard", "success");
+        return;
+      }
+
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const successful = document.execCommand("copy");
+      document.body.removeChild(textarea);
+
+      if (successful) {
+        showExportFeedback("Shopping list copied to clipboard", "success");
+      } else {
+        throw new Error("Copy command was unsuccessful");
+      }
+    } catch (error) {
+      console.error("Failed to copy shopping list", error);
+      showExportFeedback("Failed to copy shopping list", "error");
+    }
+  }, [exportRows, showExportFeedback]);
+
+  const handleExportCsv = useCallback(() => {
+    setExportAnchorEl(null);
+
+    if (exportRows.length === 0) {
+      showExportFeedback("Nothing to export", "error");
+      return;
+    }
+
+    try {
+      const header = ["Ingredient", "Quantity", "Unit"];
+      const csvLines = [header, ...exportRows.map((row) => [
+        row.name,
+        row.quantityValue,
+        row.unitName,
+      ])]
+        .map((line) =>
+          line
+            .map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`)
+            .join(","),
+        )
+        .join("\n");
+
+      const blob = new Blob([csvLines], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const timestamp = new Date().toISOString().split("T")[0];
+      link.download = `shopping-list-${timestamp}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showExportFeedback("Shopping list CSV downloaded", "success");
+    } catch (error) {
+      console.error("Failed to export shopping list CSV", error);
+      showExportFeedback("Failed to download CSV", "error");
+    }
+  }, [exportRows, showExportFeedback]);
+
+  const handleExportFeedbackClose = useCallback(
+    (_event?: React.SyntheticEvent | Event, reason?: string) => {
+      if (reason === "clickaway") {
+        return;
+      }
+      setExportFeedback((prev) => ({ ...prev, open: false }));
+    },
+    [],
+  );
+
   let content: React.ReactNode;
   if (hydrating) {
     content = (
@@ -338,36 +527,8 @@ function Shopping() {
             </TableHead>
             <TableBody>
               {items.map((item) => {
-                const ingredientId =
-                  typeof item.ingredient.id === "number"
-                    ? item.ingredient.id
-                    : item.ingredient.id != null
-                    ? Number(item.ingredient.id)
-                    : null;
-                const contextIngredient =
-                  (ingredientId != null
-                    ? ingredientLookup.get(String(ingredientId))
-                    : null) ??
-                  (item.ingredient as IngredientWithSelection);
-                const fallbackSelectValue = resolvePlanFallbackSelection(item);
-                const selectValue = deriveSelectionValue(
-                  contextIngredient.shoppingUnitId,
-                  fallbackSelectValue,
-                );
-                const selectedUnitTotal = item.unitTotals.find(
-                  (unit) => toOptionValue(unit.unitId) === selectValue,
-                );
-                const displayUnitTotal =
-                  selectedUnitTotal ??
-                  item.preferredUnitTotal ??
-                  item.unitTotals[0] ??
-                  null;
-                const displayUnitName = displayUnitTotal?.unitName?.trim() ?? "";
-                const quantityLabel = displayUnitTotal
-                  ? displayUnitName
-                    ? `${formatCellNumber(displayUnitTotal.quantity)} ${displayUnitName}`
-                    : `${formatCellNumber(displayUnitTotal.quantity)}`
-                  : "—";
+                const { ingredientId, contextIngredient, selectValue, quantityLabel } =
+                  resolveItemDetails(item);
 
                 return (
                   <TableRow key={item.ingredientId ?? item.name}>
@@ -417,13 +578,54 @@ function Shopping() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" component="h1">
-        Shopping List
-      </Typography>
-      <Typography variant="subtitle1" sx={{ mt: 1 }}>
-        {planLabel}
-        {normalizedDays > 1 ? ` • ${normalizedDays} days` : ""}
-      </Typography>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          justifyContent: "space-between",
+          alignItems: { xs: "flex-start", sm: "center" },
+          gap: 2,
+        }}
+      >
+        <Box>
+          <Typography variant="h4" component="h1">
+            Shopping List
+          </Typography>
+          <Typography variant="subtitle1" sx={{ mt: 1 }}>
+            {planLabel}
+            {normalizedDays > 1 ? ` • ${normalizedDays} days` : ""}
+          </Typography>
+        </Box>
+        {!hydrating && !planIsEmpty && items.length > 0 && (
+          <Button
+            variant="contained"
+            startIcon={<FileDownloadIcon />}
+            onClick={handleExportMenuOpen}
+          >
+            Export
+          </Button>
+        )}
+      </Box>
+      <Menu
+        anchorEl={exportAnchorEl}
+        open={Boolean(exportAnchorEl)}
+        onClose={handleExportMenuClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <MenuItem onClick={handleExportText}>
+          <ListItemIcon>
+            <ContentCopyIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Copy as text</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={handleExportCsv}>
+          <ListItemIcon>
+            <FileDownloadIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Download CSV</ListItemText>
+        </MenuItem>
+      </Menu>
       {content}
       {!hydrating && !planIsEmpty && items.length > 0 && issues.length > 0 && (
         <Alert severity="warning" sx={{ mt: 3 }}>
@@ -441,6 +643,20 @@ function Shopping() {
         ingredient={modalState.ingredient ?? null}
         onClose={closeIngredientModal}
       />
+      <Snackbar
+        open={exportFeedback.open}
+        autoHideDuration={4000}
+        onClose={handleExportFeedbackClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleExportFeedbackClose}
+          severity={exportFeedback.severity}
+          sx={{ width: "100%" }}
+        >
+          {exportFeedback.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
