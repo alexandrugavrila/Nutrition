@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
 import {
   Alert,
   Box,
   Button,
+  Chip,
   Collapse,
   Dialog,
   DialogActions,
@@ -34,6 +36,7 @@ import {
 } from "@mui/icons-material";
 
 import { useLocation, useNavigate } from "react-router-dom";
+import TagFilter from "@/components/common/TagFilter";
 import { useData } from "@/contexts/DataContext";
 import { formatCellNumber } from "@/utils/utils";
 import {
@@ -47,6 +50,7 @@ import type { IngredientRead } from "@/utils/nutrition";
 import IngredientModal from "@/components/common/IngredientModal";
 import useHoverable from "@/hooks/useHoverable";
 import { useSessionStorageState } from "@/hooks/useSessionStorageState";
+import type { components } from "@/api-types";
 import type { PlanRead } from "@/utils/planApi";
 import { createPlan, updatePlan } from "@/utils/planApi";
 import type {
@@ -58,6 +62,60 @@ import type {
 } from "@/utils/planningTypes";
 
 const GRAM_UNIT_SENTINEL = 0;
+
+type IngredientReadFromApi = components["schemas"]["IngredientRead"];
+type FoodReadFromApi = components["schemas"]["FoodRead"];
+type PossibleIngredientTag = components["schemas"]["PossibleIngredientTag"];
+type PossibleFoodTag = components["schemas"]["PossibleFoodTag"];
+type IngredientOption = IngredientReadFromApi & { shoppingUnitId?: number | string | null };
+type FoodOption = FoodReadFromApi;
+type IngredientTagOption = PossibleIngredientTag & { group?: string };
+type FoodTagOption = PossibleFoodTag & { group?: string };
+
+const buildTagKey = (tag: { id?: number | string | null; name?: string | null }): string => {
+  if (tag?.id !== undefined && tag?.id !== null) {
+    return `id:${tag.id}`;
+  }
+  return `name:${(tag?.name ?? "").toLowerCase()}`;
+};
+
+const matchesSelectedTags = (
+  itemTags: { id?: number | string | null; name?: string | null }[] | null | undefined,
+  selected: { id?: number | string | null; name?: string | null }[],
+): boolean => {
+  if (selected.length === 0) return true;
+  if (!Array.isArray(itemTags) || itemTags.length === 0) {
+    return false;
+  }
+  const keys = new Set(itemTags.map(buildTagKey));
+  return selected.some((tag) => keys.has(buildTagKey(tag)));
+};
+
+const sortByName = <T extends { name?: string | null }>(items: T[]): T[] =>
+  [...items].sort((a, b) => {
+    const aName = (a.name ?? "").toString();
+    const bName = (b.name ?? "").toString();
+    return aName.localeCompare(bName, undefined, { sensitivity: "base" });
+  });
+
+const rehydrateTags = <T extends { id?: number | string | null; name?: string | null }>(
+  selected: T[],
+  options: T[],
+): T[] => {
+  if (selected.length === 0) return selected;
+  const optionMap = new Map(options.map((option) => [buildTagKey(option), option]));
+  const next: T[] = [];
+  selected.forEach((tag) => {
+    const match = optionMap.get(buildTagKey(tag));
+    if (match) {
+      next.push(match);
+    }
+  });
+  if (next.length === selected.length && next.every((tag, index) => tag === selected[index])) {
+    return selected;
+  }
+  return next;
+};
 
 const normalizePlanUnitId = (value: unknown): number => {
   if (value === null || value === undefined || value === "") {
@@ -146,10 +204,55 @@ const NameWithEdit: React.FC<NameWithEditProps> = ({ name, onEdit }) => {
 };
 
 function Planning() {
-  const { foods, ingredients } = useData();
+  const {
+    foods,
+    ingredients,
+    ingredientProcessingTags,
+    ingredientGroupTags,
+    ingredientOtherTags,
+    foodDietTags,
+    foodTypeTags,
+    foodOtherTags,
+  } = useData();
   const navigate = useNavigate();
   const location = useLocation();
   const ingredientLookup = useMemo(() => createIngredientLookup(ingredients), [ingredients]);
+  const allIngredientTags = useMemo<IngredientTagOption[]>(
+    () => [
+      ...ingredientProcessingTags.map((tag) => ({ ...tag, group: "Processing" as const })),
+      ...ingredientGroupTags.map((tag) => ({ ...tag, group: "Group" as const })),
+      ...ingredientOtherTags.map((tag) => ({ ...tag, group: "Other" as const })),
+    ],
+    [ingredientProcessingTags, ingredientGroupTags, ingredientOtherTags],
+  );
+  const allFoodTags = useMemo<FoodTagOption[]>(
+    () => [
+      ...foodDietTags.map((tag) => ({ ...tag, group: "Diet" as const })),
+      ...foodTypeTags.map((tag) => ({ ...tag, group: "Type" as const })),
+      ...foodOtherTags.map((tag) => ({ ...tag, group: "Other" as const })),
+    ],
+    [foodDietTags, foodTypeTags, foodOtherTags],
+  );
+  const ingredientFilter = useMemo(
+    () =>
+      createFilterOptions<IngredientOption>({
+        stringify: (option) =>
+          `${option?.name ?? ""} ${(option?.tags ?? [])
+            .map((tag) => tag?.name ?? "")
+            .join(" ")}`,
+      }),
+    [],
+  );
+  const foodFilter = useMemo(
+    () =>
+      createFilterOptions<FoodOption>({
+        stringify: (option) =>
+          `${option?.name ?? ""} ${(option?.tags ?? [])
+            .map((tag) => tag?.name ?? "")
+            .join(" ")}`,
+      }),
+    [],
+  );
 
   const [days, setDays] = useSessionStorageState<number>("planning-days", 1);
   const [daysError, setDaysError] = useState(false);
@@ -192,9 +295,33 @@ function Planning() {
   const [selectedIngredientId, setSelectedIngredientId] = useSessionStorageState("planning-selected-ingredient-id", "");
   const [selectedIngredientUnitId, setSelectedIngredientUnitId] = useSessionStorageState("planning-selected-ingredient-unit-id", "");
   const [selectedIngredientAmount, setSelectedIngredientAmount] = useSessionStorageState<number>("planning-selected-ingredient-amount", 1);
+  const [foodTagFilters, setFoodTagFilters] = useSessionStorageState<FoodTagOption[]>(
+    "planning-selected-food-tag-filters",
+    () => [],
+  );
+  const [ingredientTagFilters, setIngredientTagFilters] = useSessionStorageState<IngredientTagOption[]>(
+    "planning-selected-ingredient-tag-filters",
+    () => [],
+  );
+  const [foodSearchInput, setFoodSearchInput] = useSessionStorageState<string>(
+    "planning-food-search",
+    "",
+  );
+  const [ingredientSearchInput, setIngredientSearchInput] = useSessionStorageState<string>(
+    "planning-ingredient-search",
+    "",
+  );
   const [open, setOpen] = useSessionStorageState<Record<number, boolean>>("planning-open-state", () => ({}));
   const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
   const [editorIngredient, setEditorIngredient] = useState<IngredientRead | null>(null);
+
+  useEffect(() => {
+    setFoodTagFilters((prev) => rehydrateTags(prev, allFoodTags));
+  }, [allFoodTags, setFoodTagFilters]);
+
+  useEffect(() => {
+    setIngredientTagFilters((prev) => rehydrateTags(prev, allIngredientTags));
+  }, [allIngredientTags, setIngredientTagFilters]);
 
   const hasContent = useMemo(
     () =>
@@ -204,6 +331,54 @@ function Planning() {
     [plan, days, targetMacros]
   );
   const canResetPlan = hasContent || activePlan.id !== null;
+
+  const selectedFood = useMemo(
+    () =>
+      foods.find((food) => String(food.id ?? "") === String(selectedFoodId ?? "")) ?? null,
+    [foods, selectedFoodId],
+  );
+  const tagFilteredFoods = useMemo(
+    () =>
+      sortByName(
+        foods.filter((food) => matchesSelectedTags(food.tags ?? [], foodTagFilters)),
+      ),
+    [foods, foodTagFilters],
+  );
+  const foodOptions = useMemo(() => {
+    if (!selectedFood) return tagFilteredFoods;
+    const selectedKey = String(selectedFood.id ?? selectedFood.name ?? "");
+    const hasSelected = tagFilteredFoods.some(
+      (food) => String(food.id ?? food.name ?? "") === selectedKey,
+    );
+    if (hasSelected) return tagFilteredFoods;
+    return sortByName([...tagFilteredFoods, selectedFood]);
+  }, [selectedFood, tagFilteredFoods]);
+
+  const selectedIngredient = useMemo(
+    () =>
+      ingredients.find(
+        (ingredient) => String(ingredient.id ?? "") === String(selectedIngredientId ?? ""),
+      ) ?? null,
+    [ingredients, selectedIngredientId],
+  );
+  const tagFilteredIngredients = useMemo(
+    () =>
+      sortByName(
+        ingredients.filter((ingredient) =>
+          matchesSelectedTags(ingredient.tags ?? [], ingredientTagFilters),
+        ),
+      ),
+    [ingredients, ingredientTagFilters],
+  );
+  const ingredientOptions = useMemo(() => {
+    if (!selectedIngredient) return tagFilteredIngredients;
+    const selectedKey = String(selectedIngredient.id ?? selectedIngredient.name ?? "");
+    const hasSelected = tagFilteredIngredients.some(
+      (ingredient) => String(ingredient.id ?? ingredient.name ?? "") === selectedKey,
+    );
+    if (hasSelected) return tagFilteredIngredients;
+    return sortByName([...tagFilteredIngredients, selectedIngredient]);
+  }, [selectedIngredient, tagFilteredIngredients]);
 
   useEffect(() => {
     setMacroInputs((prev) => {
@@ -998,19 +1173,57 @@ function Planning() {
         </TextField>
         {selectedType === "food" ? (
           <>
-            <TextField
-              select
-              label="Food"
-              value={selectedFoodId}
-              onChange={(e) => setSelectedFoodId(String(e.target.value))}
-              sx={{ minWidth: 200 }}
-            >
-              {foods.map((food) => (
-                <MenuItem key={food.id} value={String(food.id)}>
-                  {food.name}
-                </MenuItem>
-              ))}
-            </TextField>
+            <Box sx={{ minWidth: 260, flexGrow: 1 }}>
+              <Autocomplete
+                value={selectedFood}
+                onChange={(_, newValue) => {
+                  const id =
+                    newValue && newValue.id !== undefined && newValue.id !== null
+                      ? String(newValue.id)
+                      : "";
+                  setSelectedFoodId(id);
+                }}
+                inputValue={foodSearchInput}
+                onInputChange={(_, newInputValue) => setFoodSearchInput(newInputValue)}
+                options={foodOptions}
+                filterOptions={foodFilter}
+                getOptionLabel={(option) => option?.name ?? ""}
+                isOptionEqualToValue={(option, value) =>
+                  String(option?.id ?? option?.name ?? "") ===
+                  String(value?.id ?? value?.name ?? "")
+                }
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                      <Typography variant="body2">{option.name}</Typography>
+                      {Array.isArray(option.tags) && option.tags.length > 0 ? (
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                          {option.tags.map((tag) => (
+                            <Chip
+                              key={`${option.id ?? option.name}-tag-${tag.id ?? tag.name}`}
+                              size="small"
+                              label={tag.name}
+                            />
+                          ))}
+                        </Box>
+                      ) : null}
+                    </Box>
+                  </li>
+                )}
+                renderInput={(params) => (
+                  <TextField {...params} label="Food" placeholder="Search foods" />
+                )}
+                ListboxProps={{ sx: { maxHeight: 360 } }}
+              />
+              <Box sx={{ mt: 1 }}>
+                <TagFilter
+                  tags={allFoodTags}
+                  selectedTags={foodTagFilters}
+                  onChange={setFoodTagFilters}
+                  label="Filter food tags"
+                />
+              </Box>
+            </Box>
             <TextField
               type="number"
               label="Portions"
@@ -1027,52 +1240,93 @@ function Planning() {
           </>
         ) : (
           <>
-            <TextField
-              select
-              label="Ingredient"
-              value={selectedIngredientId}
-              onChange={(e) => {
-                const id = e.target.value;
-                setSelectedIngredientId(id);
-                const ing = ingredients.find((i) => String(i.id) === String(id));
-                const fallbackUnit =
-                  ing?.units?.find((u) => Number(u.grams) === 1) ?? ing?.units?.[0];
-                setSelectedIngredientUnitId(
-                  fallbackUnit ? getUnitOptionValue(fallbackUnit.id) : "",
-                );
-              }}
-              sx={{ minWidth: 200 }}
-            >
-              {ingredients.map((ingredient) => (
-                <MenuItem key={ingredient.id} value={String(ingredient.id)}>
-                  {ingredient.name}
-                </MenuItem>
-              ))}
-            </TextField>
+            <Box sx={{ minWidth: 260, flexGrow: 1 }}>
+              <Autocomplete
+                value={selectedIngredient}
+                onChange={(_, newValue) => {
+                  if (!newValue) {
+                    setSelectedIngredientId("");
+                    setSelectedIngredientUnitId("");
+                    return;
+                  }
+                  const id =
+                    newValue.id !== undefined && newValue.id !== null
+                      ? String(newValue.id)
+                      : "";
+                  setSelectedIngredientId(id);
+                  const fallbackUnit =
+                    newValue.units?.find((unit) => Number(unit.grams) === 1) ??
+                    newValue.units?.[0];
+                  setSelectedIngredientUnitId(
+                    fallbackUnit ? getUnitOptionValue(fallbackUnit.id) : "",
+                  );
+                }}
+                inputValue={ingredientSearchInput}
+                onInputChange={(_, newInputValue) =>
+                  setIngredientSearchInput(newInputValue)
+                }
+                options={ingredientOptions}
+                filterOptions={ingredientFilter}
+                getOptionLabel={(option) => option?.name ?? ""}
+                isOptionEqualToValue={(option, value) =>
+                  String(option?.id ?? option?.name ?? "") ===
+                  String(value?.id ?? value?.name ?? "")
+                }
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                      <Typography variant="body2">{option.name}</Typography>
+                      {Array.isArray(option.tags) && option.tags.length > 0 ? (
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                          {option.tags.map((tag) => (
+                            <Chip
+                              key={`${option.id ?? option.name}-tag-${tag.id ?? tag.name}`}
+                              size="small"
+                              label={tag.name}
+                            />
+                          ))}
+                        </Box>
+                      ) : null}
+                    </Box>
+                  </li>
+                )}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Ingredient"
+                    placeholder="Search ingredients"
+                  />
+                )}
+                ListboxProps={{ sx: { maxHeight: 360 } }}
+              />
+              <Box sx={{ mt: 1 }}>
+                <TagFilter
+                  tags={allIngredientTags}
+                  selectedTags={ingredientTagFilters}
+                  onChange={setIngredientTagFilters}
+                  label="Filter ingredient tags"
+                />
+              </Box>
+            </Box>
             <TextField
               select
               label="Unit"
               value={selectedIngredientUnitId}
               onChange={(e) => setSelectedIngredientUnitId(e.target.value)}
-              sx={{ minWidth: 120 }}
-              key={`add-unit-${
-                (ingredients.find((i) => String(i.id) === String(selectedIngredientId))?.units?.length) ??
-                0
-              }`}
+              sx={{ minWidth: 140 }}
+              disabled={!selectedIngredient || (selectedIngredient.units?.length ?? 0) === 0}
             >
-              {(ingredients.find((i) => String(i.id) === String(selectedIngredientId))?.units || []).map(
-                (unit) => {
-                  const optionValue = getUnitOptionValue(unit.id);
-                  return (
-                    <MenuItem
-                      key={unit.id ?? `${selectedIngredientId ?? "ingredient"}-${unit.name}`}
-                      value={optionValue}
-                    >
-                      {unit.name}
-                    </MenuItem>
-                  );
-                },
-              )}
+              {(selectedIngredient?.units ?? []).map((unit) => {
+                const optionValue = getUnitOptionValue(unit.id);
+                return (
+                  <MenuItem
+                    key={unit.id ?? `${selectedIngredient?.id ?? "ingredient"}-${unit.name}`}
+                    value={optionValue}
+                  >
+                    {unit.name}
+                  </MenuItem>
+                );
+              })}
             </TextField>
             <TextField
               type="number"
