@@ -47,16 +47,17 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
     );
   };
 
-  const handleFoodDoubleClick = (food) => {
-    onFoodDoubleClick(food);
-  };
-
   const handleFoodClick = (event, food) => {
     if (event.ctrlKey) {
       onFoodCtrlClick(food);
     } else {
       setOpen({ ...open, [food.id]: !open[food.id] });
     }
+  };
+
+  const handleFoodSelect = (event, food) => {
+    event.stopPropagation();
+    onFoodDoubleClick(food);
   };
 
   const handlePageChange = (event, newPage) => {
@@ -186,13 +187,14 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
               <TableCell>Fat</TableCell>
               <TableCell>Carbs</TableCell>
               <TableCell>Fiber</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {currentFoods.map((food) => (
                 <React.Fragment key={food.id}>
                   <TableRow
-                    onDoubleClick={() => handleFoodDoubleClick(food)}
+                    onDoubleClick={() => onFoodDoubleClick(food)}
                     onClick={(event) => handleFoodClick(event, food)}>
                     <TableCell>{open[food.id] ? <KeyboardArrowDown /> : <KeyboardArrowRight />}</TableCell>
                     <TableCell>{food.name}</TableCell>
@@ -201,11 +203,19 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
                     <TableCell>{formatCellNumber(calculateFoodMacros(food).fat)}</TableCell>
                     <TableCell>{formatCellNumber(calculateFoodMacros(food).carbs)}</TableCell>
                     <TableCell>{formatCellNumber(calculateFoodMacros(food).fiber)}</TableCell>
+                    <TableCell align="right">
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={(event) => handleFoodSelect(event, food)}>
+                        Select
+                      </Button>
+                    </TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell
                       style={{ paddingBottom: 0, paddingTop: 0 }}
-                      colSpan={6}>
+                      colSpan={8}>
                       <Collapse
                         in={open[food.id]}
                         timeout="auto"
