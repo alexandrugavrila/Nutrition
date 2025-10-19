@@ -14,6 +14,47 @@ vi.mock("@/components/common/IngredientModal", () => ({
   default: () => null,
 }));
 
+const mockIngredient = {
+  id: 1,
+  name: "Oats",
+  nutrition: {
+    calories: 2,
+    protein: 0.1,
+    fat: 0.05,
+    carbohydrates: 0.5,
+    fiber: 0.02,
+  },
+  units: [
+    { id: 10, ingredient_id: 1, name: "g", grams: 1 },
+    { id: 11, ingredient_id: 1, name: "cup", grams: 100 },
+  ],
+  tags: [],
+  shoppingUnitId: 10,
+};
+
+const mockFood = {
+  id: 100,
+  name: "Sample Food",
+  ingredients: [
+    { ingredient_id: 1, food_id: 100, unit_id: 10, unit_quantity: 50 },
+  ],
+  tags: [],
+};
+
+vi.mock("@/components/data/ingredient/IngredientTable", () => ({
+  __esModule: true,
+  default: ({ onIngredientDoubleClick }) => (
+    <button type="button" onClick={() => onIngredientDoubleClick?.(mockIngredient)}>
+      Select Oats
+    </button>
+  ),
+}));
+
+vi.mock("@/components/data/food/FoodTable", () => ({
+  __esModule: true,
+  default: () => <div>Food table mock</div>,
+}));
+
 // Small helpers to locate the summary row and its numeric cells
 const getSummaryRow = (label: string) => {
   const cell = screen.getByText(label);
@@ -30,64 +71,26 @@ const getSummaryNumbers = (label: string) => {
 };
 
 describe("Planning - ingredient editing updates macros", () => {
-  const mockIngredients = [
-    {
-      id: 1,
-      name: "Oats",
-      nutrition: {
-        calories: 2, // per gram
-        protein: 0.1,
-        fat: 0.05,
-        carbohydrates: 0.5,
-        fiber: 0.02,
-      },
-      units: [
-        { id: 10, ingredient_id: 1, name: "g", grams: 1 },
-        { id: 11, ingredient_id: 1, name: "cup", grams: 100 },
-      ],
-      tags: [],
-      shoppingUnitId: 10,
-    },
-  ];
-
-  // Foods are not exercised directly here but are required by the hook
-  const mockFoods = [
-    {
-      id: 100,
-      name: "Sample Food",
-      ingredients: [
-        { ingredient_id: 1, food_id: 100, unit_id: 10, unit_quantity: 50 },
-      ],
-      tags: [],
-    },
-  ];
-
   beforeEach(() => {
     vi.clearAllMocks();
     (useData as unknown as Mock).mockReturnValue({
-      ingredients: mockIngredients,
-      foods: mockFoods,
+      ingredients: [mockIngredient],
+      foods: [mockFood],
     });
   });
 
   it("recalculates totals when editing an ingredient amount", async () => {
     render(<MemoryRouter><Planning /></MemoryRouter>);
 
-    // Switch to adding an Ingredient
-    await userEvent.click(screen.getByLabelText(/Type/i));
-    await userEvent.click(screen.getByRole("option", { name: /Ingredient/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Add Ingredient/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Select Oats/i }));
 
-    // Select the ingredient
-    // Open the Ingredient select
-    const ingredientSelect = screen.getByRole("combobox", { name: /^Ingredient$/i });
-    await userEvent.click(ingredientSelect);
-    await userEvent.click(screen.getByRole("option", { name: /Oats/i }));
-
-    // Set amount to 100 and add
-    const amountInput = screen.getByLabelText(/^Amount$/i);
+    const ingredientCell = await screen.findByText("Oats");
+    const ingredientRow = ingredientCell.closest("tr");
+    if (!ingredientRow) throw new Error("Ingredient row not found");
+    const amountInput = within(ingredientRow).getByDisplayValue("1") as HTMLInputElement;
     await userEvent.clear(amountInput);
     await userEvent.type(amountInput, "100");
-    await userEvent.click(screen.getByRole("button", { name: /Add/i }));
 
     // Expect summary totals for 100g with the per-gram nutrition above
     // calories: 2*100=200, protein: 0.1*100=10, carbs: 0.5*100=50, fat: 0.05*100=5, fiber: 0.02*100=2
@@ -101,7 +104,7 @@ describe("Planning - ingredient editing updates macros", () => {
     });
 
     // Edit the row amount to 150; totals should scale accordingly
-    const rowAmountInput = screen.getAllByDisplayValue("100")[0];
+    const rowAmountInput = amountInput;
     await userEvent.clear(rowAmountInput);
     await userEvent.type(rowAmountInput, "150");
 
@@ -118,19 +121,17 @@ describe("Planning - ingredient editing updates macros", () => {
   it("ignores invalid amounts (<= 0) when editing an existing ingredient", async () => {
     render(<MemoryRouter><Planning /></MemoryRouter>);
 
-    // Add Oats 100g as above
-    await userEvent.click(screen.getByLabelText(/Type/i));
-    await userEvent.click(screen.getByRole("option", { name: /Ingredient/i }));
-    const ingredientSelect = screen.getByRole("combobox", { name: /^Ingredient$/i });
-    await userEvent.click(ingredientSelect);
-    await userEvent.click(screen.getByRole("option", { name: /Oats/i }));
-    const amountInput = screen.getByLabelText(/^Amount$/i);
+    await userEvent.click(screen.getByRole("button", { name: /Add Ingredient/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Select Oats/i }));
+    const ingredientCell = await screen.findByText("Oats");
+    const ingredientRow = ingredientCell.closest("tr");
+    if (!ingredientRow) throw new Error("Ingredient row not found");
+    const amountInput = within(ingredientRow).getByDisplayValue("1") as HTMLInputElement;
     await userEvent.clear(amountInput);
     await userEvent.type(amountInput, "100");
-    await userEvent.click(screen.getByRole("button", { name: /Add/i }));
 
     // Attempt to set the existing row amount to 0 -> should be ignored
-    const rowAmountInput = screen.getAllByDisplayValue("100")[0];
+    const rowAmountInput = amountInput as HTMLInputElement;
     await userEvent.clear(rowAmountInput);
     await userEvent.type(rowAmountInput, "0");
 
@@ -149,16 +150,14 @@ describe("Planning - ingredient editing updates macros", () => {
   it("shows targets and allows totals to exceed them", async () => {
     render(<MemoryRouter><Planning /></MemoryRouter>);
 
-    // Add Oats 150g
-    await userEvent.click(screen.getByLabelText(/Type/i));
-    await userEvent.click(screen.getByRole("option", { name: /Ingredient/i }));
-    const ingredientSelect = screen.getByRole("combobox", { name: /^Ingredient$/i });
-    await userEvent.click(ingredientSelect);
-    await userEvent.click(screen.getByRole("option", { name: /Oats/i }));
-    const amountInput = screen.getByLabelText(/^Amount$/i);
+    await userEvent.click(screen.getByRole("button", { name: /Add Ingredient/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Select Oats/i }));
+    const ingredientCell = await screen.findByText("Oats");
+    const ingredientRow = ingredientCell.closest("tr");
+    if (!ingredientRow) throw new Error("Ingredient row not found");
+    const amountInput = within(ingredientRow).getByDisplayValue("1") as HTMLInputElement;
     await userEvent.clear(amountInput);
     await userEvent.type(amountInput, "150");
-    await userEvent.click(screen.getByRole("button", { name: /Add/i }));
 
     // Set relatively low targets so totals exceed them
     await userEvent.clear(screen.getByLabelText(/Target calories/i));
