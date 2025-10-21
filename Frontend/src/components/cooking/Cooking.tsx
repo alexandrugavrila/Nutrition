@@ -510,7 +510,8 @@ function Cooking() {
                                       <TableCell>Name</TableCell>
                                       <TableCell>Unit</TableCell>
                                       <TableCell>Planned Amount</TableCell>
-                                      <TableCell>Actual Amount</TableCell>
+                                      <TableCell>Actual Total</TableCell>
+                                      <TableCell>Actual per Portion</TableCell>
                                       <TableCell>Calories</TableCell>
                                       <TableCell>Protein</TableCell>
                                       <TableCell>Carbs</TableCell>
@@ -542,15 +543,19 @@ function Cooking() {
                                         index,
                                         ingredient.ingredient_id,
                                       );
-                                      const actualAmount = clampNonNegative(
+                                      const actualTotal = clampNonNegative(
                                         toFiniteNumber(
                                           actualState.ingredientTotals[ingredientKey],
                                         ),
                                       );
+                                      const actualPerPortion =
+                                        actualPortions > 0
+                                          ? actualTotal / actualPortions
+                                          : 0;
                                       const ingredientMacros = macrosForIngredientPortion({
                                         ingredient: dataIngredient,
                                         unitId,
-                                        quantity: actualAmount,
+                                        quantity: actualTotal,
                                       });
 
                                       return (
@@ -562,7 +567,7 @@ function Cooking() {
                                           </TableCell>
                                           <TableCell>{unitName ?? ""}</TableCell>
                                           <TableCell>
-                                            {formatAmountWithUnit(plannedTotal, unitName)}
+                                            {formatCellNumber(plannedTotal)}
                                           </TableCell>
                                           <TableCell>
                                             <Box
@@ -581,13 +586,13 @@ function Cooking() {
                                                     -1,
                                                   )
                                                 }
-                                                disabled={actualAmount <= 0}
+                                                disabled={actualTotal <= 0}
                                               >
                                                 <Remove fontSize="small" />
                                               </IconButton>
                                               <TextField
                                                 type="number"
-                                                value={actualAmount}
+                                                value={actualTotal}
                                                 onChange={(event) =>
                                                   updateIngredientAmount(
                                                     ingredientKey,
@@ -611,12 +616,12 @@ function Cooking() {
                                               >
                                                 <Add fontSize="small" />
                                               </IconButton>
-                                              {unitName && (
-                                                <Box component="span" sx={{ whiteSpace: "nowrap" }}>
-                                                  {unitName}
-                                                </Box>
-                                              )}
                                             </Box>
+                                          </TableCell>
+                                          <TableCell>
+                                            {actualPortions > 0
+                                              ? formatCellNumber(actualPerPortion)
+                                              : "—"}
                                           </TableCell>
                                           <TableCell>
                                             {formatCellNumber(ingredientMacros.calories)}
