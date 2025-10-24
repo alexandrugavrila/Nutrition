@@ -143,6 +143,22 @@ export const macrosForIngredientPortion = (
   };
 };
 
+export const gramsForIngredientPortion = ({
+  ingredient,
+  unitId,
+  quantity,
+}: IngredientPortionInput): number => {
+  if (!ingredient) return 0;
+
+  const unit = resolveUnit(ingredient.units ?? [], unitId);
+  const gramsPerUnit = unit?.grams ?? 0;
+  const normalizedQuantity = quantity === undefined || quantity === null
+    ? 0
+    : toNumber(quantity);
+
+  return gramsPerUnit * normalizedQuantity;
+};
+
 export const findIngredientInLookup = (
   ingredientMap: IngredientLookup,
   ingredientId: unknown,
