@@ -67,6 +67,20 @@ const isFiniteNumber = (value: unknown): value is number =>
 
 const clampNonNegative = (value: number): number => (value < 0 ? 0 : value);
 
+const divideMacroTotals = (totals: MacroTotals, divisor: number): MacroTotals => {
+  if (!Number.isFinite(divisor) || divisor <= 0) {
+    return { ...ZERO_MACROS };
+  }
+
+  return {
+    calories: totals.calories / divisor,
+    protein: totals.protein / divisor,
+    carbs: totals.carbs / divisor,
+    fat: totals.fat / divisor,
+    fiber: totals.fiber / divisor,
+  };
+};
+
 const planItemKey = (item: PlanItem, index: number): string => {
   if (item.type === "food") {
     return `food:${index}:${String(item.foodId ?? "")}`;
@@ -314,55 +328,11 @@ function Cooking() {
         }
 
         const nextPortions = { ...prev.portions, [key]: sanitizedValue };
-        let nextTotals: Record<string, IngredientMeasurement> = prev.ingredientTotals;
-        const food = foodLookup.get(String(item.foodId ?? ""));
-        if (food && Array.isArray(food.ingredients)) {
-          food.ingredients.forEach((ingredient) => {
-            const ingredientKey = foodIngredientKey(index, ingredient.ingredient_id);
-            const override = item.overrides[String(ingredient.ingredient_id)];
-            const quantityPerPortion = clampNonNegative(
-              toFiniteNumber(override?.quantity ?? ingredient.unit_quantity),
-            );
-            const previousExpected = quantityPerPortion * previousValue;
-            const defaultUnitId = normalizePlanUnitId(
-              override?.unitId ?? ingredient.unit_id,
-            );
-            const storedMeasurement = normalizeMeasurement(
-              prev.ingredientTotals[ingredientKey],
-              previousExpected,
-              defaultUnitId,
-            );
-            const previousEntry = prev.ingredientTotals[ingredientKey];
-            const shouldAutoUpdate =
-              storedMeasurement.unitId === defaultUnitId &&
-              Math.abs(storedMeasurement.quantity - previousExpected) < 1e-6;
-            if (shouldAutoUpdate) {
-              const nextMeasurement: IngredientMeasurement = {
-                quantity: quantityPerPortion * sanitizedValue,
-                unitId: defaultUnitId,
-              };
-              if (!measurementsEqual(storedMeasurement, nextMeasurement)) {
-                if (nextTotals === prev.ingredientTotals) {
-                  nextTotals = { ...prev.ingredientTotals };
-                }
-                nextTotals[ingredientKey] = nextMeasurement;
-              }
-            } else if (
-              !previousEntry ||
-              !measurementsEqual(storedMeasurement, previousEntry)
-            ) {
-              if (nextTotals === prev.ingredientTotals) {
-                nextTotals = { ...prev.ingredientTotals };
-              }
-              nextTotals[ingredientKey] = storedMeasurement;
-            }
-          });
-        }
 
-        return { portions: nextPortions, ingredientTotals: nextTotals };
+        return { portions: nextPortions, ingredientTotals: prev.ingredientTotals };
       });
     },
-    [foodLookup, setActualState],
+    [setActualState],
   );
 
   const updateIngredientMeasurement = useCallback(
@@ -550,7 +520,11 @@ function Cooking() {
                     const actualPortions = clampNonNegative(
                       toFiniteNumber(actualState.portions[portionKey] ?? foodItem.portions),
                     );
-                    const foodMacros = computeFoodActualMacros(foodItem, index);
+                    const foodTotalMacros = computeFoodActualMacros(foodItem, index);
+                    const foodMacros =
+                      actualPortions > 0
+                        ? divideMacroTotals(foodTotalMacros, actualPortions)
+                        : { ...ZERO_MACROS };
                     const plannedPortionsLabel = pluralize(foodItem.portions, "portion");
 
                     return (
