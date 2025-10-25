@@ -627,14 +627,14 @@ function Planning() {
           {
             type: "food",
             foodId,
-            portions: 1,
+            portions: Math.max(1, Number.isFinite(days) ? Math.floor(days) : 1),
             overrides,
           } as FoodPlanItem,
         ];
       });
       setFoodPickerOpen(false);
     },
-    [setPlan, setFoodPickerOpen],
+    [days, setPlan, setFoodPickerOpen],
   );
 
   const handleQuantityChange = (
