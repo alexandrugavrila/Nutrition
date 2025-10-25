@@ -328,11 +328,41 @@ function Cooking() {
         }
 
         const nextPortions = { ...prev.portions, [key]: sanitizedValue };
+        const nextIngredientTotals = { ...prev.ingredientTotals };
 
-        return { portions: nextPortions, ingredientTotals: prev.ingredientTotals };
+        const food = foodLookup.get(String(item.foodId ?? ""));
+        if (food && Array.isArray(food.ingredients)) {
+          food.ingredients.forEach((ingredient) => {
+            const override = item.overrides[String(ingredient.ingredient_id)];
+            const perPortionQuantity = clampNonNegative(
+              toFiniteNumber(override?.quantity ?? ingredient.unit_quantity),
+            );
+            const defaultUnitId = normalizePlanUnitId(
+              override?.unitId ?? ingredient.unit_id,
+            );
+            const ingredientKey = foodIngredientKey(index, ingredient.ingredient_id);
+            const previousMeasurement = normalizeMeasurement(
+              prev.ingredientTotals[ingredientKey],
+              perPortionQuantity * previousValue,
+              defaultUnitId,
+            );
+
+            const scaledQuantity =
+              previousValue > 0
+                ? previousMeasurement.quantity * (sanitizedValue / previousValue)
+                : perPortionQuantity * sanitizedValue;
+
+            nextIngredientTotals[ingredientKey] = {
+              quantity: clampNonNegative(scaledQuantity),
+              unitId: previousMeasurement.unitId,
+            };
+          });
+        }
+
+        return { portions: nextPortions, ingredientTotals: nextIngredientTotals };
       });
     },
-    [setActualState],
+    [foodLookup, setActualState],
   );
 
   const updateIngredientMeasurement = useCallback(
