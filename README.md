@@ -130,7 +130,7 @@ erDiagram
   INGREDIENT ||--|| NUTRITION : has
   INGREDIENT ||--o{ INGREDIENT_TAG : tagged_with
   INGREDIENT_TAG }o--|| POSSIBLE_INGREDIENT_TAG : references
-  INGREDIENT ||--|| INGREDIENT_SHOPPING_UNIT : shopping_pref (0..1)
+  INGREDIENT ||--o| INGREDIENT_SHOPPING_UNIT : shopping_pref
   INGREDIENT_SHOPPING_UNIT ||--|| INGREDIENT_UNIT : selects (optional)
   FOOD ||--o{ FOOD_INGREDIENT : includes
   FOOD_INGREDIENT }o--|| INGREDIENT : uses
@@ -157,29 +157,53 @@ Frontend state mirrors the API schema, so food tags reference the shared `Possib
 
 ```mermaid
 classDiagram
-  class Nutrition { calories; fat; carbohydrates; protein; fiber }
-  class IngredientUnit { id?; ingredient_id?; name; grams }
-  class PossibleIngredientTag { id?; name }
+  class Nutrition {
+    calories
+    fat
+    carbohydrates
+    protein
+    fiber
+  }
+
+  class IngredientUnit {
+    id (optional)
+    ingredient_id (optional)
+    name
+    grams
+  }
+
+  class PossibleIngredientTag {
+    id (optional)
+    name
+  }
+
   class Ingredient {
     id
     name
-    Nutrition? nutrition
-    IngredientUnit[] units
-    PossibleIngredientTag[] tags
-    IngredientUnit? shopping_unit
+    nutrition (optional)
+    units
+    tags
+    shopping_unit (optional)
   }
+
   class FoodIngredient {
     ingredient_id
-    unit_id?
-    unit_quantity?
+    unit_id (optional)
+    unit_quantity (optional)
   }
-  class PossibleFoodTag { id?; name }
+
+  class PossibleFoodTag {
+    id (optional)
+    name
+  }
+
   class Food {
     id
     name
-    FoodIngredient[] ingredients
-    PossibleFoodTag[] tags
+    ingredients
+    tags
   }
+
   class Plan {
     id
     label
