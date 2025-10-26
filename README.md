@@ -126,27 +126,76 @@ Detailed endpoint documentation is available at `http://localhost:<DEV_BACKEND_P
 
 ```mermaid
 erDiagram
-  INGREDIENT ||--o{ INGREDIENT_UNIT : has
-  INGREDIENT ||--|| NUTRITION : contains
+  INGREDIENT ||--o{ INGREDIENT_UNIT : defines
+  INGREDIENT ||--|| NUTRITION : has
   INGREDIENT ||--o{ INGREDIENT_TAG : tagged_with
   INGREDIENT_TAG }o--|| POSSIBLE_INGREDIENT_TAG : references
+  INGREDIENT ||--|| INGREDIENT_SHOPPING_UNIT : shopping_pref (0..1)
+  INGREDIENT_SHOPPING_UNIT ||--|| INGREDIENT_UNIT : selects (optional)
   FOOD ||--o{ FOOD_INGREDIENT : includes
   FOOD_INGREDIENT }o--|| INGREDIENT : uses
+  FOOD_INGREDIENT }o--|| INGREDIENT_UNIT : portioned_with
   FOOD ||--o{ FOOD_TAG : tagged_with
   FOOD_TAG }o--|| POSSIBLE_FOOD_TAG : references
+  PLAN {
+    id integer
+    label varchar
+    payload json
+    created_at timestamptz
+    updated_at timestamptz
+  }
 ```
 
 </details>
 
-Frontend state mirrors the API schema, so food tags reference the shared `PossibleFoodTag` definitions surfaced by `/api/foods/possible_tags`.
+The ingredient shopping unit is optional per ingredient, but when present it must reference one of the ingredient's units; food ingredient quantities can also reference those shared units to keep serving sizes consistent across foods.
+
+Frontend state mirrors the API schema, so food tags reference the shared `PossibleFoodTag` definitions surfaced by `/api/foods/possible_tags` and plan records reuse the persisted JSON payloads exposed by `/api/plans`.
 
 <details>
 <summary>Frontend Structures (Mermaid)</summary>
 
 ```mermaid
 classDiagram
-  class Ingredient { id; name; Nutrition nutrition; IngredientUnit[] units }
-  class Food { id; name; FoodIngredient[] ingredients; PossibleFoodTag[] tags }
+  class Nutrition { calories; fat; carbohydrates; protein; fiber }
+  class IngredientUnit { id?; ingredient_id?; name; grams }
+  class PossibleIngredientTag { id?; name }
+  class Ingredient {
+    id
+    name
+    Nutrition? nutrition
+    IngredientUnit[] units
+    PossibleIngredientTag[] tags
+    IngredientUnit? shopping_unit
+  }
+  class FoodIngredient {
+    ingredient_id
+    unit_id?
+    unit_quantity?
+  }
+  class PossibleFoodTag { id?; name }
+  class Food {
+    id
+    name
+    FoodIngredient[] ingredients
+    PossibleFoodTag[] tags
+  }
+  class Plan {
+    id
+    label
+    payload
+    created_at
+    updated_at
+  }
+
+  Ingredient "1" --> "0..1" Nutrition
+  Ingredient "1" --> "0..*" IngredientUnit : units
+  Ingredient "1" --> "0..*" PossibleIngredientTag : tags
+  Ingredient "1" --> "0..1" IngredientUnit : shopping_unit
+  Food "1" --> "0..*" FoodIngredient : ingredients
+  FoodIngredient "*" --> "1" Ingredient : ingredient
+  FoodIngredient "*" --> "0..1" IngredientUnit : unit
+  Food "1" --> "0..*" PossibleFoodTag : tags
 ```
 
 </details>
