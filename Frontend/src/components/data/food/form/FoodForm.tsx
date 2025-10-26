@@ -1,5 +1,5 @@
 // @ts-check
-import React, { useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import { useSessionStorageReducer } from "@/hooks/useSessionStorageState";
 
@@ -65,12 +65,6 @@ function FoodForm({ foodToEditData }) {
   const { isOpen, openConfirmationDialog, isEditMode, foodToEdit, needsClearForm, needsFillForm, recipeYield } = state;
   const isInitialRenderRef = useRef(true);
   const previousIsOpenRef = useRef(isOpen);
-
-  const hasContent = useMemo(() => {
-    const hasName = (foodToEdit?.name || "").trim().length > 0;
-    const hasIngredients = Array.isArray(foodToEdit?.ingredients) && foodToEdit.ingredients.length > 0;
-    return hasName || hasIngredients;
-  }, [foodToEdit]);
 
   //#endregion States
 
