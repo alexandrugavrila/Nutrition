@@ -131,7 +131,7 @@ erDiagram
   INGREDIENT ||--o{ INGREDIENT_TAG : tagged_with
   INGREDIENT_TAG }o--|| POSSIBLE_INGREDIENT_TAG : references
   INGREDIENT ||--o| INGREDIENT_SHOPPING_UNIT : shopping_pref
-  INGREDIENT_SHOPPING_UNIT ||--|| INGREDIENT_UNIT : selects (optional)
+  INGREDIENT_SHOPPING_UNIT ||--|| INGREDIENT_UNIT : selects_optional
   FOOD ||--o{ FOOD_INGREDIENT : includes
   FOOD_INGREDIENT }o--|| INGREDIENT : uses
   FOOD_INGREDIENT }o--|| INGREDIENT_UNIT : portioned_with
