@@ -11,3 +11,14 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.MuiTableContainer-root {
+  width: fit-content;
+  max-width: 100%;
+  display: inline-block;
+}
+
+.MuiTable-root {
+  width: auto;
+  display: inline-table;
+}
