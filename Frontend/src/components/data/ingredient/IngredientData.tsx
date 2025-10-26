@@ -2,8 +2,13 @@ import React, { useState } from "react";
 
 import IngredientTable from "./IngredientTable";
 import IngredientForm from "./form/IngredientForm";
+import type { IngredientRead } from "@/utils/nutrition";
 
-function IngredientData({ handleAddIngredientToPlan }) {
+type IngredientDataProps = {
+  handleAddIngredientToPlan?: (ingredient: IngredientRead) => void;
+};
+
+function IngredientData({ handleAddIngredientToPlan }: IngredientDataProps) {
   const [editingIngredient, setEditingIngredient] = useState(null);
 
   const handleAddIngredientToEdit = (ingredientToEdit) => {

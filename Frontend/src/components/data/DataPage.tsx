@@ -61,7 +61,7 @@ function DataPage() {
           hidden={dataTab !== 1}
           sx={{ width: "100%", display: dataTab === 1 ? "flex" : "none", justifyContent: "center", alignItems: "flex-start" }}
         >
-          <IngredientData handleAddIngredientToPlan={() => {}} />
+          <IngredientData />
         </Box>
         <Box
           role="tabpanel"

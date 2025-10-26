@@ -67,5 +67,5 @@ test("provides handleAddIngredientToPlan only to IngredientData", () => {
   const [ingredientProps] = getLastCallArgs(mockIngredientData);
 
   expect(foodProps.handleAddIngredientToPlan).toBeUndefined();
-  expect(ingredientProps.handleAddIngredientToPlan).toBeInstanceOf(Function);
+  expect(ingredientProps.handleAddIngredientToPlan).toBeUndefined();
 });
