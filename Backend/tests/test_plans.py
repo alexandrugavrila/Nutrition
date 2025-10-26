@@ -71,12 +71,28 @@ def test_delete_plan(client):
 
 
 def test_list_plans(client):
-    client.post("/api/plans/", json={"label": "Plan A", "payload": sample_payload()})
-    client.post("/api/plans/", json={"label": "Plan B", "payload": sample_payload()})
+    plan_a = client.post("/api/plans/", json={"label": "Plan A", "payload": sample_payload()})
+    plan_b = client.post("/api/plans/", json={"label": "Plan B", "payload": sample_payload()})
+
+    plan_a_id = plan_a.json()["id"]
+    plan_b_id = plan_b.json()["id"]
+
+    updated_payload = sample_payload()
+    updated_payload["days"] = 3
+    update_response = client.put(
+        f"/api/plans/{plan_a_id}",
+        json={"label": "Plan A Updated", "payload": updated_payload},
+    )
+    assert update_response.status_code == 200
 
     list_response = client.get("/api/plans/")
     assert list_response.status_code == 200
     data = list_response.json()
     assert len(data) == 2
-    labels = {item["label"] for item in data}
-    assert {"Plan A", "Plan B"} == labels
+
+    assert [item["id"] for item in data] == [plan_a_id, plan_b_id]
+    assert data[0]["updated_at"] >= data[1]["updated_at"]
+
+    labels = [item["label"] for item in data]
+    assert labels[0] == "Plan A Updated"
+    assert "Plan B" in labels
