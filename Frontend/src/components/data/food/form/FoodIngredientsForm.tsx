@@ -1,5 +1,21 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { Button, TextField, Select, MenuItem, Dialog, TableContainer, Table, TableHead, TableRow, TableCell, Paper, TableBody, IconButton, Stack } from "@mui/material";
+import {
+  Alert,
+  Button,
+  TextField,
+  Select,
+  MenuItem,
+  Dialog,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  Paper,
+  TableBody,
+  IconButton,
+  Stack,
+} from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 
@@ -44,7 +60,7 @@ function coerceUnitId(units, rawId) {
   return match.id ?? null;
 }
 
-function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
+function FoodIngredientsForm({ food, dispatch, needsClearForm, recipeYield, onRecipeYieldChange, isEditMode }) {
   //#region States
   const { ingredients } = useData();
   const [openIngredientsDialog, setOpenIngredientsDialog] = useState(false);
@@ -55,6 +71,18 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
   //#endregion States
 
   //#region Handles
+  const parsedRecipeYield = useMemo(() => {
+    const parsed = parseFloat(recipeYield);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  }, [recipeYield]);
+
+  const handleRecipeYieldInputChange = useCallback(
+    (event) => {
+      onRecipeYieldChange(event.target.value);
+    },
+    [onRecipeYieldChange]
+  );
+
   const handleOpenIngredientsDialog = () => {
     setOpenIngredientsDialog(true);
   };
@@ -194,6 +222,26 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm }) {
 
   return (
     <div>
+      <Stack spacing={1} sx={{ mb: 2 }}>
+        <TextField
+          label="Recipe yields"
+          type="number"
+          value={recipeYield}
+          onChange={handleRecipeYieldInputChange}
+          disabled={isEditMode}
+          inputProps={{ min: 1, step: "any", inputMode: "decimal" }}
+          helperText={
+            isEditMode
+              ? "Existing foods already store ingredient amounts per single portion."
+              : "Ingredient amounts will be divided by this number when saved."
+          }
+        />
+        <Alert severity="info">
+          {isEditMode
+            ? "Adjust ingredient amounts directly to change the per-portion values that are stored."
+            : `When you save, each ingredient amount will be divided by ${parsedRecipeYield} so the food is stored per portion. The table below shows the quantities and macros you entered before that division.`}
+        </Alert>
+      </Stack>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
