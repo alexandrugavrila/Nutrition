@@ -38,6 +38,17 @@ import { formatCellNumber } from "@/utils/utils";
 
 const GRAM_UNIT_SENTINEL = 0;
 
+const DISPLAY_DECIMAL_PLACES = 3;
+
+const roundDisplayValue = (value: number): number => {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  const factor = 10 ** DISPLAY_DECIMAL_PLACES;
+  const rounded = Math.round(value * factor) / factor;
+  return Math.abs(rounded) < 1e-9 ? 0 : rounded;
+};
+
 const normalizePlanUnitId = (value: unknown): number => {
   if (value === null || value === undefined || value === "") {
     return GRAM_UNIT_SENTINEL;
@@ -125,10 +136,15 @@ const normalizeMeasurement = (
   fallbackUnitId: number,
 ): IngredientMeasurement => {
   const normalizedFallbackUnit = normalizePlanUnitId(fallbackUnitId);
+  const normalizedFallbackQuantity = roundDisplayValue(
+    clampNonNegative(fallbackQuantity),
+  );
 
   if (value && typeof value === "object") {
     const record = value as { quantity?: unknown; unitId?: unknown };
-    const quantity = clampNonNegative(toFiniteNumber(record.quantity));
+    const quantity = roundDisplayValue(
+      clampNonNegative(toFiniteNumber(record.quantity)),
+    );
     const unitId = normalizePlanUnitId(
       record.unitId !== undefined ? record.unitId : normalizedFallbackUnit,
     );
@@ -137,13 +153,13 @@ const normalizeMeasurement = (
 
   if (typeof value === "number" && Number.isFinite(value)) {
     return {
-      quantity: clampNonNegative(value),
+      quantity: roundDisplayValue(clampNonNegative(value)),
       unitId: normalizedFallbackUnit,
     };
   }
 
   return {
-    quantity: clampNonNegative(fallbackQuantity),
+    quantity: normalizedFallbackQuantity,
     unitId: normalizedFallbackUnit,
   };
 };
@@ -263,19 +279,25 @@ function Cooking() {
       plan.forEach((item, index) => {
         const itemKey = planItemKey(item, index);
         if (item.type === "food") {
-          const plannedPortions = clampNonNegative(toFiniteNumber(item.portions));
+          const plannedPortions = roundDisplayValue(
+            clampNonNegative(toFiniteNumber(item.portions)),
+          );
           const storedPortion = prev.portions[itemKey];
-          const normalizedPortion = isFiniteNumber(storedPortion)
-            ? clampNonNegative(storedPortion)
-            : plannedPortions;
+          const normalizedPortion = roundDisplayValue(
+            isFiniteNumber(storedPortion)
+              ? clampNonNegative(storedPortion)
+              : plannedPortions,
+          );
           nextPortions[itemKey] = normalizedPortion;
 
           const food = foodLookup.get(String(item.foodId ?? ""));
           if (food && Array.isArray(food.ingredients)) {
             food.ingredients.forEach((ingredient) => {
               const override = item.overrides[String(ingredient.ingredient_id)];
-              const perPortionQuantity = clampNonNegative(
-                toFiniteNumber(override?.quantity ?? ingredient.unit_quantity),
+              const perPortionQuantity = roundDisplayValue(
+                clampNonNegative(
+                  toFiniteNumber(override?.quantity ?? ingredient.unit_quantity),
+                ),
               );
               const key = foodIngredientKey(index, ingredient.ingredient_id);
               const defaultTotal = perPortionQuantity * normalizedPortion;
@@ -290,7 +312,9 @@ function Cooking() {
             });
           }
         } else {
-          const amount = clampNonNegative(toFiniteNumber(item.amount));
+          const amount = roundDisplayValue(
+            clampNonNegative(toFiniteNumber(item.amount)),
+          );
           const defaultUnitId = normalizePlanUnitId(item.unitId);
           nextIngredientTotals[itemKey] = normalizeMeasurement(
             prev.ingredientTotals[itemKey],
@@ -318,11 +342,13 @@ function Cooking() {
   const updateFoodPortion = useCallback(
     (item: FoodPlanItem, index: number, value: number) => {
       const key = planItemKey(item, index);
-      const sanitizedValue = clampNonNegative(value);
+      const sanitizedValue = roundDisplayValue(clampNonNegative(value));
       setActualState((prev) => {
-        const previousValue = isFiniteNumber(prev.portions[key])
-          ? clampNonNegative(prev.portions[key])
-          : clampNonNegative(toFiniteNumber(item.portions));
+        const previousValue = roundDisplayValue(
+          isFiniteNumber(prev.portions[key])
+            ? clampNonNegative(prev.portions[key])
+            : clampNonNegative(toFiniteNumber(item.portions)),
+        );
         if (Object.is(previousValue, sanitizedValue)) {
           return prev;
         }
@@ -351,10 +377,11 @@ function Cooking() {
           fallback.unitId,
         );
         const nextMeasurement: IngredientMeasurement = {
-          quantity:
+          quantity: roundDisplayValue(
             updates.quantity !== undefined
               ? clampNonNegative(updates.quantity)
               : current.quantity,
+          ),
           unitId:
             updates.unitId !== undefined
               ? normalizePlanUnitId(updates.unitId)
@@ -385,8 +412,10 @@ function Cooking() {
       }
 
       const portionKey = planItemKey(item, index);
-      const actualPortions = clampNonNegative(
-        toFiniteNumber(actualState.portions[portionKey] ?? item.portions),
+      const actualPortions = roundDisplayValue(
+        clampNonNegative(
+          toFiniteNumber(actualState.portions[portionKey] ?? item.portions),
+        ),
       );
 
       return food.ingredients.reduce((totals, ingredient) => {
@@ -402,10 +431,14 @@ function Cooking() {
         const defaultUnitId = normalizePlanUnitId(
           override?.unitId ?? ingredient.unit_id,
         );
-        const quantityPerPortion = clampNonNegative(
-          toFiniteNumber(override?.quantity ?? ingredient.unit_quantity),
+        const quantityPerPortion = roundDisplayValue(
+          clampNonNegative(
+            toFiniteNumber(override?.quantity ?? ingredient.unit_quantity),
+          ),
         );
-        const fallbackQuantity = quantityPerPortion * actualPortions;
+        const fallbackQuantity = roundDisplayValue(
+          quantityPerPortion * actualPortions,
+        );
         const measurement = readMeasurementWithFallback(
           actualState.ingredientTotals,
           key,
@@ -520,8 +553,12 @@ function Cooking() {
                     const foodItem = item as FoodPlanItem;
                     const food = foodLookup.get(String(foodItem.foodId ?? ""));
                     const portionKey = planItemKey(foodItem, index);
-                    const actualPortions = clampNonNegative(
-                      toFiniteNumber(actualState.portions[portionKey] ?? foodItem.portions),
+                    const actualPortions = roundDisplayValue(
+                      clampNonNegative(
+                        toFiniteNumber(
+                          actualState.portions[portionKey] ?? foodItem.portions,
+                        ),
+                      ),
                     );
                     const foodTotalMacros = computeFoodActualMacros(foodItem, index);
                     const foodMacros =
@@ -598,8 +635,12 @@ function Cooking() {
                           const defaultUnitId = normalizePlanUnitId(
                             override?.unitId ?? ingredient.unit_id,
                           );
-                          const quantityPerPortion = clampNonNegative(
-                            toFiniteNumber(override?.quantity ?? ingredient.unit_quantity),
+                          const quantityPerPortion = roundDisplayValue(
+                            clampNonNegative(
+                              toFiniteNumber(
+                                override?.quantity ?? ingredient.unit_quantity,
+                              ),
+                            ),
                           );
                           const plannedTotal = quantityPerPortion * foodItem.portions;
                           const plannedUnitName = resolveIngredientUnitName(
@@ -616,7 +657,9 @@ function Cooking() {
                             ingredient.ingredient_id,
                           );
                           const fallbackMeasurement: IngredientMeasurement = {
-                            quantity: quantityPerPortion * actualPortions,
+                            quantity: roundDisplayValue(
+                              quantityPerPortion * actualPortions,
+                            ),
                             unitId: defaultUnitId,
                           };
                           const measurement = readMeasurementWithFallback(
@@ -770,8 +813,8 @@ function Cooking() {
                     ingredientItem.ingredientId,
                   );
                   const defaultUnitId = normalizePlanUnitId(ingredientItem.unitId);
-                  const plannedQuantity = clampNonNegative(
-                    toFiniteNumber(ingredientItem.amount),
+                  const plannedQuantity = roundDisplayValue(
+                    clampNonNegative(toFiniteNumber(ingredientItem.amount)),
                   );
                   const plannedUnitName = resolveIngredientUnitName(
                     ingredient,
@@ -784,7 +827,7 @@ function Cooking() {
                   });
                   const ingredientKey = planItemKey(item, index);
                   const fallbackMeasurement: IngredientMeasurement = {
-                    quantity: plannedQuantity,
+                    quantity: roundDisplayValue(plannedQuantity),
                     unitId: defaultUnitId,
                   };
                   const measurement = readMeasurementWithFallback(
