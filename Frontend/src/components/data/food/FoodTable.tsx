@@ -1,15 +1,46 @@
 // FoodTable.js
 
 import React, { useState, useMemo, useCallback } from "react";
-import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, Collapse, Typography, TablePagination, Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import {
+  Box,
+  TextField,
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Paper,
+  Collapse,
+  Typography,
+  TablePagination,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Stack,
+} from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowRight } from "@mui/icons-material";
 
 import { useData } from "@/contexts/DataContext";
 import { formatCellNumber } from "@/utils/utils";
-import { createIngredientLookup, macrosForFood, macrosForIngredientPortion, ZERO_MACROS, findIngredientInLookup } from "@/utils/nutrition";
+import {
+  createIngredientLookup,
+  macrosForFood,
+  macrosForIngredientPortion,
+  ZERO_MACROS,
+  findIngredientInLookup,
+  type FoodRead,
+} from "@/utils/nutrition";
 import TagFilter from "@/components/common/TagFilter";
 
-function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} }) {
+type FoodTableProps = {
+  onFoodDoubleClick?: (food: FoodRead) => void;
+  onFoodCtrlClick?: (food: FoodRead) => void;
+};
+
+function FoodTable({ onFoodDoubleClick, onFoodCtrlClick }: FoodTableProps) {
   //#region States
   const {
     foods,
@@ -47,16 +78,35 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
     );
   };
 
-  const handleFoodDoubleClick = (food) => {
-    onFoodDoubleClick(food);
+  const handleFoodClick = (
+    event: React.MouseEvent<HTMLTableRowElement>,
+    food: FoodRead,
+  ) => {
+    if (event.ctrlKey) {
+      if (onFoodCtrlClick) {
+        onFoodCtrlClick(food);
+      } else {
+        setOpen({ ...open, [food.id]: !open[food.id] });
+      }
+      return;
+    }
+    setOpen({ ...open, [food.id]: !open[food.id] });
   };
 
-  const handleFoodClick = (event, food) => {
-    if (event.ctrlKey) {
-      onFoodCtrlClick(food);
-    } else {
-      setOpen({ ...open, [food.id]: !open[food.id] });
-    }
+  const handleFoodSelect = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    food: FoodRead,
+  ) => {
+    event.stopPropagation();
+    onFoodDoubleClick?.(food);
+  };
+
+  const handleFoodEdit = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    food: FoodRead,
+  ) => {
+    event.stopPropagation();
+    onFoodCtrlClick?.(food);
   };
 
   const handlePageChange = (event, newPage) => {
@@ -186,26 +236,57 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
               <TableCell>Fat</TableCell>
               <TableCell>Carbs</TableCell>
               <TableCell>Fiber</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentFoods.map((food) => (
+            {currentFoods.map((food) => {
+              const canEdit = Boolean(onFoodCtrlClick);
+              const canSelect = Boolean(onFoodDoubleClick);
+              const macros = calculateFoodMacros(food);
+              return (
                 <React.Fragment key={food.id}>
                   <TableRow
-                    onDoubleClick={() => handleFoodDoubleClick(food)}
+                    onDoubleClick={() => onFoodDoubleClick?.(food)}
                     onClick={(event) => handleFoodClick(event, food)}>
                     <TableCell>{open[food.id] ? <KeyboardArrowDown /> : <KeyboardArrowRight />}</TableCell>
                     <TableCell>{food.name}</TableCell>
-                    <TableCell>{formatCellNumber(calculateFoodMacros(food).calories)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateFoodMacros(food).protein)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateFoodMacros(food).fat)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateFoodMacros(food).carbs)}</TableCell>
-                    <TableCell>{formatCellNumber(calculateFoodMacros(food).fiber)}</TableCell>
+                    <TableCell>{formatCellNumber(macros.calories)}</TableCell>
+                    <TableCell>{formatCellNumber(macros.protein)}</TableCell>
+                    <TableCell>{formatCellNumber(macros.fat)}</TableCell>
+                    <TableCell>{formatCellNumber(macros.carbs)}</TableCell>
+                    <TableCell>{formatCellNumber(macros.fiber)}</TableCell>
+                    <TableCell align="right">
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        justifyContent="flex-end"
+                      >
+                        {canEdit && (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={(event) => handleFoodEdit(event, food)}
+                          >
+                            Edit
+                          </Button>
+                        )}
+                        {canSelect && (
+                          <Button
+                            variant="contained"
+                            size="small"
+                            onClick={(event) => handleFoodSelect(event, food)}
+                          >
+                            Select
+                          </Button>
+                        )}
+                      </Stack>
+                    </TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell
                       style={{ paddingBottom: 0, paddingTop: 0 }}
-                      colSpan={6}>
+                      colSpan={8}>
                       <Collapse
                         in={open[food.id]}
                         timeout="auto"
@@ -233,8 +314,10 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
                           </TableHead>
                           <TableBody>
                             {food.ingredients.map((ingredient) => {
-                              const dataIngredient =
-                              findIngredientInLookup(ingredientLookup, ingredient.ingredient_id);
+                              const dataIngredient = findIngredientInLookup(
+                                ingredientLookup,
+                                ingredient.ingredient_id,
+                              );
                               const unit =
                                 dataIngredient?.units.find(
                                   (u) => u.id === ingredient.unit_id
@@ -298,7 +381,8 @@ function FoodTable({ onFoodDoubleClick = () => {}, onFoodCtrlClick = () => {} })
                     </TableCell>
                   </TableRow>
                 </React.Fragment>
-              ))}
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>

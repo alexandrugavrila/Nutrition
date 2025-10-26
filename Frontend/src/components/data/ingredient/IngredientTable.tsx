@@ -1,13 +1,46 @@
 // IngredientTable.js
 
 import React, { useState } from "react";
-import { Box, TextField, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Paper, MenuItem, Select, TablePagination, Button, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import {
+  Box,
+  TextField,
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Paper,
+  MenuItem,
+  Select,
+  TablePagination,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Stack,
+} from "@mui/material";
 
 import { useData } from "@/contexts/DataContext";
 import { formatCellNumber } from "@/utils/utils";
 import TagFilter from "@/components/common/TagFilter";
+import type { IngredientRead } from "@/utils/nutrition";
 
-function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlClick = () => {} }) {
+type IngredientRow = IngredientRead & {
+  shoppingUnitId?: number | string | null;
+  units: NonNullable<IngredientRead["units"]>;
+};
+
+type IngredientTableProps = {
+  onIngredientDoubleClick?: (ingredient: IngredientRead) => void;
+  onIngredientCtrlClick?: (ingredient: IngredientRead) => void;
+};
+
+function IngredientTable({
+  onIngredientDoubleClick,
+  onIngredientCtrlClick,
+}: IngredientTableProps) {
   //#region States
   const {
     ingredients,
@@ -31,7 +64,7 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
     setSearch(event.target.value);
   };
 
-  const handleTagFilter = (ingredient) => {
+  const handleTagFilter = (ingredient: IngredientRow) => {
     if (selectedTags.length === 0) {
       return true; // Show all ingredients if no tags are selected
     }
@@ -40,14 +73,30 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
     );
   };
 
-  const handleIngredientDoubleClick = (ingredient) => {
-    onIngredientDoubleClick(ingredient);
+  const handleIngredientClick = (
+    event: React.MouseEvent<HTMLTableRowElement>,
+    ingredient: IngredientRow,
+  ) => {
+    if (event.ctrlKey && onIngredientCtrlClick) {
+      onIngredientCtrlClick(ingredient);
+      return;
+    }
   };
 
-  const handleIngredientClick = (event, ingredient) => {
-    if (event.ctrlKey) {
-      onIngredientCtrlClick(ingredient);
-    }
+  const handleIngredientSelect = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    ingredient: IngredientRow,
+  ) => {
+    event.stopPropagation();
+    onIngredientDoubleClick?.(ingredient);
+  };
+
+  const handleIngredientEdit = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    ingredient: IngredientRow,
+  ) => {
+    event.stopPropagation();
+    onIngredientCtrlClick?.(ingredient);
   };
 
   const handleUnitChange = (event, ingredientId) => {
@@ -81,7 +130,7 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
     setItemsPerPage(parseInt(event.target.value, 10));
     setCurrentPage(1); // Reset to first page when items per page changes
   };
-  const resolveSelectedUnit = (ingredient) => {
+  const resolveSelectedUnit = (ingredient: IngredientRow) => {
     if (!ingredient.units || ingredient.units.length === 0) {
       return null;
     }
@@ -201,21 +250,24 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
               <TableCell>Carbs</TableCell>
               <TableCell>Fat</TableCell>
               <TableCell>Fiber</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {currentIngredients.map((ingredient) => {
               const selectedUnit = resolveSelectedUnit(ingredient);
               const gramsPerUnit = selectedUnit?.grams ?? 1;
+              const canEdit = Boolean(onIngredientCtrlClick);
+              const canSelect = Boolean(onIngredientDoubleClick);
               return (
                 <TableRow
                   key={ingredient.id}
-                  onDoubleClick={() => handleIngredientDoubleClick(ingredient)}
+                  onDoubleClick={() => onIngredientDoubleClick?.(ingredient)}
                   onClick={(event) => handleIngredientClick(event, ingredient)}>
                   <TableCell>{ingredient.name}</TableCell>
                   <TableCell>
                     <Select
-          value={ingredient.shoppingUnitId ?? ""}
+                      value={ingredient.shoppingUnitId ?? ""}
                       size="small"
                       displayEmpty
                       renderValue={() => selectedUnit?.name ?? ""}
@@ -235,6 +287,32 @@ function IngredientTable({ onIngredientDoubleClick = () => {}, onIngredientCtrlC
                   <TableCell>{formatCellNumber((ingredient.nutrition?.carbohydrates ?? 0) * gramsPerUnit)}</TableCell>
                   <TableCell>{formatCellNumber((ingredient.nutrition?.fat ?? 0) * gramsPerUnit)}</TableCell>
                   <TableCell>{formatCellNumber((ingredient.nutrition?.fiber ?? 0) * gramsPerUnit)}</TableCell>
+                  <TableCell align="right">
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      justifyContent="flex-end"
+                    >
+                      {canEdit && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={(event) => handleIngredientEdit(event, ingredient)}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                      {canSelect && (
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={(event) => handleIngredientSelect(event, ingredient)}
+                        >
+                          Select
+                        </Button>
+                      )}
+                    </Stack>
+                  </TableCell>
                 </TableRow>
               );
             })}

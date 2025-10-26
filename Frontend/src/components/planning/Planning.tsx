@@ -43,8 +43,10 @@ import {
   ZERO_MACROS,
   findIngredientInLookup,
 } from "@/utils/nutrition";
-import type { IngredientRead } from "@/utils/nutrition";
+import type { FoodRead, IngredientRead } from "@/utils/nutrition";
 import IngredientModal from "@/components/common/IngredientModal";
+import IngredientTable from "@/components/data/ingredient/IngredientTable";
+import FoodTable from "@/components/data/food/FoodTable";
 import useHoverable from "@/hooks/useHoverable";
 import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type { PlanRead } from "@/utils/planApi";
@@ -74,11 +76,6 @@ const normalizePlanUnitId = (value: unknown): number => {
   }
   return GRAM_UNIT_SENTINEL;
 };
-
-const getUnitOptionValue = (unitId: number | null | undefined): string =>
-  unitId === null || unitId === undefined
-    ? String(GRAM_UNIT_SENTINEL)
-    : String(unitId);
 
 const toFiniteNumber = (value: unknown): number => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -183,18 +180,11 @@ function Planning() {
   const lastSavedPayloadRef = useRef<PlanPayload | null>(null);
   const [isDirty, setIsDirty] = useState(false);
 
-  const [selectedType, setSelectedType] = useSessionStorageState("planning-selected-type", "food");
-  const [selectedFoodId, setSelectedFoodId] = useSessionStorageState(
-    "planning-selected-food-id",
-    "",
-  );
-  const [selectedPortions, setSelectedPortions] = useSessionStorageState<number>("planning-selected-portions", 1);
-  const [selectedIngredientId, setSelectedIngredientId] = useSessionStorageState("planning-selected-ingredient-id", "");
-  const [selectedIngredientUnitId, setSelectedIngredientUnitId] = useSessionStorageState("planning-selected-ingredient-unit-id", "");
-  const [selectedIngredientAmount, setSelectedIngredientAmount] = useSessionStorageState<number>("planning-selected-ingredient-amount", 1);
   const [open, setOpen] = useSessionStorageState<Record<number, boolean>>("planning-open-state", () => ({}));
   const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
   const [editorIngredient, setEditorIngredient] = useState<IngredientRead | null>(null);
+  const [ingredientPickerOpen, setIngredientPickerOpen] = useState(false);
+  const [foodPickerOpen, setFoodPickerOpen] = useState(false);
 
   const hasContent = useMemo(
     () =>
@@ -230,47 +220,6 @@ function Planning() {
     });
   }, [targetMacros, macroKeys, activeMacro]);
 
-
-  useEffect(() => {
-    if (!selectedIngredientId) {
-      if (selectedIngredientUnitId !== "") {
-        setSelectedIngredientUnitId("");
-      }
-      return;
-    }
-
-    const ingredient = ingredients.find((ing) => String(ing.id) === String(selectedIngredientId));
-    if (!ingredient) {
-      if (selectedIngredientUnitId !== "") {
-        setSelectedIngredientUnitId("");
-      }
-      return;
-    }
-
-    const units = ingredient.units ?? [];
-    if (units.length === 0) {
-      if (selectedIngredientUnitId !== "") {
-        setSelectedIngredientUnitId("");
-      }
-      return;
-    }
-
-    const hasMatch = units.some(
-      (unit) => getUnitOptionValue(unit.id) === selectedIngredientUnitId,
-    );
-    if (!hasMatch) {
-      const fallback = units.find((unit) => Number(unit.grams) === 1) ?? units[0];
-      const fallbackValue = fallback ? getUnitOptionValue(fallback.id) : "";
-      if (fallbackValue !== selectedIngredientUnitId) {
-        setSelectedIngredientUnitId(fallbackValue);
-      }
-    }
-  }, [
-    ingredients,
-    selectedIngredientId,
-    selectedIngredientUnitId,
-    setSelectedIngredientUnitId,
-  ]);
 
   const handleOpenIngredientEditor = (ingredientId: string) => {
     const dataIngredient = findIngredientInLookup(ingredientLookup, ingredientId) ?? null;
@@ -619,60 +568,74 @@ function Planning() {
     }
   };
 
-  const handleAddItem = () => {
-    if (selectedType === "food") {
-      if (!selectedFoodId || selectedPortions <= 0) return;
-      const existingIndex = plan.findIndex(
-        (p) =>
-          p.type === "food" &&
-          String(p.foodId ?? "") === String(selectedFoodId ?? ""),
-      );
-      if (existingIndex >= 0) {
-        const updated = [...plan];
-        const existing = updated[existingIndex] as FoodPlanItem;
-        updated[existingIndex] = {
-          ...existing,
-          portions: existing.portions + selectedPortions,
-        };
-        setPlan(updated);
-      } else {
-        // Build default overrides from the selected food's ingredients
-        const food = foods.find(
-          (f) => String(f.id ?? "") === String(selectedFoodId ?? ""),
-        );
-        const overrides: Record<string, FoodOverride> = {};
-        food?.ingredients.forEach((ing) => {
-          overrides[ing.ingredient_id] = {
-            unitId: normalizePlanUnitId(ing.unit_id),
-            quantity: ing.unit_quantity ?? 0,
-          };
-        });
-        const newItem: FoodPlanItem = {
-          type: "food",
-          foodId: selectedFoodId,
-          portions: selectedPortions,
-          overrides,
-        };
-        setPlan([...plan, newItem]);
+  const handleAddIngredientToPlan = useCallback(
+    (ingredient: IngredientRead) => {
+      if (!ingredient || ingredient.id === null || ingredient.id === undefined) {
+        return;
       }
-      setSelectedFoodId("");
-      setSelectedPortions(1);
-    } else {
-      if (!selectedIngredientId || selectedIngredientAmount <= 0) return;
-      setPlan([
-        ...plan,
+      const ingredientId = String(ingredient.id);
+      const fallbackUnitId = fallbackUnitIdForIngredient(ingredient);
+      setPlan((prev) => [
+        ...prev,
         {
           type: "ingredient",
-          ingredientId: selectedIngredientId,
-          unitId: normalizePlanUnitId(selectedIngredientUnitId),
-          amount: selectedIngredientAmount,
-        },
+          ingredientId,
+          unitId: fallbackUnitId,
+          amount: 1,
+        } as IngredientPlanItem,
       ]);
-      setSelectedIngredientId("");
-      setSelectedIngredientUnitId("");
-      setSelectedIngredientAmount(1);
-    }
-  };
+      setIngredientPickerOpen(false);
+    },
+    [setPlan, setIngredientPickerOpen],
+  );
+
+  const handleAddFoodToPlan = useCallback(
+    (food: FoodRead) => {
+      if (!food || food.id === null || food.id === undefined) {
+        return;
+      }
+      const foodId = String(food.id);
+      setPlan((prev) => {
+        const existingIndex = prev.findIndex(
+          (item) => item.type === "food" && String(item.foodId ?? "") === foodId,
+        );
+        if (existingIndex >= 0) {
+          const next = [...prev];
+          const existing = next[existingIndex] as FoodPlanItem;
+          next[existingIndex] = {
+            ...existing,
+            portions: existing.portions + 1,
+          };
+          return next;
+        }
+
+        const overrides: Record<string, FoodOverride> = {};
+        (food.ingredients ?? []).forEach((ing) => {
+          if (!ing) return;
+          const ingredientKey = String(ing.ingredient_id);
+          overrides[ingredientKey] = {
+            unitId: normalizePlanUnitId(ing.unit_id),
+            quantity:
+              typeof ing.unit_quantity === "number"
+                ? ing.unit_quantity
+                : Number(ing.unit_quantity ?? 0),
+          };
+        });
+
+        return [
+          ...prev,
+          {
+            type: "food",
+            foodId,
+            portions: Math.max(1, Number.isFinite(days) ? Math.floor(days) : 1),
+            overrides,
+          } as FoodPlanItem,
+        ];
+      });
+      setFoodPickerOpen(false);
+    },
+    [days, setPlan, setFoodPickerOpen],
+  );
 
   const handleQuantityChange = (
     index: number,
@@ -985,126 +948,22 @@ function Planning() {
         ))}
       </Box>
 
-      <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2 }}>
-        <TextField
-          select
-          label="Type"
-          value={selectedType}
-          onChange={(e) => setSelectedType(e.target.value)}
-          sx={{ minWidth: 120 }}
-        >
-          <MenuItem value="food">Food</MenuItem>
-          <MenuItem value="ingredient">Ingredient</MenuItem>
-        </TextField>
-        {selectedType === "food" ? (
-          <>
-            <TextField
-              select
-              label="Food"
-              value={selectedFoodId}
-              onChange={(e) => setSelectedFoodId(String(e.target.value))}
-              sx={{ minWidth: 200 }}
-            >
-              {foods.map((food) => (
-                <MenuItem key={food.id} value={String(food.id)}>
-                  {food.name}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              type="number"
-              label="Portions"
-              value={selectedPortions}
-              onChange={(e) =>
-                setSelectedPortions(parseFloat(e.target.value) || 0)
-              }
-              sx={{ width: 100 }}
-              error={selectedPortions <= 0}
-              helperText={
-                selectedPortions <= 0 ? "Portions must be greater than 0" : ""
-              }
-            />
-          </>
-        ) : (
-          <>
-            <TextField
-              select
-              label="Ingredient"
-              value={selectedIngredientId}
-              onChange={(e) => {
-                const id = e.target.value;
-                setSelectedIngredientId(id);
-                const ing = ingredients.find((i) => String(i.id) === String(id));
-                const fallbackUnit =
-                  ing?.units?.find((u) => Number(u.grams) === 1) ?? ing?.units?.[0];
-                setSelectedIngredientUnitId(
-                  fallbackUnit ? getUnitOptionValue(fallbackUnit.id) : "",
-                );
-              }}
-              sx={{ minWidth: 200 }}
-            >
-              {ingredients.map((ingredient) => (
-                <MenuItem key={ingredient.id} value={String(ingredient.id)}>
-                  {ingredient.name}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
-              label="Unit"
-              value={selectedIngredientUnitId}
-              onChange={(e) => setSelectedIngredientUnitId(e.target.value)}
-              sx={{ minWidth: 120 }}
-              key={`add-unit-${
-                (ingredients.find((i) => String(i.id) === String(selectedIngredientId))?.units?.length) ??
-                0
-              }`}
-            >
-              {(ingredients.find((i) => String(i.id) === String(selectedIngredientId))?.units || []).map(
-                (unit) => {
-                  const optionValue = getUnitOptionValue(unit.id);
-                  return (
-                    <MenuItem
-                      key={unit.id ?? `${selectedIngredientId ?? "ingredient"}-${unit.name}`}
-                      value={optionValue}
-                    >
-                      {unit.name}
-                    </MenuItem>
-                  );
-                },
-              )}
-            </TextField>
-            <TextField
-              type="number"
-              label="Amount"
-              value={selectedIngredientAmount}
-              onChange={(e) =>
-                setSelectedIngredientAmount(
-                  parseFloat(e.target.value) || 0
-                )
-              }
-              sx={{ width: 100 }}
-              error={selectedIngredientAmount <= 0}
-              helperText={
-                selectedIngredientAmount <= 0
-                  ? "Amount must be greater than 0"
-                  : ""
-              }
-            />
-          </>
-        )}
+      <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap" }}>
         <Button
           variant="contained"
-          onClick={handleAddItem}
-          disabled={
-            selectedType === "food"
-              ? !selectedFoodId || selectedPortions <= 0
-              : !selectedIngredientId || selectedIngredientAmount <= 0
-          }
+          startIcon={<Add />}
+          onClick={() => setIngredientPickerOpen(true)}
         >
-          Add
+          Add Ingredient
         </Button>
-      </Box>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => setFoodPickerOpen(true)}
+        >
+          Add Food
+        </Button>
+      </Stack>
 
       <TableContainer component={Paper} sx={{ mb: 3 }}>
         <Table>
@@ -1399,6 +1258,39 @@ function Planning() {
         </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog
+        open={ingredientPickerOpen}
+        onClose={() => setIngredientPickerOpen(false)}
+        maxWidth="lg"
+        scroll="body"
+        fullWidth
+      >
+        <IngredientTable
+          onIngredientDoubleClick={(ingredient) => {
+            handleAddIngredientToPlan(ingredient as IngredientRead);
+          }}
+          onIngredientCtrlClick={(ingredient) => {
+            if (ingredient?.id !== undefined && ingredient?.id !== null) {
+              handleOpenIngredientEditor(String(ingredient.id));
+            }
+          }}
+        />
+      </Dialog>
+
+      <Dialog
+        open={foodPickerOpen}
+        onClose={() => setFoodPickerOpen(false)}
+        maxWidth="lg"
+        scroll="body"
+        fullWidth
+      >
+        <FoodTable
+          onFoodDoubleClick={(food) => {
+            handleAddFoodToPlan(food as FoodRead);
+          }}
+        />
+      </Dialog>
 
       <Box>
         <h2>Summary</h2>

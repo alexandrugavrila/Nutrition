@@ -43,9 +43,11 @@ A full-stack nutrition planning and tracking app built with:
    ```pwsh
    pwsh ./scripts/docker/compose.ps1 up data -test
    ```
-   - Replace `-test` with `-prod` to restore the latest branch backup (errors if no dump is available).
-     When no dump exists yet, run the CSV importer manually after the stack starts: `pwsh ./scripts/db/import-from-csv.ps1`
-     (or `./scripts/db/import-from-csv.sh`).
+  - Replace `-test` with `-prod` to restore the latest branch backup. The compose script calls
+    `restore.ps1` and exits if that step fails (for example, when no dump is available), so rerun the
+    command to relaunch the stack before importing data.
+    When no dump exists yet, reseed manually once the stack is running: `pwsh ./scripts/db/import-from-csv.ps1`
+    (or `./scripts/db/import-from-csv.sh`).
    - Add `type -test` to run on the dedicated test ports (used by the end-to-end suite).
 
    The script prints the branch-specific ports and waits until the services are ready:
@@ -126,27 +128,100 @@ Detailed endpoint documentation is available at `http://localhost:<DEV_BACKEND_P
 
 ```mermaid
 erDiagram
-  INGREDIENT ||--o{ INGREDIENT_UNIT : has
-  INGREDIENT ||--|| NUTRITION : contains
+  INGREDIENT ||--o{ INGREDIENT_UNIT : defines
+  INGREDIENT ||--|| NUTRITION : has
   INGREDIENT ||--o{ INGREDIENT_TAG : tagged_with
   INGREDIENT_TAG }o--|| POSSIBLE_INGREDIENT_TAG : references
+  INGREDIENT ||--o| INGREDIENT_SHOPPING_UNIT : shopping_pref
+  INGREDIENT_SHOPPING_UNIT ||--|| INGREDIENT_UNIT : selects_optional
   FOOD ||--o{ FOOD_INGREDIENT : includes
   FOOD_INGREDIENT }o--|| INGREDIENT : uses
+  FOOD_INGREDIENT }o--|| INGREDIENT_UNIT : portioned_with
   FOOD ||--o{ FOOD_TAG : tagged_with
   FOOD_TAG }o--|| POSSIBLE_FOOD_TAG : references
+  PLAN {
+    id integer
+    label varchar
+    payload json
+    created_at timestamptz
+    updated_at timestamptz
+  }
 ```
 
 </details>
 
-Frontend state mirrors the API schema, so food tags reference the shared `PossibleFoodTag` definitions surfaced by `/api/foods/possible_tags`.
+The ingredient shopping unit is optional per ingredient, but when present it must reference one of the ingredient's units; food ingredient quantities can also reference those shared units to keep serving sizes consistent across foods.
+
+Frontend state mirrors the API schema, so food tags reference the shared `PossibleFoodTag` definitions surfaced by `/api/foods/possible_tags` and plan records reuse the persisted JSON payloads exposed by `/api/plans`.
 
 <details>
 <summary>Frontend Structures (Mermaid)</summary>
 
 ```mermaid
 classDiagram
-  class Ingredient { id; name; Nutrition nutrition; IngredientUnit[] units }
-  class Food { id; name; FoodIngredient[] ingredients; PossibleFoodTag[] tags }
+  class Nutrition {
+    calories
+    fat
+    carbohydrates
+    protein
+    fiber
+  }
+
+  class IngredientUnit {
+    id (optional)
+    ingredient_id (optional)
+    name
+    grams
+  }
+
+  class PossibleIngredientTag {
+    id (optional)
+    name
+  }
+
+  class Ingredient {
+    id
+    name
+    nutrition (optional)
+    units
+    tags
+    shopping_unit (optional)
+  }
+
+  class FoodIngredient {
+    ingredient_id
+    unit_id (optional)
+    unit_quantity (optional)
+  }
+
+  class PossibleFoodTag {
+    id (optional)
+    name
+  }
+
+  class Food {
+    id
+    name
+    ingredients
+    tags
+  }
+
+  class Plan {
+    id
+    label
+    payload
+    created_at
+    updated_at
+  }
+
+  Ingredient "1" --> "0..1" Nutrition
+  Ingredient "1" --> "0..*" IngredientUnit : units
+  Ingredient "1" --> "0..*" PossibleIngredientTag : tags
+  Ingredient "1" --> "0..1" IngredientUnit : shopping_unit
+  Food "1" --> "0..*" FoodIngredient : ingredients
+  FoodIngredient "*" --> "1" Ingredient : ingredient
+  FoodIngredient "*" --> "0..1" IngredientUnit : unit
+  Food "1" --> "0..*" PossibleFoodTag : tags
 ```
 
 </details>

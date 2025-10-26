@@ -30,6 +30,7 @@ const createInitialState = () => ({
   foodToEdit: createEmptyFood(),
   needsClearForm: false,
   needsFillForm: false,
+  recipeYield: "1",
 });
 
 const reducer = (state, action) => {
@@ -46,6 +47,8 @@ const reducer = (state, action) => {
       return { ...state, needsFillForm: action.payload };
     case "SET_CONFIRMATION_DIALOG":
       return { ...state, openConfirmationDialog: action.payload };
+    case "SET_RECIPE_YIELD":
+      return { ...state, recipeYield: action.payload };
     case "UPDATE_UNIT_QUANTITY": {
       const updatedIngredients = [...state.foodToEdit.ingredients];
       updatedIngredients[action.payload.index].unit_quantity = action.payload.unit_quantity;
@@ -61,7 +64,7 @@ function FoodForm({ foodToEditData }) {
   const { setFoodsNeedsRefetch, startRequest, endRequest } = useData();
   const [state, dispatch] = useSessionStorageReducer(reducer, createInitialState, "food-form-state-v1");
 
-  const { isOpen, openConfirmationDialog, isEditMode, foodToEdit, needsClearForm, needsFillForm } = state;
+  const { isOpen, openConfirmationDialog, isEditMode, foodToEdit, needsClearForm, needsFillForm, recipeYield } = state;
   const [isSaving, setIsSaving] = useState(false);
   const saveTimerRef = useRef(/** @type {any} */ (null));
   const isInitialRenderRef = useRef(true);
@@ -80,7 +83,15 @@ function FoodForm({ foodToEditData }) {
     dispatch({ type: "SET_EDIT_MODE", payload: false });
     dispatch({ type: "SET_FOOD", payload: createEmptyFood() });
     dispatch({ type: "SET_CLEAR_FORM", payload: true });
+    dispatch({ type: "SET_RECIPE_YIELD", payload: "1" });
   }, [dispatch]);
+
+  const handleRecipeYieldChange = useCallback(
+    (value) => {
+      dispatch({ type: "SET_RECIPE_YIELD", payload: value });
+    },
+    [dispatch]
+  );
 
   const handleFoodAction = () => {
     startRequest();
@@ -103,20 +114,34 @@ function FoodForm({ foodToEditData }) {
       .finally(endRequest);
   };
 
-  const buildFoodPayload = (food) => ({
-    name: food.name,
-    ingredients: food.ingredients
-      .filter(({ ingredient_id, unit_id }) => typeof ingredient_id === "number" && (unit_id === null || typeof unit_id === "number"))
-      .map(({ ingredient_id, unit_id, unit_quantity }) => ({
-        ingredient_id,
-        // Normalize synthetic 1g selection (id 0) to null for DB
-        unit_id: unit_id === 0 ? null : unit_id,
-        unit_quantity,
-      })),
-    tags: (food.tags || [])
-      .filter((tag) => typeof tag.id === "number")
-      .map((tag) => ({ id: tag.id })),
-  });
+  const buildFoodPayload = (food) => {
+    const parsedYield = parseFloat(recipeYield);
+    const normalizedYield = Number.isFinite(parsedYield) && parsedYield > 0 ? parsedYield : 1;
+    const normalizationFactor = isEditMode ? 1 : normalizedYield;
+
+    return {
+      name: food.name,
+      ingredients: food.ingredients
+        .filter(
+          ({ ingredient_id, unit_id }) => typeof ingredient_id === "number" && (unit_id === null || typeof unit_id === "number")
+        )
+        .map(({ ingredient_id, unit_id, unit_quantity }) => {
+          const numericQuantity = Number(unit_quantity);
+          const safeQuantity = Number.isFinite(numericQuantity) ? numericQuantity : 0;
+          const normalizedQuantity = normalizationFactor === 1 ? safeQuantity : safeQuantity / normalizationFactor;
+
+          return {
+            ingredient_id,
+            // Normalize synthetic 1g selection (id 0) to null for DB
+            unit_id: unit_id === 0 ? null : unit_id,
+            unit_quantity: normalizedQuantity,
+          };
+        }),
+      tags: (food.tags || [])
+        .filter((tag) => typeof tag.id === "number")
+        .map((tag) => ({ id: tag.id })),
+    };
+  };
 
   // Debounced autosave for edit mode only
   useEffect(() => {
@@ -205,6 +230,7 @@ function FoodForm({ foodToEditData }) {
       dispatch({ type: "SET_EDIT_MODE", payload: true });
       dispatch({ type: "OPEN_FORM", payload: true });
       dispatch({ type: "SET_FILL_FORM", payload: true });
+      dispatch({ type: "SET_RECIPE_YIELD", payload: "1" });
     }
   }, [foodToEditData, dispatch]); // Fill foodToEdit and set form state when foodToEditData changes
 
@@ -249,6 +275,9 @@ function FoodForm({ foodToEditData }) {
               food={foodToEdit}
               dispatch={dispatch}
               needsClearForm={needsClearForm}
+              recipeYield={recipeYield}
+              onRecipeYieldChange={handleRecipeYieldChange}
+              isEditMode={isEditMode}
             />
           </>
 
