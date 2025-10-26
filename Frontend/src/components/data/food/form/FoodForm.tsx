@@ -1,12 +1,10 @@
 // @ts-check
-import React, { useEffect, useCallback, useMemo, useRef, useState } from "react";
+import React, { useEffect, useCallback, useMemo, useRef } from "react";
 import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
-import SaveStatusChip from "@/components/common/SaveStatusChip";
 import { useSessionStorageReducer } from "@/hooks/useSessionStorageState";
 
 import { useData } from "@/contexts/DataContext";
 import { handleFetchRequest } from "@/utils/utils";
-import apiClient from "@/apiClient";
 
 import FoodNameForm from "./FoodNameForm";
 import FoodIngredientsForm from "./FoodIngredientsForm";
@@ -65,8 +63,6 @@ function FoodForm({ foodToEditData }) {
   const [state, dispatch] = useSessionStorageReducer(reducer, createInitialState, "food-form-state-v1");
 
   const { isOpen, openConfirmationDialog, isEditMode, foodToEdit, needsClearForm, needsFillForm, recipeYield } = state;
-  const [isSaving, setIsSaving] = useState(false);
-  const saveTimerRef = useRef(/** @type {any} */ (null));
   const isInitialRenderRef = useRef(true);
   const previousIsOpenRef = useRef(isOpen);
 
@@ -143,45 +139,6 @@ function FoodForm({ foodToEditData }) {
     };
   };
 
-  // Debounced autosave for edit mode only
-  useEffect(() => {
-    if (!isOpen) return;
-    if (!isEditMode) return; // avoid creating drafts implicitly for new foods
-    if (!hasContent) return; // nothing meaningful to save
-    if (typeof foodToEdit.id !== "number") return; // need a persisted id
-
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
-      setIsSaving(true);
-      startRequest();
-      try {
-        const payload = buildFoodPayload(foodToEdit);
-        await apiClient
-          .path(`/api/foods/${foodToEdit.id}`)
-          .method("put")
-          .create()({ body: payload });
-        setFoodsNeedsRefetch(true);
-      } catch (e) {
-        console.error("Autosave error:", e);
-      } finally {
-        endRequest();
-        setIsSaving(false);
-      }
-    }, 600);
-
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    };
-  }, [
-    foodToEdit,
-    isOpen,
-    isEditMode,
-    hasContent,
-    startRequest,
-    endRequest,
-    setFoodsNeedsRefetch,
-  ]);
-
   const handleFoodDelete = () => {
     if (foodToEdit) {
       startRequest();
@@ -257,7 +214,6 @@ function FoodForm({ foodToEditData }) {
   return (
     <div>
       <Paper sx={{ position: "relative" }}>
-        <SaveStatusChip show={isOpen && isEditMode && hasContent} saving={isSaving} />
         <Button
           sx={{ display: "block", mx: "auto" }}
           onClick={() => dispatch({ type: "OPEN_FORM", payload: !isOpen })}
