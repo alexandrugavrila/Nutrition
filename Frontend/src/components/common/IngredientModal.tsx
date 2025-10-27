@@ -2,7 +2,6 @@ import React from "react";
 import { Dialog, DialogTitle, DialogContent, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
-import SaveStatusChip from "./SaveStatusChip";
 import IngredientEditor from "@/components/data/ingredient/form/IngredientEditor";
 import type { components } from "@/api-types";
 
@@ -20,7 +19,6 @@ function IngredientModal({ open, mode, ingredient = null, onClose }: IngredientM
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { position: "relative" } }}>
-      <SaveStatusChip />
       <DialogTitle sx={{ pr: 6 }}>
         {title}
         <IconButton
