@@ -274,28 +274,30 @@ function Cooking() {
       "cooking-actuals",
       () => ({ ...initialActualState }),
     );
-  const [completedPlanIndices, setCompletedPlanIndices] = useState<Set<number>>(
+  const [completedPlanKeys, setCompletedPlanKeys] = useState<Set<string>>(
     () => new Set(),
   );
-  const [pendingCompletionIndices, setPendingCompletionIndices] =
-    useState<Set<number>>(() => new Set());
+  const [pendingCompletionKeys, setPendingCompletionKeys] =
+    useState<Set<string>>(() => new Set());
   const [completionError, setCompletionError] = useState<string | null>(null);
 
   useEffect(() => {
-    setCompletedPlanIndices((prev) => {
-      const next = new Set<number>();
-      plan.forEach((_, index) => {
-        if (prev.has(index)) {
-          next.add(index);
+    setCompletedPlanKeys((prev) => {
+      const next = new Set<string>();
+      plan.forEach((item, index) => {
+        const key = planItemKey(item, index);
+        if (prev.has(key)) {
+          next.add(key);
         }
       });
       return next;
     });
-    setPendingCompletionIndices((prev) => {
-      const next = new Set<number>();
-      plan.forEach((_, index) => {
-        if (prev.has(index)) {
-          next.add(index);
+    setPendingCompletionKeys((prev) => {
+      const next = new Set<string>();
+      plan.forEach((item, index) => {
+        const key = planItemKey(item, index);
+        if (prev.has(key)) {
+          next.add(key);
         }
       });
       return next;
@@ -305,9 +307,9 @@ function Cooking() {
   const activePlanEntries = useMemo(
     () =>
       plan
-        .map((item, index) => ({ item, index }))
-        .filter(({ index }) => !completedPlanIndices.has(index)),
-    [plan, completedPlanIndices],
+        .map((item, index) => ({ item, index, key: planItemKey(item, index) }))
+        .filter(({ key }) => !completedPlanKeys.has(key)),
+    [plan, completedPlanKeys],
   );
 
   const sanitizeActualState = useCallback(
@@ -572,21 +574,22 @@ function Cooking() {
 
   const markItemComplete = useCallback(
     async (item: PlanItem, index: number) => {
-      if (pendingCompletionIndices.has(index)) {
+      const planKey = planItemKey(item, index);
+      if (pendingCompletionKeys.has(planKey)) {
         return;
       }
       setCompletionError(null);
-      setPendingCompletionIndices((prev) => {
+      setPendingCompletionKeys((prev) => {
         const next = new Set(prev);
-        next.add(index);
+        next.add(planKey);
         return next;
       });
-      setCompletedPlanIndices((prev) => {
-        if (prev.has(index)) {
+      setCompletedPlanKeys((prev) => {
+        if (prev.has(planKey)) {
           return prev;
         }
         const next = new Set(prev);
-        next.add(index);
+        next.add(planKey);
         return next;
       });
 
@@ -721,18 +724,18 @@ function Cooking() {
               });
             }
           } else {
-            const ingredientKey = planItemKey(item, index);
+            const ingredientKey = planKey;
             delete nextTotals[ingredientKey];
           }
           return { portions: nextPortions, ingredientTotals: nextTotals };
         });
       } catch (error) {
-        setCompletedPlanIndices((prev) => {
-          if (!prev.has(index)) {
+        setCompletedPlanKeys((prev) => {
+          if (!prev.has(planKey)) {
             return prev;
           }
           const next = new Set(prev);
-          next.delete(index);
+          next.delete(planKey);
           return next;
         });
         const fallbackMessage = "Failed to mark item complete.";
@@ -742,12 +745,12 @@ function Cooking() {
           setCompletionError(fallbackMessage);
         }
       } finally {
-        setPendingCompletionIndices((prev) => {
-          if (!prev.has(index)) {
+        setPendingCompletionKeys((prev) => {
+          if (!prev.has(planKey)) {
             return prev;
           }
           const next = new Set(prev);
-          next.delete(index);
+          next.delete(planKey);
           return next;
         });
       }
@@ -758,7 +761,7 @@ function Cooking() {
       computeFoodActualMacros,
       foodLookup,
       ingredientLookup,
-      pendingCompletionIndices,
+      pendingCompletionKeys,
       setActualState,
     ],
   );
@@ -806,7 +809,7 @@ function Cooking() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {activePlanEntries.map(({ item, index }) => {
+                    {activePlanEntries.map(({ item, index, key }) => {
                       if (item.type === "food") {
                         const foodItem = item as FoodPlanItem;
                         const food = foodLookup.get(String(foodItem.foodId ?? ""));
@@ -831,12 +834,12 @@ function Cooking() {
                           foodItem.portions,
                           "portion",
                         );
-                        const completionPending = pendingCompletionIndices.has(index);
+                        const completionPending = pendingCompletionKeys.has(key);
                         const foodCompletionDisabled =
                           !food || actualPortions <= 0 || completionPending;
 
                         return (
-                          <React.Fragment key={`food-${index}-${foodItem.foodId}`}>
+                          <React.Fragment key={key}>
                             <TableRow sx={{ backgroundColor: "action.hover" }}>
                               <TableCell sx={{ fontWeight: 600 }}>
                                 {food?.name ?? "Unnamed food"}
@@ -1166,7 +1169,7 @@ function Cooking() {
                   }
 
                       return (
-                    <TableRow key={`ingredient-${index}-${ingredientItem.ingredientId}`}>
+                    <TableRow key={key}>
                       <TableCell>{ingredient?.name ?? "Ingredient"}</TableCell>
                       <TableCell>
                         <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -1263,7 +1266,7 @@ function Cooking() {
                             disabled={
                               !ingredient ||
                               measurement.quantity <= 0 ||
-                              pendingCompletionIndices.has(index)
+                              pendingCompletionKeys.has(key)
                             }
                         >
                             Mark complete
