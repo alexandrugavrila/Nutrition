@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
 from pydantic import ConfigDict, model_validator
@@ -195,6 +195,54 @@ class StoredFoodConsume(SQLModel):
     portions: float
 
 
+class DailyLogEntryBase(SQLModel):
+    """Shared fields for daily log entry payloads."""
+
+    user_id: str
+    log_date: date
+    stored_food_id: Optional[int] = None
+    ingredient_id: Optional[int] = None
+    food_id: Optional[int] = None
+    portions_consumed: float
+    calories: float
+    protein: float
+    carbohydrates: float
+    fat: float
+    fiber: float
+
+    @model_validator(mode="after")
+    def _validate_source(self) -> "DailyLogEntryBase":
+        """Ensure exactly one source reference is provided."""
+
+        provided = [
+            self.stored_food_id is not None,
+            self.ingredient_id is not None,
+            self.food_id is not None,
+        ]
+        if sum(provided) != 1:
+            raise ValueError(
+                "Provide exactly one of stored_food_id, ingredient_id, or food_id.",
+            )
+        if self.portions_consumed <= 0:
+            raise ValueError("portions_consumed must be greater than zero")
+        return self
+
+
+class DailyLogEntryCreate(DailyLogEntryBase):
+    """Schema for creating a new daily log entry."""
+
+    pass
+
+
+class DailyLogEntryRead(DailyLogEntryBase):
+    """Schema returned when reading daily log entries."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime
+
+
 __all__ = [
     "NutritionCreate",
     "IngredientUnitCreate",
@@ -213,4 +261,6 @@ __all__ = [
     "StoredFoodCreate",
     "StoredFoodRead",
     "StoredFoodConsume",
+    "DailyLogEntryCreate",
+    "DailyLogEntryRead",
 ]

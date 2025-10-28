@@ -140,12 +140,95 @@ export interface paths {
      */
     post: operations["consume_stored_food_api_stored_food__stored_food_id__consume_post"];
   };
+  "/api/logs/{log_date}": {
+    /**
+     * List Daily Logs
+     * @description Return all log entries for a specific day.
+     */
+    get: operations["list_daily_logs_api_logs__log_date__get"];
+  };
+  "/api/logs/": {
+    /**
+     * Create Daily Log
+     * @description Persist a new daily log entry.
+     */
+    post: operations["create_daily_log_api_logs__post"];
+  };
 }
 
 export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
+    /**
+     * DailyLogEntryCreate
+     * @description Schema for creating a new daily log entry.
+     */
+    DailyLogEntryCreate: {
+      /** User Id */
+      user_id: string;
+      /**
+       * Log Date
+       * Format: date
+       */
+      log_date: string;
+      /** Stored Food Id */
+      stored_food_id?: number | null;
+      /** Ingredient Id */
+      ingredient_id?: number | null;
+      /** Food Id */
+      food_id?: number | null;
+      /** Portions Consumed */
+      portions_consumed: number;
+      /** Calories */
+      calories: number;
+      /** Protein */
+      protein: number;
+      /** Carbohydrates */
+      carbohydrates: number;
+      /** Fat */
+      fat: number;
+      /** Fiber */
+      fiber: number;
+    };
+    /**
+     * DailyLogEntryRead
+     * @description Schema returned when reading daily log entries.
+     */
+    DailyLogEntryRead: {
+      /** User Id */
+      user_id: string;
+      /**
+       * Log Date
+       * Format: date
+       */
+      log_date: string;
+      /** Stored Food Id */
+      stored_food_id?: number | null;
+      /** Ingredient Id */
+      ingredient_id?: number | null;
+      /** Food Id */
+      food_id?: number | null;
+      /** Portions Consumed */
+      portions_consumed: number;
+      /** Calories */
+      calories: number;
+      /** Protein */
+      protein: number;
+      /** Carbohydrates */
+      carbohydrates: number;
+      /** Fat */
+      fat: number;
+      /** Fiber */
+      fiber: number;
+      /** Id */
+      id: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
     /**
      * FoodCreate
      * @description Schema for creating a food.
@@ -1052,6 +1135,59 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["StoredFoodRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * List Daily Logs
+   * @description Return all log entries for a specific day.
+   */
+  list_daily_logs_api_logs__log_date__get: {
+    parameters: {
+      query?: {
+        user_id?: string | null;
+      };
+      path: {
+        log_date: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["DailyLogEntryRead"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Create Daily Log
+   * @description Persist a new daily log entry.
+   */
+  create_daily_log_api_logs__post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DailyLogEntryCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        content: {
+          "application/json": components["schemas"]["DailyLogEntryRead"];
         };
       };
       /** @description Validation Error */
