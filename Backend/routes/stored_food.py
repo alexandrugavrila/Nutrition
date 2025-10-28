@@ -1,0 +1,115 @@
+"""Routes for managing stored food entries."""
+
+from __future__ import annotations
+
+from datetime import date, datetime, timezone
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlmodel import Session, select
+from sqlalchemy import func
+
+from ..db import get_db
+from ..models import (
+    Food,
+    Ingredient,
+    StoredFood,
+    StoredFoodConsume,
+    StoredFoodCreate,
+    StoredFoodRead,
+)
+
+router = APIRouter(prefix="/stored_food", tags=["stored_food"])
+
+
+def _apply_filters(
+    statement,
+    user_id: Optional[str],
+    only_available: bool,
+    day: Optional[date],
+):
+    """Apply list filters to the stored food select statement."""
+
+    if user_id:
+        statement = statement.where(StoredFood.user_id == user_id)
+    if only_available:
+        statement = statement.where(StoredFood.remaining_portions > 0)
+    if day:
+        statement = statement.where(func.date(StoredFood.prepared_at) == day)
+    return statement
+
+
+@router.post("/", response_model=StoredFoodRead, status_code=201)
+def create_stored_food(
+    payload: StoredFoodCreate, db: Session = Depends(get_db)
+) -> StoredFoodRead:
+    """Persist a new stored food entry."""
+
+    data = payload.model_dump(exclude_unset=True)
+    remaining = data.pop("remaining_portions", None)
+    prepared_at = data.pop("prepared_at", None)
+
+    if data.get("food_id") is not None and db.get(Food, data["food_id"]) is None:
+        raise HTTPException(status_code=404, detail="Food not found")
+    if data.get("ingredient_id") is not None and db.get(Ingredient, data["ingredient_id"]) is None:
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+
+    stored_food = StoredFood(**data)
+    if prepared_at is not None:
+        stored_food.prepared_at = prepared_at
+
+    if remaining is None:
+        remaining = stored_food.prepared_portions
+
+    stored_food.remaining_portions = max(0.0, float(remaining))
+    stored_food.is_finished = stored_food.remaining_portions <= 0
+    if stored_food.is_finished:
+        stored_food.completed_at = datetime.now(timezone.utc)
+
+    db.add(stored_food)
+    db.commit()
+    db.refresh(stored_food)
+    return StoredFoodRead.model_validate(stored_food)
+
+
+@router.get("/", response_model=List[StoredFoodRead])
+def list_stored_food(
+    db: Session = Depends(get_db),
+    user_id: Optional[str] = Query(default=None),
+    only_available: bool = Query(default=False),
+    day: Optional[date] = Query(default=None),
+) -> List[StoredFoodRead]:
+    """Retrieve stored food entries with optional filters."""
+
+    statement = select(StoredFood).order_by(StoredFood.prepared_at.desc())
+    statement = _apply_filters(statement, user_id, only_available, day)
+    results = db.exec(statement).all()
+    return [StoredFoodRead.model_validate(item) for item in results]
+
+
+@router.post("/{stored_food_id}/consume", response_model=StoredFoodRead)
+def consume_stored_food(
+    stored_food_id: int,
+    payload: StoredFoodConsume,
+    db: Session = Depends(get_db),
+) -> StoredFoodRead:
+    """Consume portions from a stored food entry."""
+
+    stored_food = db.get(StoredFood, stored_food_id)
+    if not stored_food:
+        raise HTTPException(status_code=404, detail="Stored food not found")
+
+    if payload.portions <= 0:
+        raise HTTPException(status_code=400, detail="Portions must be greater than zero")
+
+    if stored_food.remaining_portions <= 0:
+        raise HTTPException(status_code=400, detail="No portions remaining")
+
+    stored_food.remaining_portions = max(0.0, stored_food.remaining_portions - payload.portions)
+    stored_food.is_finished = stored_food.remaining_portions <= 0
+    if stored_food.is_finished:
+        stored_food.completed_at = datetime.now(timezone.utc)
+    db.add(stored_food)
+    db.commit()
+    db.refresh(stored_food)
+    return StoredFoodRead.model_validate(stored_food)

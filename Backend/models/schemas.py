@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, model_validator
 from sqlmodel import SQLModel, Field
 
 from .ingredient_unit import IngredientUnit
@@ -146,6 +146,55 @@ class PlanRead(SQLModel):
     updated_at: datetime
 
 
+class StoredFoodBase(SQLModel):
+    """Common fields shared by stored food payloads."""
+
+    label: Optional[str] = None
+    user_id: str
+    food_id: Optional[int] = None
+    ingredient_id: Optional[int] = None
+    prepared_portions: float
+    per_portion_calories: float
+    per_portion_protein: float
+    per_portion_carbohydrates: float
+    per_portion_fat: float
+    per_portion_fiber: float
+
+    @model_validator(mode="after")
+    def _validate_source(self) -> "StoredFoodBase":
+        """Ensure exactly one of food_id or ingredient_id is provided."""
+
+        if bool(self.food_id) == bool(self.ingredient_id):
+            raise ValueError("Provide either food_id or ingredient_id, but not both.")
+        return self
+
+
+class StoredFoodCreate(StoredFoodBase):
+    """Schema for creating stored food entries."""
+
+    remaining_portions: Optional[float] = None
+    prepared_at: Optional[datetime] = None
+
+
+class StoredFoodRead(StoredFoodBase):
+    """Schema returned when reading stored food entries."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    remaining_portions: float
+    is_finished: bool
+    prepared_at: datetime
+    updated_at: datetime
+    completed_at: Optional[datetime] = None
+
+
+class StoredFoodConsume(SQLModel):
+    """Payload for consuming stored food portions."""
+
+    portions: float
+
+
 __all__ = [
     "NutritionCreate",
     "IngredientUnitCreate",
@@ -161,4 +210,7 @@ __all__ = [
     "PlanCreate",
     "PlanUpdate",
     "PlanRead",
+    "StoredFoodCreate",
+    "StoredFoodRead",
+    "StoredFoodConsume",
 ]
