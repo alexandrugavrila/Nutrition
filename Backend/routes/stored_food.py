@@ -54,14 +54,17 @@ def create_stored_food(
     if data.get("ingredient_id") is not None and db.get(Ingredient, data["ingredient_id"]) is None:
         raise HTTPException(status_code=404, detail="Ingredient not found")
 
-    stored_food = StoredFood(**data)
-    if prepared_at is not None:
-        stored_food.prepared_at = prepared_at
+    if prepared_at is None:
+        prepared_at = datetime.now(timezone.utc)
 
     if remaining is None:
-        remaining = stored_food.prepared_portions
+        remaining = data["prepared_portions"]
 
-    stored_food.remaining_portions = max(0.0, float(remaining))
+    stored_food = StoredFood(
+        **data,
+        prepared_at=prepared_at,
+        remaining_portions=max(0.0, float(remaining)),
+    )
     stored_food.is_finished = stored_food.remaining_portions <= 0
     if stored_food.is_finished:
         stored_food.completed_at = datetime.now(timezone.utc)
