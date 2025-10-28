@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import apiClient from "../apiClient";
 import type { components } from "../api-types";
+import type { CookedBatch } from "../api-extra-types";
 
 type Ingredient = components["schemas"]["IngredientRead"];
 type PossibleIngredientTag = components["schemas"]["PossibleIngredientTag"];
@@ -23,6 +24,8 @@ interface DataContextValue {
   setIngredients: React.Dispatch<
     React.SetStateAction<IngredientWithSelection[]>
   >;
+  fridgeInventory: CookedBatch[];
+  setFridgeInventory: React.Dispatch<React.SetStateAction<CookedBatch[]>>;
   ingredientProcessingTags: PossibleIngredientTag[];
   ingredientGroupTags: PossibleIngredientTag[];
   ingredientOtherTags: PossibleIngredientTag[];
@@ -32,6 +35,7 @@ interface DataContextValue {
   foodOtherTags: PossibleFoodTag[];
   setIngredientsNeedsRefetch: React.Dispatch<React.SetStateAction<boolean>>;
   setFoodsNeedsRefetch: React.Dispatch<React.SetStateAction<boolean>>;
+  setFridgeNeedsRefetch: React.Dispatch<React.SetStateAction<boolean>>;
   fetching: boolean;
   hydrating: boolean;
   hydrated: boolean;
@@ -53,10 +57,12 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     PossibleIngredientTag[]
   >([]);
   const [foods, setFoods] = useState<Food[]>([]);
+  const [fridgeInventory, setFridgeInventory] = useState<CookedBatch[]>([]);
   const [possibleFoodTags, setPossibleFoodTags] = useState<PossibleFoodTag[]>(
     [],
   );
   const [foodsNeedsRefetch, setFoodsNeedsRefetch] = useState(false);
+  const [fridgeNeedsRefetch, setFridgeNeedsRefetch] = useState(false);
   const [activeRequests, setActiveRequests] = useState(0);
   const fetching = activeRequests > 0;
   const [hydrating, setHydrating] = useState(true);
@@ -68,6 +74,66 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   const endRequest = useCallback(() => {
     setActiveRequests((prev) => Math.max(prev - 1, 0));
+  }, []);
+
+  const toNumber = useCallback((value: unknown, fallback = 0): number => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    return fallback;
+  }, []);
+
+  const toNullableNumber = useCallback((value: unknown): number | null => {
+    if (value === null || value === undefined || value === "") {
+      return null;
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string") {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    return null;
+  }, []);
+
+  const toStringOrNull = useCallback((value: unknown): string | null => {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    return String(value);
+  }, []);
+
+  const toStringWithFallback = useCallback(
+    (value: unknown, fallback = ""): string => {
+      if (value === null || value === undefined) {
+        return fallback;
+      }
+      return String(value);
+    },
+    [],
+  );
+
+  const toBoolean = useCallback((value: unknown): boolean => {
+    if (typeof value === "boolean") {
+      return value;
+    }
+    if (typeof value === "number") {
+      return value !== 0;
+    }
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      return normalized === "true" || normalized === "1";
+    }
+    return false;
   }, []);
 
   const ingredientProcessingTagNames = [
@@ -277,6 +343,57 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [startRequest, endRequest]);
 
+  const fetchFridgeInventory = useCallback(async () => {
+    startRequest();
+    try {
+      const { data } = await apiClient
+        .path("/api/stored_food/")
+        .method("get")
+        .create()({});
+      const items = Array.isArray(data) ? data : [];
+      const processed = items.map((entry) => {
+        const record = entry as Record<string, unknown>;
+        return {
+          id: toNumber(record.id),
+          label: toStringOrNull(record.label),
+          user_id: toStringWithFallback(record.user_id),
+          food_id: toNullableNumber(record.food_id),
+          ingredient_id: toNullableNumber(record.ingredient_id),
+          prepared_portions: toNumber(record.prepared_portions),
+          remaining_portions: toNumber(record.remaining_portions),
+          per_portion_calories: toNumber(record.per_portion_calories),
+          per_portion_protein: toNumber(record.per_portion_protein),
+          per_portion_carbohydrates: toNumber(record.per_portion_carbohydrates),
+          per_portion_fat: toNumber(record.per_portion_fat),
+          per_portion_fiber: toNumber(record.per_portion_fiber),
+          is_finished: toBoolean(record.is_finished),
+          prepared_at: toStringWithFallback(record.prepared_at),
+          updated_at: toStringWithFallback(record.updated_at),
+          completed_at:
+            record.completed_at === null || record.completed_at === undefined
+              ? null
+              : toStringWithFallback(record.completed_at),
+        } satisfies CookedBatch;
+      });
+      setFridgeInventory(processed);
+    } catch (error) {
+      console.error("Error fetching fridge inventory:", error);
+      setFridgeNeedsRefetch(true);
+    } finally {
+      endRequest();
+    }
+  }, [
+    endRequest,
+    setFridgeInventory,
+    setFridgeNeedsRefetch,
+    startRequest,
+    toBoolean,
+    toNullableNumber,
+    toNumber,
+    toStringOrNull,
+    toStringWithFallback,
+  ]);
+
   const fetchPossibleFoodTags = useCallback(async () => {
     startRequest();
     try {
@@ -298,9 +415,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const hydrate = async () => {
       const ingredientsPromise = fetchIngredients();
       const foodsPromise = fetchFoods();
+      const fridgePromise = fetchFridgeInventory();
       fetchPossibleIngredientTags();
       fetchPossibleFoodTags();
-      await Promise.allSettled([ingredientsPromise, foodsPromise]);
+      await Promise.allSettled([
+        ingredientsPromise,
+        foodsPromise,
+        fridgePromise,
+      ]);
       if (isMounted) {
         setHydrating(false);
       }
@@ -314,6 +436,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     fetchPossibleIngredientTags,
     fetchFoods,
     fetchPossibleFoodTags,
+    fetchFridgeInventory,
   ]); // Initial fetch
 
   useEffect(() => {
@@ -325,17 +448,26 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       fetchFoods();
       setFoodsNeedsRefetch(false);
     }
+    if (fridgeNeedsRefetch) {
+      fetchFridgeInventory();
+      setFridgeNeedsRefetch(false);
+    }
   }, [
     ingredientsNeedsRefetch,
     foodsNeedsRefetch,
     fetchIngredients,
     fetchFoods,
+    fridgeNeedsRefetch,
+    fetchFridgeInventory,
+    setFridgeNeedsRefetch,
   ]); // Handle needsRefetch
   //#endregion Effects
 
   const value = {
     ingredients,
     setIngredients,
+    fridgeInventory,
+    setFridgeInventory,
     ingredientProcessingTags,
     ingredientGroupTags,
     ingredientOtherTags,
@@ -345,6 +477,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     foodOtherTags,
     setIngredientsNeedsRefetch,
     setFoodsNeedsRefetch,
+    setFridgeNeedsRefetch,
     fetching,
     hydrating,
     hydrated,

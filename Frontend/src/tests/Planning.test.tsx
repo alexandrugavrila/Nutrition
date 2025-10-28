@@ -76,6 +76,9 @@ describe("Planning - ingredient editing updates macros", () => {
     (useData as unknown as Mock).mockReturnValue({
       ingredients: [mockIngredient],
       foods: [mockFood],
+      fridgeInventory: [],
+      setFridgeInventory: vi.fn(),
+      setFridgeNeedsRefetch: vi.fn(),
     });
   });
 
