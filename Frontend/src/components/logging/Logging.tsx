@@ -2,7 +2,6 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import {
@@ -48,6 +47,24 @@ type LoggedEntry = {
   macros: MacroTotals;
 };
 
+type DailyLogEntry = {
+  id: number;
+  user_id: string;
+  log_date: string;
+  stored_food_id: number | null;
+  ingredient_id: number | null;
+  food_id: number | null;
+  portions_consumed: number;
+  calories: number;
+  protein: number;
+  carbohydrates: number;
+  fat: number;
+  fiber: number;
+  created_at: string;
+};
+
+type DailyLogEntryMap = Record<string, DailyLogEntry[]>;
+
 const formatIsoDate = (value: string): string => {
   try {
     const date = new Date(`${value}T00:00:00`);
@@ -86,9 +103,54 @@ function Logging() {
   const [portionsInput, setPortionsInput] = useState<Record<number, string>>({});
   const [status, setStatus] = useState<StatusMessage | null>(null);
   const [pendingId, setPendingId] = useState<number | null>(null);
-  const [logsByDate, setLogsByDate] = useState<Record<string, LoggedEntry[]>>({});
+  const [logsByDate, setLogsByDate] = useState<DailyLogEntryMap>({});
 
-  const logIdRef = useRef(0);
+  const toNumber = useCallback((value: unknown, fallback = 0): number => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    return fallback;
+  }, []);
+
+  const toNullableNumber = useCallback((value: unknown): number | null => {
+    if (value === null || value === undefined || value === "") {
+      return null;
+    }
+    const numeric = toNumber(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  }, [toNumber]);
+
+  const toStringValue = useCallback((value: unknown): string => {
+    if (value === null || value === undefined) {
+      return "";
+    }
+    return String(value);
+  }, []);
+
+  const normalizeLogEntry = useCallback(
+    (entry: Record<string, unknown>): DailyLogEntry => ({
+      id: toNumber(entry.id),
+      user_id: toStringValue(entry.user_id),
+      log_date: toStringValue(entry.log_date),
+      stored_food_id: toNullableNumber(entry.stored_food_id),
+      ingredient_id: toNullableNumber(entry.ingredient_id),
+      food_id: toNullableNumber(entry.food_id),
+      portions_consumed: toNumber(entry.portions_consumed),
+      calories: toNumber(entry.calories),
+      protein: toNumber(entry.protein),
+      carbohydrates: toNumber(entry.carbohydrates),
+      fat: toNumber(entry.fat),
+      fiber: toNumber(entry.fiber),
+      created_at: toStringValue(entry.created_at),
+    }),
+    [toNumber, toNullableNumber, toStringValue],
+  );
 
   const ingredientLookup = useMemo(
     () => createIngredientLookup(ingredients),
@@ -116,6 +178,51 @@ function Logging() {
       return next;
     });
   }, [fridgeInventory]);
+
+  const fetchLogsForDate = useCallback(
+    async (targetDate: string): Promise<DailyLogEntry[] | null> => {
+      if (!targetDate) {
+        return [];
+      }
+
+      startRequest();
+      try {
+        const request = apiClient
+          .path(`/api/logs/${targetDate}`)
+          .method("get")
+          .create();
+        const response = await request({});
+        const data = Array.isArray(response.data) ? response.data : [];
+        return data.map((entry) =>
+          normalizeLogEntry(entry as Record<string, unknown>),
+        );
+      } catch (error) {
+        console.error("Failed to fetch daily logs", error);
+        return null;
+      } finally {
+        endRequest();
+      }
+    },
+    [startRequest, endRequest, normalizeLogEntry],
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    const load = async () => {
+      const entries = await fetchLogsForDate(selectedDate);
+      if (!isMounted || entries === null) {
+        return;
+      }
+      setLogsByDate((prev) => ({
+        ...prev,
+        [selectedDate]: entries,
+      }));
+    };
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDate, fetchLogsForDate]);
 
   const groupedInventory = useMemo(() => {
     const foodItems: CookedBatch[] = [];
@@ -164,6 +271,39 @@ function Logging() {
     [foodLookup, ingredientLookup],
   );
 
+  const resolveLogLabel = useCallback(
+    (entry: DailyLogEntry): string => {
+      if (entry.stored_food_id != null) {
+        const stored = fridgeInventory.find(
+          (item) => item.id === entry.stored_food_id,
+        );
+        if (stored) {
+          return resolveDisplayName(stored);
+        }
+      }
+      if (entry.food_id != null) {
+        const food = foodLookup.get(String(entry.food_id));
+        if (food?.name) {
+          return food.name;
+        }
+      }
+      if (entry.ingredient_id != null) {
+        const ingredient = findIngredientInLookup(
+          ingredientLookup,
+          entry.ingredient_id,
+        );
+        if (ingredient?.name) {
+          return ingredient.name;
+        }
+      }
+      if (entry.log_date) {
+        return `Entry from ${formatIsoDate(entry.log_date)}`;
+      }
+      return `Log entry #${entry.id}`;
+    },
+    [fridgeInventory, resolveDisplayName, foodLookup, ingredientLookup],
+  );
+
   const handleClearStatus = useCallback(() => setStatus(null), []);
 
   const handleLogItem = useCallback(
@@ -202,20 +342,31 @@ function Logging() {
 
         const displayName = resolveDisplayName(item);
         const macros = computePortionMacros(item, portions);
+        const logRequest = apiClient.path("/api/logs/").method("post").create();
+        const { data: rawLog } = (await logRequest({
+          body: {
+            user_id: item.user_id,
+            log_date: selectedDate,
+            stored_food_id: item.id,
+            portions_consumed: portions,
+            calories: macros.calories,
+            protein: macros.protein,
+            carbohydrates: macros.carbs,
+            fat: macros.fat,
+            fiber: macros.fiber,
+          },
+        })) as { data: unknown };
+
+        const normalizedLog = normalizeLogEntry(
+          (rawLog ?? {}) as Record<string, unknown>,
+        );
 
         setLogsByDate((prev) => {
-          const next = { ...prev };
-          const entries = next[selectedDate] ? [...next[selectedDate]!] : [];
-          logIdRef.current += 1;
-          entries.push({
-            id: logIdRef.current,
-            sourceId: item.id,
-            label: displayName,
-            portions,
-            macros,
-          });
-          next[selectedDate] = entries;
-          return next;
+          const existing = prev[selectedDate] ?? [];
+          return {
+            ...prev,
+            [selectedDate]: [...existing, normalizedLog],
+          };
         });
 
         setPortionsInput((prev) => ({ ...prev, [item.id]: "1" }));
@@ -241,17 +392,44 @@ function Logging() {
       portionsInput,
       startRequest,
       resolveDisplayName,
-      ingredientLookup,
-      foodLookup,
       selectedDate,
       setFridgeNeedsRefetch,
       endRequest,
+      normalizeLogEntry,
     ],
   );
 
+  const displayLogsByDate = useMemo(() => {
+    const mapped: Record<string, LoggedEntry[]> = {};
+    Object.entries(logsByDate).forEach(([dateKey, entries]) => {
+      mapped[dateKey] = entries.map((entry) => {
+        const macros: MacroTotals = {
+          calories: entry.calories,
+          protein: entry.protein,
+          fat: entry.fat,
+          carbs: entry.carbohydrates,
+          fiber: entry.fiber,
+        };
+        const sourceId =
+          entry.stored_food_id ??
+          entry.ingredient_id ??
+          entry.food_id ??
+          entry.id;
+        return {
+          id: entry.id,
+          sourceId,
+          label: resolveLogLabel(entry),
+          portions: entry.portions_consumed,
+          macros,
+        } satisfies LoggedEntry;
+      });
+    });
+    return mapped;
+  }, [logsByDate, resolveLogLabel]);
+
   const sortedLogDates = useMemo(() => {
-    return Object.keys(logsByDate).sort((a, b) => (a > b ? -1 : 1));
-  }, [logsByDate]);
+    return Object.keys(displayLogsByDate).sort((a, b) => (a > b ? -1 : 1));
+  }, [displayLogsByDate]);
 
   return (
     <Stack spacing={3} sx={{ width: "100%" }}>
@@ -404,7 +582,7 @@ function Logging() {
             ) : (
               <Stack spacing={3}>
                 {sortedLogDates.map((dateKey) => {
-                  const entries = logsByDate[dateKey] ?? [];
+                  const entries = displayLogsByDate[dateKey] ?? [];
                   const totals = sumMacroTotals(entries.map((entry) => entry.macros));
                   return (
                     <Box key={dateKey}>

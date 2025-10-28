@@ -20,6 +20,11 @@ vi.mock("@/apiClient", () => ({
 import apiClient from "@/apiClient";
 const mockedClient = vi.mocked(apiClient, true);
 
+type RequestHandler = Mock<
+  [options?: { body?: unknown }],
+  Promise<{ data: unknown }>
+>;
+
 describe("Logging component", () => {
   const fridgeItem = {
     id: 1,
@@ -59,12 +64,49 @@ describe("Logging component", () => {
   let setFridgeNeedsRefetch: Mock;
   let startRequest: Mock;
   let endRequest: Mock;
+  let today: string;
+  let requestHandlers: Map<string, RequestHandler>;
+  let lastPath: string;
+  let lastMethod: string;
+  let consumeHandler: RequestHandler;
+  let logHandler: RequestHandler;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockedClient.path.mockReturnThis();
-    mockedClient.method.mockReturnThis();
-    mockedClient.create.mockReturnValue(() => Promise.resolve({}));
+    requestHandlers = new Map();
+    lastPath = "";
+    lastMethod = "";
+
+    mockedClient.path.mockImplementation((path: string) => {
+      lastPath = path;
+      return mockedClient;
+    });
+    mockedClient.method.mockImplementation((method: string) => {
+      lastMethod = method;
+      return mockedClient;
+    });
+    mockedClient.create.mockImplementation(() => {
+      const key = `${(lastMethod || "").toUpperCase()} ${lastPath}`;
+      const handler = requestHandlers.get(key);
+      if (!handler) {
+        return vi.fn(async () => ({ data: [] }));
+      }
+      return handler;
+    });
+
+    today = new Date().toISOString().slice(0, 10);
+    consumeHandler = vi.fn(async (options = {}) => {
+      expect(options?.body).toEqual({ portions: 1.5 });
+      return { data: {} };
+    });
+    requestHandlers.set(
+      `POST /api/stored_food/${fridgeItem.id}/consume`,
+      consumeHandler,
+    );
+    requestHandlers.set(
+      `GET /api/logs/${today}`,
+      vi.fn(async () => ({ data: [] })),
+    );
 
     setFridgeNeedsRefetch = vi.fn();
     startRequest = vi.fn();
@@ -91,7 +133,43 @@ describe("Logging component", () => {
   });
 
   it("logs consumption and records totals for the selected day", async () => {
+    const logResponse = {
+      id: 42,
+      user_id: fridgeItem.user_id,
+      log_date: today,
+      stored_food_id: fridgeItem.id,
+      ingredient_id: null,
+      food_id: fridgeItem.food_id,
+      portions_consumed: 1.5,
+      calories: 150,
+      protein: 15,
+      carbohydrates: 22.5,
+      fat: 7.5,
+      fiber: 9,
+      created_at: `${today}T12:00:00Z`,
+    };
+
+    logHandler = vi.fn(async (options = {}) => {
+      expect(options?.body).toMatchObject({
+        user_id: fridgeItem.user_id,
+        log_date: today,
+        stored_food_id: fridgeItem.id,
+        portions_consumed: 1.5,
+        calories: 150,
+        protein: 15,
+        carbohydrates: 22.5,
+        fat: 7.5,
+        fiber: 9,
+      });
+      return { data: logResponse };
+    });
+    requestHandlers.set("POST /api/logs/", logHandler);
+
     render(<Logging />);
+
+    await waitFor(() => {
+      expect(mockedClient.path).toHaveBeenCalledWith(`/api/logs/${today}`);
+    });
 
     const portionsInput = screen.getByLabelText(
       /Portions to log for Veg Chili/i,
@@ -103,11 +181,8 @@ describe("Logging component", () => {
     await userEvent.click(logButton);
 
     await waitFor(() => {
-      expect(mockedClient.path).toHaveBeenCalledWith(
-        "/api/stored_food/1/consume",
-      );
-      expect(mockedClient.method).toHaveBeenCalledWith("post");
-      expect(mockedClient.create).toHaveBeenCalled();
+      expect(consumeHandler).toHaveBeenCalled();
+      expect(logHandler).toHaveBeenCalled();
       expect(setFridgeNeedsRefetch).toHaveBeenCalledWith(true);
       expect(startRequest).toHaveBeenCalled();
       expect(endRequest).toHaveBeenCalled();
