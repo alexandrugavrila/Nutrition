@@ -201,13 +201,7 @@ function Logging() {
         });
 
         const displayName = resolveDisplayName(item);
-        const macros = computePortionMacros(
-          item,
-          portions,
-          displayName,
-          ingredientLookup,
-          foodLookup,
-        );
+        const macros = computePortionMacros(item, portions);
 
         setLogsByDate((prev) => {
           const next = { ...prev };
