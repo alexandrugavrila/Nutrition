@@ -20,6 +20,7 @@ import {
 import { Add, Remove } from "@mui/icons-material";
 
 import apiClient from "@/apiClient";
+import type { StoredFoodCreate } from "@/api-extra-types";
 import { useData } from "@/contexts/DataContext";
 import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type {
@@ -247,7 +248,7 @@ const pluralize = (value: number, noun: string): string => {
 };
 
 function Cooking() {
-  const { foods, ingredients } = useData();
+  const { foods, ingredients, setFridgeNeedsRefetch } = useData();
   const foodLookup = useMemo(() => {
     const map = new Map<string, FoodRead>();
     foods.forEach((food) => {
@@ -558,20 +559,6 @@ function Cooking() {
     ? `Based on plan "${activePlan.label}"`
     : "Based on current plan";
 
-  type StoredFoodCreatePayload = {
-    label?: string | null;
-    user_id: string;
-    food_id?: number | null;
-    ingredient_id?: number | null;
-    prepared_portions: number;
-    remaining_portions?: number | null;
-    per_portion_calories: number;
-    per_portion_protein: number;
-    per_portion_carbohydrates: number;
-    per_portion_fat: number;
-    per_portion_fiber: number;
-  };
-
   const markItemComplete = useCallback(
     async (item: PlanItem, index: number) => {
       const planKey = planItemKey(item, index);
@@ -593,7 +580,7 @@ function Cooking() {
         return next;
       });
 
-      const buildFoodPayload = (foodItem: FoodPlanItem): StoredFoodCreatePayload => {
+      const buildFoodPayload = (foodItem: FoodPlanItem): StoredFoodCreate => {
         const food = foodLookup.get(String(foodItem.foodId ?? ""));
         if (!food) {
           throw new Error("Food details are unavailable.");
@@ -615,7 +602,7 @@ function Cooking() {
           throw new Error("Unable to determine the food identifier.");
         }
 
-        const payload: StoredFoodCreatePayload = {
+        const payload: StoredFoodCreate = {
           label: food.name ?? null,
           user_id: DEFAULT_COOKING_USER_ID,
           food_id: numericFoodId,
@@ -634,7 +621,7 @@ function Cooking() {
 
       const buildIngredientPayload = (
         ingredientPlan: IngredientPlanItem,
-      ): StoredFoodCreatePayload => {
+      ): StoredFoodCreate => {
         const ingredient = findIngredientInLookup(
           ingredientLookup,
           ingredientPlan.ingredientId,
@@ -677,7 +664,7 @@ function Cooking() {
             }`
           : null;
 
-        const payload: StoredFoodCreatePayload = {
+        const payload: StoredFoodCreate = {
           label,
           user_id: DEFAULT_COOKING_USER_ID,
           food_id: null,
@@ -705,6 +692,7 @@ function Cooking() {
           .method("post")
           .create();
         await request({ body: payload });
+        setFridgeNeedsRefetch(true);
 
         setActualState((prev) => {
           const nextPortions = { ...prev.portions };
@@ -763,6 +751,7 @@ function Cooking() {
       ingredientLookup,
       pendingCompletionKeys,
       setActualState,
+      setFridgeNeedsRefetch,
     ],
   );
 

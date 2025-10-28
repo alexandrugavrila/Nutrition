@@ -87,6 +87,9 @@ describe("Shopping component", () => {
       foodDietTags: [],
       foodTypeTags: [],
       foodOtherTags: [],
+      fridgeInventory: [],
+      setFridgeInventory: vi.fn(),
+      setFridgeNeedsRefetch: vi.fn(),
     });
   });
 

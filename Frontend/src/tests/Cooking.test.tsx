@@ -78,6 +78,7 @@ describe("Cooking component", () => {
     planData = foodPlan;
     actualState = foodActualState;
 
+    const setFridgeNeedsRefetch = vi.fn();
     (useData as unknown as Mock).mockReturnValue({
       foods: [
         {
@@ -124,6 +125,9 @@ describe("Cooking component", () => {
       foodDietTags: [],
       foodTypeTags: [],
       foodOtherTags: [],
+      fridgeInventory: [],
+      setFridgeInventory: vi.fn(),
+      setFridgeNeedsRefetch,
     });
 
     render(<Cooking />);
@@ -162,6 +166,7 @@ describe("Cooking component", () => {
     });
 
     expect(setActualState).toHaveBeenCalled();
+    expect(setFridgeNeedsRefetch).toHaveBeenCalledWith(true);
   });
 
   it("shows an error alert when marking an ingredient fails", async () => {
@@ -214,6 +219,9 @@ describe("Cooking component", () => {
       foodDietTags: [],
       foodTypeTags: [],
       foodOtherTags: [],
+      fridgeInventory: [],
+      setFridgeInventory: vi.fn(),
+      setFridgeNeedsRefetch: vi.fn(),
     });
 
     render(<Cooking />);
