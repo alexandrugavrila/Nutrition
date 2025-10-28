@@ -121,6 +121,25 @@ export interface paths {
      */
     delete: operations["delete_plan_api_plans__plan_id__delete"];
   };
+  "/api/stored_food/": {
+    /**
+     * List Stored Food
+     * @description Retrieve stored food entries with optional filters.
+     */
+    get: operations["list_stored_food_api_stored_food__get"];
+    /**
+     * Create Stored Food
+     * @description Persist a new stored food entry.
+     */
+    post: operations["create_stored_food_api_stored_food__post"];
+  };
+  "/api/stored_food/{stored_food_id}/consume": {
+    /**
+     * Consume Stored Food
+     * @description Consume portions from a stored food entry.
+     */
+    post: operations["consume_stored_food_api_stored_food__stored_food_id__consume_post"];
+  };
 }
 
 export type webhooks = Record<string, never>;
@@ -397,6 +416,88 @@ export interface components {
       id?: number | null;
       /** Name */
       name: string;
+    };
+    /**
+     * StoredFoodConsume
+     * @description Payload for consuming stored food portions.
+     */
+    StoredFoodConsume: {
+      /** Portions */
+      portions: number;
+    };
+    /**
+     * StoredFoodCreate
+     * @description Schema for creating stored food entries.
+     */
+    StoredFoodCreate: {
+      /** Label */
+      label?: string | null;
+      /** User Id */
+      user_id: string;
+      /** Food Id */
+      food_id?: number | null;
+      /** Ingredient Id */
+      ingredient_id?: number | null;
+      /** Prepared Portions */
+      prepared_portions: number;
+      /** Per Portion Calories */
+      per_portion_calories: number;
+      /** Per Portion Protein */
+      per_portion_protein: number;
+      /** Per Portion Carbohydrates */
+      per_portion_carbohydrates: number;
+      /** Per Portion Fat */
+      per_portion_fat: number;
+      /** Per Portion Fiber */
+      per_portion_fiber: number;
+      /** Remaining Portions */
+      remaining_portions?: number | null;
+      /** Prepared At */
+      prepared_at?: string | null;
+    };
+    /**
+     * StoredFoodRead
+     * @description Schema returned when reading stored food entries.
+     */
+    StoredFoodRead: {
+      /** Label */
+      label?: string | null;
+      /** User Id */
+      user_id: string;
+      /** Food Id */
+      food_id?: number | null;
+      /** Ingredient Id */
+      ingredient_id?: number | null;
+      /** Prepared Portions */
+      prepared_portions: number;
+      /** Per Portion Calories */
+      per_portion_calories: number;
+      /** Per Portion Protein */
+      per_portion_protein: number;
+      /** Per Portion Carbohydrates */
+      per_portion_carbohydrates: number;
+      /** Per Portion Fat */
+      per_portion_fat: number;
+      /** Per Portion Fiber */
+      per_portion_fiber: number;
+      /** Id */
+      id: number;
+      /** Remaining Portions */
+      remaining_portions: number;
+      /** Is Finished */
+      is_finished: boolean;
+      /**
+       * Prepared At
+       * Format: date-time
+       */
+      prepared_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /** Completed At */
+      completed_at?: string | null;
     };
     /**
      * TagCreate
@@ -870,6 +971,88 @@ export interface operations {
       /** @description Successful Response */
       204: {
         content: never;
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * List Stored Food
+   * @description Retrieve stored food entries with optional filters.
+   */
+  list_stored_food_api_stored_food__get: {
+    parameters: {
+      query?: {
+        user_id?: string | null;
+        only_available?: boolean;
+        day?: string | null;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["StoredFoodRead"][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Create Stored Food
+   * @description Persist a new stored food entry.
+   */
+  create_stored_food_api_stored_food__post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StoredFoodCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        content: {
+          "application/json": components["schemas"]["StoredFoodRead"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Consume Stored Food
+   * @description Consume portions from a stored food entry.
+   */
+  consume_stored_food_api_stored_food__stored_food_id__consume_post: {
+    parameters: {
+      path: {
+        stored_food_id: number;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StoredFoodConsume"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["StoredFoodRead"];
+        };
       };
       /** @description Validation Error */
       422: {
