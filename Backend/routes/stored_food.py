@@ -108,6 +108,11 @@ def consume_stored_food(
     if stored_food.remaining_portions <= 0:
         raise HTTPException(status_code=400, detail="No portions remaining")
 
+    if payload.portions > stored_food.remaining_portions:
+        raise HTTPException(
+            status_code=400, detail="Cannot consume more portions than remain"
+        )
+
     stored_food.remaining_portions = max(0.0, stored_food.remaining_portions - payload.portions)
     stored_food.is_finished = stored_food.remaining_portions <= 0
     if stored_food.is_finished:
