@@ -7,7 +7,8 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
-from sqlalchemy import func
+from sqlalchemy import func, inspect
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..db import get_db
 from ..models import (
@@ -39,11 +40,39 @@ def _apply_filters(
     return statement
 
 
+def _stored_food_table_available(db: Session) -> bool:
+    """Return ``True`` when the stored_food table exists in the database."""
+
+    try:
+        bind = db.get_bind()
+    except SQLAlchemyError:
+        return False
+
+    try:
+        inspector = inspect(bind)
+    except SQLAlchemyError:
+        return False
+
+    try:
+        return inspector.has_table(StoredFood.__tablename__)
+    except SQLAlchemyError:
+        return False
+
+
 @router.post("/", response_model=StoredFoodRead, status_code=201)
 def create_stored_food(
     payload: StoredFoodCreate, db: Session = Depends(get_db)
 ) -> StoredFoodRead:
     """Persist a new stored food entry."""
+
+    if not _stored_food_table_available(db):
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Stored food storage is unavailable because the database schema "
+                "is out of date. Run the latest database migrations and try again."
+            ),
+        )
 
     data = payload.model_dump(exclude_unset=True)
     remaining = data.pop("remaining_portions", None)
@@ -84,6 +113,9 @@ def list_stored_food(
 ) -> List[StoredFoodRead]:
     """Retrieve stored food entries with optional filters."""
 
+    if not _stored_food_table_available(db):
+        return []
+
     statement = select(StoredFood).order_by(StoredFood.prepared_at.desc())
     statement = _apply_filters(statement, user_id, only_available, day)
     results = db.exec(statement).all()
@@ -97,6 +129,15 @@ def consume_stored_food(
     db: Session = Depends(get_db),
 ) -> StoredFoodRead:
     """Consume portions from a stored food entry."""
+
+    if not _stored_food_table_available(db):
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Stored food storage is unavailable because the database schema "
+                "is out of date. Run the latest database migrations and try again."
+            ),
+        )
 
     stored_food = db.get(StoredFood, stored_food_id)
     if not stored_food:

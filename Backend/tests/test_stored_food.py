@@ -170,3 +170,88 @@ def test_create_stored_food_rejects_negative_macros(
 
     response = client.post("/api/stored_food/", json=payload)
     assert response.status_code == 422
+
+
+def test_list_stored_food_handles_missing_table(
+    client: TestClient, engine
+) -> None:
+    with Session(engine) as session:
+        ingredient = _create_ingredient(session, "Quinoa")
+
+    # Drop the stored_food table to emulate an out-of-date database schema.
+    StoredFood.__table__.drop(engine)
+
+    response = client.get("/api/stored_food/")
+    assert response.status_code == 200
+    assert response.json() == []
+
+    # Recreate the table so other operations in this test can verify behavior.
+    StoredFood.__table__.create(engine)
+
+    payload = {
+        "user_id": "user-migration",
+        "ingredient_id": ingredient.id,
+        "prepared_portions": 1,
+        "per_portion_calories": 100,
+        "per_portion_protein": 10,
+        "per_portion_carbohydrates": 5,
+        "per_portion_fat": 2,
+        "per_portion_fiber": 1,
+    }
+
+    response = client.post("/api/stored_food/", json=payload)
+    assert response.status_code == 201
+
+
+def test_create_stored_food_reports_missing_table(
+    client: TestClient, engine
+) -> None:
+    with Session(engine) as session:
+        ingredient = _create_ingredient(session, "Tofu")
+
+    StoredFood.__table__.drop(engine)
+
+    payload = {
+        "user_id": "user-missing",
+        "ingredient_id": ingredient.id,
+        "prepared_portions": 2,
+        "per_portion_calories": 150,
+        "per_portion_protein": 12,
+        "per_portion_carbohydrates": 6,
+        "per_portion_fat": 3,
+        "per_portion_fiber": 4,
+    }
+
+    response = client.post("/api/stored_food/", json=payload)
+    assert response.status_code == 503
+    assert "Run the latest database migrations" in response.json()["detail"]
+
+
+def test_consume_stored_food_reports_missing_table(
+    client: TestClient, engine
+) -> None:
+    with Session(engine) as session:
+        ingredient = _create_ingredient(session, "Beans")
+
+    payload = {
+        "user_id": "user-consume",
+        "ingredient_id": ingredient.id,
+        "prepared_portions": 2,
+        "per_portion_calories": 150,
+        "per_portion_protein": 9,
+        "per_portion_carbohydrates": 12,
+        "per_portion_fat": 4,
+        "per_portion_fiber": 6,
+    }
+
+    created = client.post("/api/stored_food/", json=payload)
+    assert created.status_code == 201
+    stored_id = created.json()["id"]
+
+    StoredFood.__table__.drop(engine)
+
+    response = client.post(
+        f"/api/stored_food/{stored_id}/consume", json={"portions": 1}
+    )
+    assert response.status_code == 503
+    assert "Run the latest database migrations" in response.json()["detail"]
