@@ -116,10 +116,57 @@ def test_consume_stored_food(client: TestClient, engine) -> None:
     assert consumed["is_finished"] is False
 
     finish_response = client.post(
-        f"/api/stored_food/{stored['id']}/consume", json={"portions": 2}
+        f"/api/stored_food/{stored['id']}/consume", json={"portions": 1.5}
     )
     assert finish_response.status_code == 200
     finished = finish_response.json()
     assert finished["remaining_portions"] == 0
     assert finished["is_finished"] is True
     assert finished["completed_at"] is not None
+
+
+def test_consume_stored_food_rejects_overconsumption(
+    client: TestClient, engine
+) -> None:
+    with Session(engine) as session:
+        ingredient = _create_ingredient(session, "Mashed Potatoes")
+
+    payload = {
+        "user_id": "user-4",
+        "ingredient_id": ingredient.id,
+        "prepared_portions": 2,
+        "per_portion_calories": 120,
+        "per_portion_protein": 4,
+        "per_portion_carbohydrates": 18,
+        "per_portion_fat": 3,
+        "per_portion_fiber": 2,
+    }
+
+    stored = client.post("/api/stored_food/", json=payload).json()
+
+    response = client.post(
+        f"/api/stored_food/{stored['id']}/consume", json={"portions": 3}
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Cannot consume more portions than remain"
+
+
+def test_create_stored_food_rejects_negative_macros(
+    client: TestClient, engine
+) -> None:
+    with Session(engine) as session:
+        ingredient = _create_ingredient(session, "Tempeh")
+
+    payload = {
+        "user_id": "user-5",
+        "ingredient_id": ingredient.id,
+        "prepared_portions": 2,
+        "per_portion_calories": 200,
+        "per_portion_protein": -5,
+        "per_portion_carbohydrates": 10,
+        "per_portion_fat": 8,
+        "per_portion_fiber": 3,
+    }
+
+    response = client.post("/api/stored_food/", json=payload)
+    assert response.status_code == 422

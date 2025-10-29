@@ -111,6 +111,17 @@ Nutrition/
 
 ---
 
+## Fridge & Logging Workflow
+
+- Build a plan in the Planning tab and capture your real-world cooking in the Cooking pane. Each time you mark an item complete,
+  the backend stores a fridge entry and the UI now confirms the save with a toast.
+- Stored items validate their macro data server-side: calories, protein, carbs, fat, and fiber must all be zero or positive values,
+  and the API refuses to consume more portions than remain in the fridge.
+- Switch to the Food Logging tab to record consumption against a chosen day. Logging actions emit success or error toasts, and the
+  backend enforces the same non-negative macro rules so contributor tests cover the end-to-end fridge workflow.
+
+---
+
 ## API Highlights
 
 - `GET /api/ingredients` / `POST /api/ingredients` – list and create ingredients.

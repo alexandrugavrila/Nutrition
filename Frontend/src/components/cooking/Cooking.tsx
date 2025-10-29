@@ -21,6 +21,9 @@ import { Add, Remove } from "@mui/icons-material";
 
 import apiClient from "@/apiClient";
 import type { StoredFoodCreate } from "@/api-extra-types";
+import FeedbackSnackbar, {
+  SnackbarMessage,
+} from "@/components/common/FeedbackSnackbar";
 import { useData } from "@/contexts/DataContext";
 import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type {
@@ -280,7 +283,10 @@ function Cooking() {
   );
   const [pendingCompletionKeys, setPendingCompletionKeys] =
     useState<Set<string>>(() => new Set());
-  const [completionError, setCompletionError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<SnackbarMessage | null>(null);
+  const handleFeedbackClose = useCallback(() => {
+    setFeedback(null);
+  }, []);
 
   useEffect(() => {
     setCompletedPlanKeys((prev) => {
@@ -565,7 +571,7 @@ function Cooking() {
       if (pendingCompletionKeys.has(planKey)) {
         return;
       }
-      setCompletionError(null);
+      setFeedback(null);
       setPendingCompletionKeys((prev) => {
         const next = new Set(prev);
         next.add(planKey);
@@ -687,12 +693,27 @@ function Cooking() {
             ? buildFoodPayload(item as FoodPlanItem)
             : buildIngredientPayload(item as IngredientPlanItem);
 
+        const displayName =
+          payload.label ??
+          (item.type === "food"
+            ? foodLookup.get(String((item as FoodPlanItem).foodId ?? ""))?.name ??
+              "prepared food"
+            : findIngredientInLookup(
+                ingredientLookup,
+                (item as IngredientPlanItem).ingredientId,
+              )?.name ?? "prepared ingredient");
+
         const request = apiClient
           .path("/api/stored_food/")
           .method("post")
           .create();
         await request({ body: payload });
         setFridgeNeedsRefetch(true);
+
+        setFeedback({
+          severity: "success",
+          message: `Added ${displayName} to the fridge.`,
+        });
 
         setActualState((prev) => {
           const nextPortions = { ...prev.portions };
@@ -727,11 +748,11 @@ function Cooking() {
           return next;
         });
         const fallbackMessage = "Failed to mark item complete.";
-        if (error instanceof Error) {
-          setCompletionError(`${fallbackMessage} ${error.message}`);
-        } else {
-          setCompletionError(fallbackMessage);
-        }
+        const detail =
+          error instanceof Error && error.message
+            ? `${fallbackMessage} ${error.message}`.trim()
+            : fallbackMessage;
+        setFeedback({ severity: "error", message: detail });
       } finally {
         setPendingCompletionKeys((prev) => {
           if (!prev.has(planKey)) {
@@ -772,14 +793,6 @@ function Cooking() {
         </Alert>
       ) : (
         <>
-          {completionError && (
-            <Alert
-              severity="error"
-              onClose={() => setCompletionError(null)}
-            >
-              {completionError}
-            </Alert>
-          )}
           {hasActivePlanItems ? (
             <>
               <TableContainer component={Paper}>
@@ -1330,6 +1343,7 @@ function Cooking() {
           )}
         </>
       )}
+      <FeedbackSnackbar snackbar={feedback} onClose={handleFeedbackClose} />
     </Stack>
   );
 }

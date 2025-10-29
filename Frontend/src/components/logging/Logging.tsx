@@ -5,7 +5,6 @@ import React, {
   useState,
 } from "react";
 import {
-  Alert,
   Box,
   Button,
   Card,
@@ -26,6 +25,9 @@ import apiClient from "@/apiClient";
 import { useData } from "@/contexts/DataContext";
 import type { CookedBatch } from "@/api-extra-types";
 import type { components } from "@/api-types";
+import FeedbackSnackbar, {
+  SnackbarMessage,
+} from "@/components/common/FeedbackSnackbar";
 import {
   createIngredientLookup,
   findIngredientInLookup,
@@ -33,11 +35,6 @@ import {
   sumMacroTotals,
 } from "@/utils/nutrition";
 import { formatCellNumber } from "@/utils/utils";
-
-type StatusMessage = {
-  type: "success" | "error";
-  message: string;
-};
 
 type LoggedEntry = {
   id: number;
@@ -101,9 +98,12 @@ function Logging() {
     () => new Date().toISOString().slice(0, 10),
   );
   const [portionsInput, setPortionsInput] = useState<Record<number, string>>({});
-  const [status, setStatus] = useState<StatusMessage | null>(null);
+  const [feedback, setFeedback] = useState<SnackbarMessage | null>(null);
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [logsByDate, setLogsByDate] = useState<DailyLogEntryMap>({});
+  const handleFeedbackClose = useCallback(() => {
+    setFeedback(null);
+  }, []);
 
   const toNumber = useCallback((value: unknown, fallback = 0): number => {
     if (typeof value === "number" && Number.isFinite(value)) {
@@ -198,12 +198,16 @@ function Logging() {
         );
       } catch (error) {
         console.error("Failed to fetch daily logs", error);
+        setFeedback({
+          severity: "error",
+          message: "Failed to load logs for the selected date.",
+        });
         return null;
       } finally {
         endRequest();
       }
     },
-    [startRequest, endRequest, normalizeLogEntry],
+    [startRequest, endRequest, normalizeLogEntry, setFeedback],
   );
 
   useEffect(() => {
@@ -304,30 +308,28 @@ function Logging() {
     [fridgeInventory, resolveDisplayName, foodLookup, ingredientLookup],
   );
 
-  const handleClearStatus = useCallback(() => setStatus(null), []);
-
   const handleLogItem = useCallback(
     async (item: CookedBatch) => {
       const rawValue = portionsInput[item.id] ?? "1";
       const portions = Number.parseFloat(rawValue);
 
       if (!Number.isFinite(portions) || portions <= 0) {
-        setStatus({
-          type: "error",
+        setFeedback({
+          severity: "error",
           message: "Enter a positive number of portions to log.",
         });
         return;
       }
 
       if (portions > item.remaining_portions) {
-        setStatus({
-          type: "error",
+        setFeedback({
+          severity: "error",
           message: "You cannot log more portions than remain in the fridge.",
         });
         return;
       }
 
-      setStatus(null);
+      setFeedback(null);
       setPendingId(item.id);
       startRequest();
 
@@ -371,16 +373,16 @@ function Logging() {
 
         setPortionsInput((prev) => ({ ...prev, [item.id]: "1" }));
         setFridgeNeedsRefetch(true);
-        setStatus({
-          type: "success",
+        setFeedback({
+          severity: "success",
           message: `Logged ${formatCellNumber(portions)} portion${
             portions === 1 ? "" : "s"
           } of ${displayName}.`,
         });
       } catch (error) {
         console.error("Failed to log consumption", error);
-        setStatus({
-          type: "error",
+        setFeedback({
+          severity: "error",
           message: "Failed to log consumption. Please try again.",
         });
       } finally {
@@ -454,16 +456,6 @@ function Logging() {
                 fullWidth
               />
             </Stack>
-
-            {status && (
-              <Alert
-                severity={status.type}
-                onClose={handleClearStatus}
-                sx={{ mb: 2 }}
-              >
-                {status.message}
-              </Alert>
-            )}
 
             {hydrating ? (
               <Stack alignItems="center" justifyContent="center" sx={{ py: 4 }}>
@@ -664,6 +656,10 @@ function Logging() {
           </CardContent>
         </Card>
       </Stack>
+      <FeedbackSnackbar
+        snackbar={feedback}
+        onClose={handleFeedbackClose}
+      />
     </Stack>
   );
 }

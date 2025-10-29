@@ -166,6 +166,18 @@ class StoredFoodBase(SQLModel):
 
         if bool(self.food_id) == bool(self.ingredient_id):
             raise ValueError("Provide either food_id or ingredient_id, but not both.")
+
+        numeric_fields = {
+            "prepared_portions": self.prepared_portions,
+            "per_portion_calories": self.per_portion_calories,
+            "per_portion_protein": self.per_portion_protein,
+            "per_portion_carbohydrates": self.per_portion_carbohydrates,
+            "per_portion_fat": self.per_portion_fat,
+            "per_portion_fiber": self.per_portion_fiber,
+        }
+        for field, value in numeric_fields.items():
+            if value < 0:
+                raise ValueError(f"{field} cannot be negative")
         return self
 
 
@@ -225,6 +237,17 @@ class DailyLogEntryBase(SQLModel):
             )
         if self.portions_consumed <= 0:
             raise ValueError("portions_consumed must be greater than zero")
+
+        macro_fields = {
+            "calories": self.calories,
+            "protein": self.protein,
+            "carbohydrates": self.carbohydrates,
+            "fat": self.fat,
+            "fiber": self.fiber,
+        }
+        for field, value in macro_fields.items():
+            if value < 0:
+                raise ValueError(f"{field} cannot be negative")
         return self
 
 

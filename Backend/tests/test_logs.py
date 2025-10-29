@@ -78,3 +78,43 @@ def test_create_and_list_daily_logs(client: TestClient, engine) -> None:
         persisted_log = session.get(DailyLogEntry, log_entry["id"])
         assert persisted_log is not None
         assert persisted_log.calories == 400
+
+
+def test_daily_log_rejects_negative_macros(client: TestClient, engine) -> None:
+    with Session(engine) as session:
+        ingredient = _create_ingredient(session, "Steamed Greens")
+
+    stored_payload = {
+        "user_id": "user-neg-macros",
+        "ingredient_id": ingredient.id,
+        "prepared_portions": 2,
+        "per_portion_calories": 80,
+        "per_portion_protein": 3,
+        "per_portion_carbohydrates": 10,
+        "per_portion_fat": 1,
+        "per_portion_fiber": 4,
+    }
+
+    stored_response = client.post("/api/stored_food/", json=stored_payload)
+    assert stored_response.status_code == 201
+    stored_data = stored_response.json()
+
+    consume_response = client.post(
+        f"/api/stored_food/{stored_data['id']}/consume", json={"portions": 1}
+    )
+    assert consume_response.status_code == 200
+
+    log_payload = {
+        "user_id": stored_payload["user_id"],
+        "log_date": date(2024, 2, 1).isoformat(),
+        "stored_food_id": stored_data["id"],
+        "portions_consumed": 1,
+        "calories": -50,
+        "protein": 3,
+        "carbohydrates": 10,
+        "fat": 1,
+        "fiber": 4,
+    }
+
+    response = client.post("/api/logs/", json=log_payload)
+    assert response.status_code == 422
