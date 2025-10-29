@@ -32,6 +32,10 @@ if [ -f "scripts/lib/branch-env.sh" ]; then
   branch_env_load || true
 fi
 
+original_database_url="${DATABASE_URL:-}"
+original_dev_db_port="${DEV_DB_PORT:-}"
+original_test_db_port="${TEST_DB_PORT:-}"
+
 # Ensure the virtual environment is active
 # shellcheck disable=SC1090
 source scripts/lib/venv.sh
@@ -149,3 +153,42 @@ else
   echo "Database migrations are up to date."
 fi
 rm -r "$tmpdir"
+
+#############################
+# Check branch database state
+#############################
+
+branch_db_status="skipped"
+if [ -n "$original_database_url" ]; then
+  export DATABASE_URL="$original_database_url"
+  if [ -n "$original_dev_db_port" ]; then
+    export DEV_DB_PORT="$original_dev_db_port"
+  else
+    unset DEV_DB_PORT
+  fi
+  if [ -n "$original_test_db_port" ]; then
+    export TEST_DB_PORT="$original_test_db_port"
+  else
+    unset TEST_DB_PORT
+  fi
+
+  echo "Checking branch database revision..."
+  branch_check_log="$(mktemp)"
+  if python scripts/db/check_branch_db_revision.py >"$branch_check_log" 2>&1; then
+    cat "$branch_check_log"
+    branch_db_status="up-to-date"
+  else
+    branch_check_status=$?
+    cat "$branch_check_log"
+    if [ "$branch_check_status" -eq 3 ]; then
+      echo "Warning: branch database is not at the latest migration head(s)."
+      branch_db_status="outdated"
+    else
+      echo "Warning: could not verify branch database revision (exit $branch_check_status)."
+      branch_db_status="unknown"
+    fi
+  fi
+  rm -f "$branch_check_log"
+else
+  echo "Branch database revision check skipped (DATABASE_URL was not set before sync)."
+fi

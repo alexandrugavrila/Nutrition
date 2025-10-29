@@ -20,6 +20,7 @@ Set-StrictMode -Version Latest
 # Shared libraries
 . "$PSScriptRoot/../lib/log.ps1"
 . "$PSScriptRoot/../lib/venv.ps1"
+. "$PSScriptRoot/../lib/branch-env.ps1"
 
 function Get-RepoRoot { Split-Path -Parent (Split-Path -Parent $PSScriptRoot) }
 function Test-GitPresent { return [bool](Get-Command git -ErrorAction SilentlyContinue) }
@@ -34,6 +35,7 @@ $autoMode = $Auto.IsPresent -or ($env:CI -eq "true")
 # Track summary details
 $apiStatus        = "unchanged"   # or "updated" / "skipped"
 $migrationStatus  = "clean"       # or "adopted" / "unknown"
+$branchDbStatus   = "skipped"     # or "up-to-date" / "outdated" / "unknown"
 $fatalError       = $null
 
 # --------------------------- 1) Ensure venv ----------------------------------
@@ -49,6 +51,13 @@ catch {
 }
 
 # --------------------------- 2) Update API schema/types ----------------------
+$branchEnvInfo = $null
+try {
+    $branchEnvInfo = Set-BranchEnv
+} catch {
+    $branchEnvInfo = $null
+}
+
 $updateLog = [System.IO.Path]::GetTempFileName()
 try {
     Out-Step "Updating OpenAPI schema and frontend types..."
@@ -132,6 +141,36 @@ if ($driftExit -eq 0) {
     }
 }
 
+# --------------------------- 4) Verify branch DB revision -------------------
+$branchCheckLog = [System.IO.Path]::GetTempFileName()
+try {
+    if ($env:DATABASE_URL) {
+        Out-Step "Checking branch database revision..."
+        & python "$(Join-Path $repoRoot 'scripts/db/check_branch_db_revision.py')" *> $branchCheckLog 2>&1
+        $branchCheckExit = $LASTEXITCODE
+        $logLines = Get-Content $branchCheckLog
+        if ($branchCheckExit -eq 0) {
+            $logLines | ForEach-Object { Out-Info $_ }
+            $branchDbStatus = "up-to-date"
+        }
+        elseif ($branchCheckExit -eq 3) {
+            $logLines | ForEach-Object { Out-Warn $_ }
+            $branchDbStatus = "outdated"
+        }
+        else {
+            $logLines | ForEach-Object { Out-Warn $_ }
+            Out-Warn "Could not verify branch database revision (exit $branchCheckExit)."
+            $branchDbStatus = "unknown"
+        }
+    }
+    else {
+        Out-Info "Branch database revision check skipped (DATABASE_URL was not set before sync)."
+    }
+}
+finally {
+    Remove-Item $branchCheckLog -ErrorAction SilentlyContinue
+}
+
 # --------------------------- 4) Final Summary & Exit -------------------------
 switch ($driftExit) {
     0 {
@@ -146,18 +185,32 @@ switch ($driftExit) {
             "clean"   { "Migrations CLEAN" }
             default   { "Migrations status unknown" }
         }
+        $branchMsg = switch ($branchDbStatus) {
+            "up-to-date" { "Branch DB current" }
+            "outdated"   { "Branch DB OUTDATED" }
+            "unknown"    { "Branch DB status unknown" }
+            default       { "Branch DB check skipped" }
+        }
 
         Out-Ok "Summary:"
         Out-Ok " - $apiMsg"
         Out-Ok " - $migMsg"
-        Out-Result "Up to date (${apiMsg}; ${migMsg})" "Green"
+        Out-Ok " - $branchMsg"
+        Out-Result "Up to date (${apiMsg}; ${migMsg}; ${branchMsg})" "Green"
         exit 0
     }
     2 {
         # Continued drift after adoption – bubble up with guidance
         Out-Warn "Drift remains after adoption. Investigate autogenerate config or model/env settings."
         $apiMsg = ($apiStatus -eq "updated") ? "API types UPDATED" : (($apiStatus -eq "unchanged") ? "API types unchanged" : "API types step skipped")
+        $branchMsg = switch ($branchDbStatus) {
+            "up-to-date" { "Branch DB current" }
+            "outdated"   { "Branch DB OUTDATED" }
+            "unknown"    { "Branch DB status unknown" }
+            default       { "Branch DB check skipped" }
+        }
         Out-Info "API step: $apiMsg"
+        Out-Info "Branch DB: $branchMsg"
         Out-Result "Continued drift after adoption" "Yellow"
         exit 2
     }
