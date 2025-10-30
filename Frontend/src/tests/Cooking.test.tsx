@@ -53,6 +53,11 @@ describe("Cooking component", () => {
       if (key === "cooking-actuals") {
         return [actualState, setActualState];
       }
+      if (key === "cooking-completed-plan-keys") {
+        return React.useState(
+          initial as string[] | (() => string[]),
+        );
+      }
       const value = typeof initial === "function" ? (initial as () => unknown)() : initial;
       return [value, vi.fn()];
     });
