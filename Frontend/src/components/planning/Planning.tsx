@@ -186,6 +186,35 @@ function Planning() {
   const [ingredientPickerOpen, setIngredientPickerOpen] = useState(false);
   const [foodPickerOpen, setFoodPickerOpen] = useState(false);
 
+  useEffect(() => {
+    setPlan((prev) => {
+      let changed = false;
+      const next = prev.map((item) => {
+        if (item.type !== "ingredient") {
+          return item;
+        }
+        const ingredientItem = item as IngredientPlanItem;
+        const normalizedPortions = toFiniteNumber(ingredientItem.portions);
+        if (normalizedPortions > 0 && Number.isFinite(normalizedPortions)) {
+          if (ingredientItem.portions === normalizedPortions) {
+            return ingredientItem;
+          }
+          changed = true;
+          return {
+            ...ingredientItem,
+            portions: normalizedPortions,
+          } as IngredientPlanItem;
+        }
+        changed = true;
+        return {
+          ...ingredientItem,
+          portions: 1,
+        } as IngredientPlanItem;
+      });
+      return changed ? next : prev;
+    });
+  }, [setPlan]);
+
   const hasContent = useMemo(
     () =>
       plan.length > 0 ||
@@ -248,11 +277,14 @@ function Planning() {
           overrides,
         } as FoodPlanItem;
       }
+      const amount = toFiniteNumber((item as IngredientPlanItem).amount);
+      const portions = toFiniteNumber((item as IngredientPlanItem).portions);
       return {
         type: "ingredient",
         ingredientId: item.ingredientId,
         unitId: normalizePlanUnitId(item.unitId),
-        amount: item.amount,
+        amount,
+        portions: portions > 0 ? portions : 1,
       } as IngredientPlanItem;
     });
   }, [plan]);
@@ -299,11 +331,15 @@ function Planning() {
                 } as FoodPlanItem;
               }
               if ((item as PlanItem).type === "ingredient") {
+                const rawIngredient = item as IngredientPlanItem;
+                const amount = toFiniteNumber(rawIngredient.amount);
+                const portions = toFiniteNumber(rawIngredient.portions);
                 return {
                   type: "ingredient" as const,
-                  ingredientId: String((item as IngredientPlanItem).ingredientId ?? ""),
-                  unitId: normalizePlanUnitId((item as IngredientPlanItem).unitId),
-                  amount: Number((item as IngredientPlanItem).amount ?? 0) || 0,
+                  ingredientId: String(rawIngredient.ingredientId ?? ""),
+                  unitId: normalizePlanUnitId(rawIngredient.unitId),
+                  amount,
+                  portions: portions > 0 ? portions : 1,
                 } as IngredientPlanItem;
               }
               return null;
@@ -582,6 +618,7 @@ function Planning() {
           ingredientId,
           unitId: fallbackUnitId,
           amount: 1,
+          portions: 1,
         } as IngredientPlanItem,
       ]);
       setIngredientPickerOpen(false);
@@ -669,6 +706,20 @@ function Planning() {
     setPlan(updated);
   };
 
+  const handleIngredientPortionsChange = (index: number, value: number) => {
+    if (value <= 0) return;
+    const updated = [...plan];
+    const item = updated[index];
+    if (!item || item.type !== "ingredient") {
+      return;
+    }
+    updated[index] = {
+      ...(item as IngredientPlanItem),
+      portions: value,
+    } as IngredientPlanItem;
+    setPlan(updated);
+  };
+
   const handleRemoveItem = (index) => {
     const updated = plan.filter((_, i) => i !== index);
     setPlan(updated);
@@ -715,11 +766,18 @@ function Planning() {
           fiber: macros.fiber * item.portions,
         };
       }
-      return calculateIngredientMacros({
+      const perPortion = calculateIngredientMacros({
         ingredient_id: item.ingredientId,
         unit_id: normalizePlanUnitId(item.unitId),
         unit_quantity: item.amount,
       });
+      return {
+        calories: perPortion.calories * item.portions,
+        protein: perPortion.protein * item.portions,
+        fat: perPortion.fat * item.portions,
+        carbs: perPortion.carbs * item.portions,
+        fiber: perPortion.fiber * item.portions,
+      };
     },
     [foods, calculateFoodMacros, calculateIngredientMacros]
   );
@@ -1179,11 +1237,22 @@ function Planning() {
             } else {
               const ingredient = findIngredientInLookup(ingredientLookup, item.ingredientId);
               const normalizedUnitId = normalizePlanUnitId(item.unitId);
-              const macros = calculateIngredientMacros({
+              const perPortionMacros = calculateIngredientMacros({
                 ingredient_id: item.ingredientId,
                 unit_id: normalizedUnitId,
                 unit_quantity: item.amount,
               });
+              const unitName =
+                (ingredient?.units || []).find(
+                  (candidate) => normalizePlanUnitId(candidate.id) === normalizedUnitId,
+                )?.name ?? (normalizedUnitId === GRAM_UNIT_SENTINEL ? "g" : "");
+              const totalMacros = {
+                calories: perPortionMacros.calories * item.portions,
+                protein: perPortionMacros.protein * item.portions,
+                carbs: perPortionMacros.carbs * item.portions,
+                fat: perPortionMacros.fat * item.portions,
+                fiber: perPortionMacros.fiber * item.portions,
+              };
               return (
                 <TableRow key={`ingredient-${index}`}>
                   <TableCell />
@@ -1194,58 +1263,130 @@ function Planning() {
                     />
                   </TableCell>
                   <TableCell>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <IconButton
-                        size="small"
-                        aria-label="decrement amount"
-                        onClick={() =>
-                          handleQuantityChange(index, Math.max(1, item.amount - 1))
-                        }
+                    <Stack spacing={1} sx={{ minWidth: 260 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          flexWrap: "wrap",
+                        }}
                       >
-                        <Remove fontSize="small" />
-                      </IconButton>
-                      <TextField
-                        type="number"
-                        value={item.amount}
-                        onChange={(e) =>
-                          handleQuantityChange(index, parseFloat(e.target.value) || 0)
-                        }
-                        sx={{ width: 80 }}
-                      />
-                      <IconButton
-                        size="small"
-                        aria-label="increment amount"
-                        onClick={() => handleQuantityChange(index, item.amount + 1)}
+                        <Typography variant="body2" sx={{ minWidth: 90 }}>
+                          Portion size
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          aria-label="decrement portion size"
+                          onClick={() =>
+                            handleQuantityChange(index, Math.max(1, item.amount - 1))
+                          }
+                        >
+                          <Remove fontSize="small" />
+                        </IconButton>
+                        <TextField
+                          type="number"
+                          value={item.amount}
+                          onChange={(e) =>
+                            handleQuantityChange(index, parseFloat(e.target.value) || 0)
+                          }
+                          sx={{ width: 80 }}
+                          inputProps={{
+                            min: 0,
+                            step: "any",
+                            "aria-label": "portion size quantity",
+                          }}
+                        />
+                        <IconButton
+                          size="small"
+                          aria-label="increment portion size"
+                          onClick={() => handleQuantityChange(index, item.amount + 1)}
+                        >
+                          <Add fontSize="small" />
+                        </IconButton>
+                        <TextField
+                          select
+                          value={normalizedUnitId}
+                          onChange={(e) =>
+                            handleUnitChange(index, normalizePlanUnitId(e.target.value))
+                          }
+                          sx={{ minWidth: 120 }}
+                          key={`single-item-unit-${item.ingredientId}-${
+                            (ingredient?.units?.length) ?? 0
+                          }`}
+                          aria-label="portion size unit"
+                        >
+                          {(ingredient?.units || []).map((u) => (
+                            <MenuItem
+                              key={u.id ?? `${item.ingredientId}-${u.name}`}
+                              value={normalizePlanUnitId(u.id)}
+                            >
+                              {u.name}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      </Box>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          flexWrap: "wrap",
+                        }}
                       >
-                        <Add fontSize="small" />
-                      </IconButton>
-                      <TextField
-                        select
-                        value={normalizedUnitId}
-                        onChange={(e) =>
-                          handleUnitChange(index, normalizePlanUnitId(e.target.value))
-                        }
-                        sx={{ minWidth: 120 }}
-                        key={`single-item-unit-${item.ingredientId}-${
-                          (ingredient?.units?.length) ?? 0
-                        }`}
-                      >
-                        {(ingredient?.units || []).map((u) => (
-                          <MenuItem
-                            key={u.id ?? `${item.ingredientId}-${u.name}`}
-                            value={normalizePlanUnitId(u.id)}
-                          >
-                            {u.name}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                    </Box>
+                        <Typography variant="body2" sx={{ minWidth: 90 }}>
+                          Portions
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          aria-label="decrement ingredient portions"
+                          onClick={() =>
+                            handleIngredientPortionsChange(
+                              index,
+                              Math.max(1, item.portions - 1),
+                            )
+                          }
+                        >
+                          <Remove fontSize="small" />
+                        </IconButton>
+                        <TextField
+                          type="number"
+                          value={item.portions}
+                          onChange={(e) =>
+                            handleIngredientPortionsChange(
+                              index,
+                              parseFloat(e.target.value) || 0,
+                            )
+                          }
+                          sx={{ width: 80 }}
+                          inputProps={{
+                            min: 0,
+                            step: "any",
+                            "aria-label": "planned portions",
+                          }}
+                        />
+                        <IconButton
+                          size="small"
+                          aria-label="increment ingredient portions"
+                          onClick={() =>
+                            handleIngredientPortionsChange(index, item.portions + 1)
+                          }
+                        >
+                          <Add fontSize="small" />
+                        </IconButton>
+                        <Typography variant="body2" color="text.secondary">
+                          {`Total: ${formatCellNumber(item.amount * item.portions)}${
+                            unitName ? ` ${unitName}` : ""
+                          }`}
+                        </Typography>
+                      </Box>
+                    </Stack>
                   </TableCell>
-                  <TableCell>{formatCellNumber(macros.calories)}</TableCell>
-                  <TableCell>{formatCellNumber(macros.protein)}</TableCell>
-                  <TableCell>{formatCellNumber(macros.carbs)}</TableCell>
-                  <TableCell>{formatCellNumber(macros.fat)}</TableCell>
-                  <TableCell>{formatCellNumber(macros.fiber)}</TableCell>
+                  <TableCell>{formatCellNumber(totalMacros.calories)}</TableCell>
+                  <TableCell>{formatCellNumber(totalMacros.protein)}</TableCell>
+                  <TableCell>{formatCellNumber(totalMacros.carbs)}</TableCell>
+                  <TableCell>{formatCellNumber(totalMacros.fat)}</TableCell>
+                  <TableCell>{formatCellNumber(totalMacros.fiber)}</TableCell>
                   <TableCell>
                     <Button color="error" onClick={() => handleRemoveItem(index)}>
                       Remove

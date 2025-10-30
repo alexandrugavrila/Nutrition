@@ -91,7 +91,9 @@ describe("Planning - ingredient editing updates macros", () => {
     const ingredientCell = await screen.findByText("Oats");
     const ingredientRow = ingredientCell.closest("tr");
     if (!ingredientRow) throw new Error("Ingredient row not found");
-    const amountInput = within(ingredientRow).getByDisplayValue("1") as HTMLInputElement;
+    const amountInput = within(ingredientRow).getByLabelText(
+      /portion size quantity/i,
+    ) as HTMLInputElement;
     await userEvent.clear(amountInput);
     await userEvent.type(amountInput, "100");
 
@@ -129,7 +131,9 @@ describe("Planning - ingredient editing updates macros", () => {
     const ingredientCell = await screen.findByText("Oats");
     const ingredientRow = ingredientCell.closest("tr");
     if (!ingredientRow) throw new Error("Ingredient row not found");
-    const amountInput = within(ingredientRow).getByDisplayValue("1") as HTMLInputElement;
+    const amountInput = within(ingredientRow).getByLabelText(
+      /portion size quantity/i,
+    ) as HTMLInputElement;
     await userEvent.clear(amountInput);
     await userEvent.type(amountInput, "100");
 
@@ -158,7 +162,9 @@ describe("Planning - ingredient editing updates macros", () => {
     const ingredientCell = await screen.findByText("Oats");
     const ingredientRow = ingredientCell.closest("tr");
     if (!ingredientRow) throw new Error("Ingredient row not found");
-    const amountInput = within(ingredientRow).getByDisplayValue("1") as HTMLInputElement;
+    const amountInput = within(ingredientRow).getByLabelText(
+      /portion size quantity/i,
+    ) as HTMLInputElement;
     await userEvent.clear(amountInput);
     await userEvent.type(amountInput, "150");
 

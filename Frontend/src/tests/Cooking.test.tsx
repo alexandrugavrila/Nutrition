@@ -181,6 +181,7 @@ describe("Cooking component", () => {
         ingredientId: "201",
         unitId: 200,
         amount: 150,
+        portions: 1,
       },
     ];
     const ingredientActualState = {

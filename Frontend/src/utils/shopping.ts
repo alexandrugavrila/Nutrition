@@ -221,7 +221,18 @@ export const aggregateShoppingList = ({
         return;
       }
 
-      addContribution(totals, ingredient, unit, amount);
+      const portions = toNumber((item as typeof item).portions ?? 1);
+      if (portions <= 0) {
+        issues.push(
+          createIssue(
+            "missing-quantity",
+            `Ingredient "${ingredient.name}" has no valid portion count in the plan.`,
+          ),
+        );
+        return;
+      }
+
+      addContribution(totals, ingredient, unit, amount * portions);
       return;
     }
 
