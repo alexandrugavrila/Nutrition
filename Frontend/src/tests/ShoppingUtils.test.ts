@@ -34,8 +34,8 @@ describe("aggregateShoppingList", () => {
     });
 
     const plan: PlanItem[] = [
-      { type: "ingredient", ingredientId: "1", unitId: 10, amount: 200 },
-      { type: "ingredient", ingredientId: "1", unitId: 11, amount: 1.5 },
+      { type: "ingredient", ingredientId: "1", unitId: 10, amount: 200, portions: 1 },
+      { type: "ingredient", ingredientId: "1", unitId: 11, amount: 1.5, portions: 1 },
     ];
 
     const { items, issues } = aggregateShoppingList({
@@ -124,7 +124,7 @@ describe("aggregateShoppingList", () => {
 
   it("reports issues when data is missing", () => {
     const plan: PlanItem[] = [
-      { type: "ingredient", ingredientId: "1", unitId: 99, amount: 1 },
+      { type: "ingredient", ingredientId: "1", unitId: 99, amount: 1, portions: 1 },
       { type: "food", foodId: "200", portions: 1, overrides: {} },
     ];
 
@@ -148,7 +148,7 @@ describe("aggregateShoppingList", () => {
     });
 
     const plan: PlanItem[] = [
-      { type: "ingredient", ingredientId: "5", unitId: 50, amount: 2 },
+      { type: "ingredient", ingredientId: "5", unitId: 50, amount: 2, portions: 1 },
     ];
 
     const { items } = aggregateShoppingList({
