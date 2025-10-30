@@ -278,8 +278,11 @@ function Cooking() {
       "cooking-actuals",
       () => ({ ...initialActualState }),
     );
-  const [completedPlanKeys, setCompletedPlanKeys] = useState<Set<string>>(
-    () => new Set(),
+  const [completedPlanKeyList, setCompletedPlanKeyList] =
+    useSessionStorageState<string[]>("cooking-completed-plan-keys", () => []);
+  const completedPlanKeys = useMemo(
+    () => new Set(completedPlanKeyList),
+    [completedPlanKeyList],
   );
   const [pendingCompletionKeys, setPendingCompletionKeys] =
     useState<Set<string>>(() => new Set());
@@ -289,15 +292,16 @@ function Cooking() {
   }, []);
 
   useEffect(() => {
-    setCompletedPlanKeys((prev) => {
-      const next = new Set<string>();
+    setCompletedPlanKeyList((prev) => {
+      const planKeys = new Set<string>();
       plan.forEach((item, index) => {
-        const key = planItemKey(item, index);
-        if (prev.has(key)) {
-          next.add(key);
-        }
+        planKeys.add(planItemKey(item, index));
       });
-      return next;
+      const filtered = prev.filter((key) => planKeys.has(key));
+      if (filtered.length === prev.length) {
+        return prev;
+      }
+      return filtered;
     });
     setPendingCompletionKeys((prev) => {
       const next = new Set<string>();
@@ -309,7 +313,7 @@ function Cooking() {
       });
       return next;
     });
-  }, [plan]);
+  }, [plan, setCompletedPlanKeyList]);
 
   const activePlanEntries = useMemo(
     () =>
@@ -577,13 +581,11 @@ function Cooking() {
         next.add(planKey);
         return next;
       });
-      setCompletedPlanKeys((prev) => {
-        if (prev.has(planKey)) {
+      setCompletedPlanKeyList((prev) => {
+        if (prev.includes(planKey)) {
           return prev;
         }
-        const next = new Set(prev);
-        next.add(planKey);
-        return next;
+        return [...prev, planKey];
       });
 
       const buildFoodPayload = (foodItem: FoodPlanItem): StoredFoodCreate => {
@@ -739,13 +741,11 @@ function Cooking() {
           return { portions: nextPortions, ingredientTotals: nextTotals };
         });
       } catch (error) {
-        setCompletedPlanKeys((prev) => {
-          if (!prev.has(planKey)) {
+        setCompletedPlanKeyList((prev) => {
+          if (!prev.includes(planKey)) {
             return prev;
           }
-          const next = new Set(prev);
-          next.delete(planKey);
-          return next;
+          return prev.filter((key) => key !== planKey);
         });
         const fallbackMessage = "Failed to mark item complete.";
         const detail =
@@ -771,6 +771,7 @@ function Cooking() {
       foodLookup,
       ingredientLookup,
       pendingCompletionKeys,
+      setCompletedPlanKeyList,
       setActualState,
       setFridgeNeedsRefetch,
     ],
