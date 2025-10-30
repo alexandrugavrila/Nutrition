@@ -666,7 +666,7 @@ function Cooking() {
         if (measurement.quantity <= 0) {
           throw new Error("Enter the cooked amount before marking complete.");
         }
-        const macros = macrosForIngredientPortion({
+        const totalMacros = macrosForIngredientPortion({
           ingredient,
           unitId: measurement.unitId,
           quantity: measurement.quantity,
@@ -675,6 +675,35 @@ function Cooking() {
         if (!Number.isFinite(numericIngredientId)) {
           throw new Error("Unable to determine the ingredient identifier.");
         }
+
+        const portionSizeGrams = gramsForIngredientPortion({
+          ingredient,
+          unitId: defaultUnitId,
+          quantity: amountPerPortion,
+        });
+        const totalGrams = gramsForIngredientPortion({
+          ingredient,
+          unitId: measurement.unitId,
+          quantity: measurement.quantity,
+        });
+
+        let computedPortions = 1;
+        if (portionSizeGrams > 0 && totalGrams > 0) {
+          computedPortions = totalGrams / portionSizeGrams;
+        } else if (plannedPortions > 0) {
+          computedPortions = plannedPortions;
+        } else if (measurement.quantity > 0) {
+          computedPortions = measurement.quantity;
+        }
+
+        const preparedPortions = roundDisplayValue(
+          clampNonNegative(toFiniteNumber(computedPortions)),
+        );
+        const normalizedPortions = preparedPortions > 0 ? preparedPortions : 1;
+        const perPortionMacros = divideMacroTotals(
+          totalMacros,
+          normalizedPortions,
+        );
 
         const unitName = resolveIngredientUnitName(ingredient, measurement.unitId);
         const label = ingredient.name
@@ -692,13 +721,13 @@ function Cooking() {
           user_id: DEFAULT_COOKING_USER_ID,
           food_id: null,
           ingredient_id: numericIngredientId,
-          prepared_portions: 1,
-          remaining_portions: 1,
-          per_portion_calories: roundDisplayValue(macros.calories),
-          per_portion_protein: roundDisplayValue(macros.protein),
-          per_portion_carbohydrates: roundDisplayValue(macros.carbs),
-          per_portion_fat: roundDisplayValue(macros.fat),
-          per_portion_fiber: roundDisplayValue(macros.fiber),
+          prepared_portions: normalizedPortions,
+          remaining_portions: normalizedPortions,
+          per_portion_calories: roundDisplayValue(perPortionMacros.calories),
+          per_portion_protein: roundDisplayValue(perPortionMacros.protein),
+          per_portion_carbohydrates: roundDisplayValue(perPortionMacros.carbs),
+          per_portion_fat: roundDisplayValue(perPortionMacros.fat),
+          per_portion_fiber: roundDisplayValue(perPortionMacros.fiber),
         };
 
         return payload;

@@ -174,6 +174,91 @@ describe("Cooking component", () => {
     expect(setFridgeNeedsRefetch).toHaveBeenCalledWith(true);
   });
 
+  it("marks an ingredient complete with the planned portion count", async () => {
+    const ingredientPlan = [
+      {
+        type: "ingredient",
+        ingredientId: "201",
+        unitId: 200,
+        amount: 1,
+        portions: 5,
+      },
+    ];
+    const ingredientActualState = {
+      portions: {},
+      ingredientTotals: { "ingredient:0:201": { quantity: 5, unitId: 200 } },
+    };
+    planData = ingredientPlan;
+    actualState = ingredientActualState;
+
+    const setFridgeNeedsRefetch = vi.fn();
+    (useData as unknown as Mock).mockReturnValue({
+      foods: [],
+      ingredients: [
+        {
+          id: 201,
+          name: "Protein Shake",
+          units: [
+            { id: 200, ingredient_id: 201, name: "bottle", grams: 1 },
+          ],
+          tags: [],
+          nutrition: {
+            calories: 10,
+            protein: 2,
+            fat: 3,
+            carbohydrates: 4,
+            fiber: 5,
+          },
+        },
+      ],
+      fetching: false,
+      hydrating: false,
+      hydrated: true,
+      setIngredients: vi.fn(),
+      setIngredientsNeedsRefetch: vi.fn(),
+      startRequest: vi.fn(),
+      endRequest: vi.fn(),
+      ingredientProcessingTags: [],
+      ingredientGroupTags: [],
+      ingredientOtherTags: [],
+      foodsNeedsRefetch: false,
+      setFoodsNeedsRefetch: vi.fn(),
+      foodDietTags: [],
+      foodTypeTags: [],
+      foodOtherTags: [],
+      fridgeInventory: [],
+      setFridgeInventory: vi.fn(),
+      setFridgeNeedsRefetch,
+    });
+
+    render(<Cooking />);
+
+    const completeButton = await screen.findByRole("button", { name: /mark complete/i });
+    await userEvent.click(completeButton);
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled());
+
+    const [, requestInit] = mockFetch.mock.calls[0];
+    const parsedBody = JSON.parse((requestInit as RequestInit).body as string);
+    expect(parsedBody).toEqual({
+      label: "Protein Shake (5 bottle)",
+      user_id: "demo-user",
+      food_id: null,
+      ingredient_id: 201,
+      prepared_portions: 5,
+      remaining_portions: 5,
+      per_portion_calories: 10,
+      per_portion_protein: 2,
+      per_portion_carbohydrates: 4,
+      per_portion_fat: 3,
+      per_portion_fiber: 5,
+    });
+
+    await waitFor(() => {
+      expect(setFridgeNeedsRefetch).toHaveBeenCalledWith(true);
+    });
+  });
+
   it("shows an error alert when marking an ingredient fails", async () => {
     const ingredientPlan = [
       {
