@@ -1263,7 +1263,15 @@ function Planning() {
                     />
                   </TableCell>
                   <TableCell>
-                    <Stack spacing={1} sx={{ minWidth: 260 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 2,
+                        minWidth: 260,
+                        alignItems: "flex-start",
+                      }}
+                    >
                       <Box
                         sx={{
                           display: "flex",
@@ -1380,7 +1388,7 @@ function Planning() {
                           }`}
                         </Typography>
                       </Box>
-                    </Stack>
+                    </Box>
                   </TableCell>
                   <TableCell>{formatCellNumber(totalMacros.calories)}</TableCell>
                   <TableCell>{formatCellNumber(totalMacros.protein)}</TableCell>
