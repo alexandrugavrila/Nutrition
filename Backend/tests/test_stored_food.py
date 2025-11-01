@@ -1,7 +1,7 @@
 from datetime import date
 
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from Backend.models import Ingredient, StoredFood
 
@@ -255,3 +255,85 @@ def test_consume_stored_food_reports_missing_table(
     )
     assert response.status_code == 503
     assert "Run the latest database migrations" in response.json()["detail"]
+
+
+def test_delete_stored_food_entry(client: TestClient, engine) -> None:
+    with Session(engine) as session:
+        ingredient = _create_ingredient(session, "Black Beans")
+
+    payload = {
+        "user_id": "user-delete-stored",
+        "ingredient_id": ingredient.id,
+        "prepared_portions": 3,
+        "per_portion_calories": 180,
+        "per_portion_protein": 10,
+        "per_portion_carbohydrates": 20,
+        "per_portion_fat": 4,
+        "per_portion_fiber": 8,
+    }
+
+    stored_response = client.post("/api/stored_food/", json=payload)
+    assert stored_response.status_code == 201
+    stored_id = stored_response.json()["id"]
+
+    other_response = client.post(
+        "/api/stored_food/",
+        json={**payload, "user_id": "other-user"},
+    )
+    assert other_response.status_code == 201
+
+    delete_response = client.delete(f"/api/stored_food/{stored_id}")
+    assert delete_response.status_code == 204
+
+    with Session(engine) as session:
+        removed = session.get(StoredFood, stored_id)
+        assert removed is None
+        remaining = session.exec(
+            select(StoredFood).where(StoredFood.user_id == "other-user")
+        ).all()
+        assert len(remaining) == 1
+
+
+def test_clear_stored_food(client: TestClient, engine) -> None:
+    with Session(engine) as session:
+        ingredient = _create_ingredient(session, "Tomato Soup")
+
+    payload = {
+        "user_id": "user-clear-stored",
+        "ingredient_id": ingredient.id,
+        "prepared_portions": 4,
+        "per_portion_calories": 120,
+        "per_portion_protein": 6,
+        "per_portion_carbohydrates": 14,
+        "per_portion_fat": 3,
+        "per_portion_fiber": 5,
+    }
+
+    first_response = client.post("/api/stored_food/", json=payload)
+    assert first_response.status_code == 201
+
+    second_response = client.post(
+        "/api/stored_food/", json={**payload, "label": "Leftovers"}
+    )
+    assert second_response.status_code == 201
+
+    other_response = client.post(
+        "/api/stored_food/", json={**payload, "user_id": "other-user"}
+    )
+    assert other_response.status_code == 201
+
+    clear_response = client.delete(
+        "/api/stored_food/", params={"user_id": payload["user_id"]}
+    )
+    assert clear_response.status_code == 204
+
+    with Session(engine) as session:
+        remaining = session.exec(
+            select(StoredFood).where(StoredFood.user_id == payload["user_id"])
+        ).all()
+        assert remaining == []
+
+        others = session.exec(
+            select(StoredFood).where(StoredFood.user_id == "other-user")
+        ).all()
+        assert len(others) == 1

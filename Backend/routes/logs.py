@@ -5,7 +5,8 @@ from __future__ import annotations
 from datetime import date
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import delete
 from sqlmodel import Session, select
 
 from ..db import get_db
@@ -59,3 +60,33 @@ def create_daily_log(
     db.commit()
     db.refresh(entry)
     return DailyLogEntryRead.model_validate(entry)
+
+
+@router.delete(
+    "/{entry_id}", status_code=204, response_class=Response, response_model=None
+)
+def delete_daily_log(entry_id: int, db: Session = Depends(get_db)) -> None:
+    """Remove a single daily log entry."""
+
+    entry = db.get(DailyLogEntry, entry_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Daily log entry not found")
+
+    db.delete(entry)
+    db.commit()
+
+
+@router.delete("/", status_code=204, response_class=Response, response_model=None)
+def clear_daily_logs(
+    user_id: str = Query(...),
+    log_date: Optional[date] = Query(default=None),
+    db: Session = Depends(get_db),
+) -> None:
+    """Remove daily log entries for a user, optionally filtered by day."""
+
+    statement = delete(DailyLogEntry).where(DailyLogEntry.user_id == user_id)
+    if log_date is not None:
+        statement = statement.where(DailyLogEntry.log_date == log_date)
+
+    db.exec(statement)
+    db.commit()
