@@ -118,3 +118,127 @@ def test_daily_log_rejects_negative_macros(client: TestClient, engine) -> None:
 
     response = client.post("/api/logs/", json=log_payload)
     assert response.status_code == 422
+
+
+def test_delete_daily_log_entry(client: TestClient, engine) -> None:
+    with Session(engine) as session:
+        ingredient = _create_ingredient(session, "Tofu Scramble")
+
+    stored_payload = {
+        "user_id": "user-delete-log",
+        "ingredient_id": ingredient.id,
+        "prepared_portions": 4,
+        "per_portion_calories": 150,
+        "per_portion_protein": 12,
+        "per_portion_carbohydrates": 8,
+        "per_portion_fat": 6,
+        "per_portion_fiber": 3,
+    }
+
+    stored_response = client.post("/api/stored_food/", json=stored_payload)
+    assert stored_response.status_code == 201
+    stored_id = stored_response.json()["id"]
+
+    log_date = date(2024, 3, 1)
+    log_payload = {
+        "user_id": stored_payload["user_id"],
+        "log_date": log_date.isoformat(),
+        "stored_food_id": stored_id,
+        "portions_consumed": 1,
+        "calories": 150,
+        "protein": 12,
+        "carbohydrates": 8,
+        "fat": 6,
+        "fiber": 3,
+    }
+
+    first_response = client.post("/api/logs/", json=log_payload)
+    assert first_response.status_code == 201
+    first_entry = first_response.json()
+
+    second_response = client.post(
+        "/api/logs/",
+        json={**log_payload, "portions_consumed": 0.5, "calories": 75},
+    )
+    assert second_response.status_code == 201
+    second_entry = second_response.json()
+
+    delete_response = client.delete(f"/api/logs/{first_entry['id']}")
+    assert delete_response.status_code == 204
+
+    with Session(engine) as session:
+        removed = session.get(DailyLogEntry, first_entry["id"])
+        assert removed is None
+        remaining = session.get(DailyLogEntry, second_entry["id"])
+        assert remaining is not None
+
+
+def test_clear_daily_logs(client: TestClient, engine) -> None:
+    with Session(engine) as session:
+        ingredient = _create_ingredient(session, "Overnight Oats")
+
+    stored_payload = {
+        "user_id": "user-clear-log",
+        "ingredient_id": ingredient.id,
+        "prepared_portions": 6,
+        "per_portion_calories": 100,
+        "per_portion_protein": 5,
+        "per_portion_carbohydrates": 15,
+        "per_portion_fat": 3,
+        "per_portion_fiber": 4,
+    }
+
+    stored_creation = client.post("/api/stored_food/", json=stored_payload)
+    assert stored_creation.status_code == 201
+    stored_id = stored_creation.json()["id"]
+
+    first_date = date(2024, 4, 1)
+    second_date = date(2024, 4, 2)
+
+    for log_date in (first_date, second_date):
+        response = client.post(
+            "/api/logs/",
+            json={
+                "user_id": stored_payload["user_id"],
+                "log_date": log_date.isoformat(),
+                "stored_food_id": stored_id,
+                "portions_consumed": 1,
+                "calories": 100,
+                "protein": 5,
+                "carbohydrates": 15,
+                "fat": 3,
+                "fiber": 4,
+            },
+        )
+        assert response.status_code == 201
+
+    clear_response = client.delete(
+        "/api/logs/",
+        params={"user_id": stored_payload["user_id"], "log_date": first_date.isoformat()},
+    )
+    assert clear_response.status_code == 204
+
+    list_first = client.get(
+        f"/api/logs/{first_date.isoformat()}", params={"user_id": stored_payload["user_id"]}
+    )
+    assert list_first.status_code == 200
+    assert list_first.json() == []
+
+    list_second = client.get(
+        f"/api/logs/{second_date.isoformat()}",
+        params={"user_id": stored_payload["user_id"]},
+    )
+    assert list_second.status_code == 200
+    assert len(list_second.json()) == 1
+
+    clear_all_response = client.delete(
+        "/api/logs/", params={"user_id": stored_payload["user_id"]}
+    )
+    assert clear_all_response.status_code == 204
+
+    list_second_after = client.get(
+        f"/api/logs/{second_date.isoformat()}",
+        params={"user_id": stored_payload["user_id"]},
+    )
+    assert list_second_after.status_code == 200
+    assert list_second_after.json() == []
