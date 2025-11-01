@@ -132,6 +132,11 @@ export interface paths {
      * @description Persist a new stored food entry.
      */
     post: operations["create_stored_food_api_stored_food__post"];
+    /**
+     * Clear Stored Food
+     * @description Remove all stored food entries for a user.
+     */
+    delete: operations["clear_stored_food_api_stored_food__delete"];
   };
   "/api/stored_food/{stored_food_id}/consume": {
     /**
@@ -139,6 +144,13 @@ export interface paths {
      * @description Consume portions from a stored food entry.
      */
     post: operations["consume_stored_food_api_stored_food__stored_food_id__consume_post"];
+  };
+  "/api/stored_food/{stored_food_id}": {
+    /**
+     * Delete Stored Food
+     * @description Remove a stored food entry.
+     */
+    delete: operations["delete_stored_food_api_stored_food__stored_food_id__delete"];
   };
   "/api/logs/{log_date}": {
     /**
@@ -153,6 +165,18 @@ export interface paths {
      * @description Persist a new daily log entry.
      */
     post: operations["create_daily_log_api_logs__post"];
+    /**
+     * Clear Daily Logs
+     * @description Remove daily log entries for a user, optionally filtered by day.
+     */
+    delete: operations["clear_daily_logs_api_logs__delete"];
+  };
+  "/api/logs/{entry_id}": {
+    /**
+     * Delete Daily Log
+     * @description Remove a single daily log entry.
+     */
+    delete: operations["delete_daily_log_api_logs__entry_id__delete"];
   };
 }
 
@@ -1116,6 +1140,29 @@ export interface operations {
     };
   };
   /**
+   * Clear Stored Food
+   * @description Remove all stored food entries for a user.
+   */
+  clear_stored_food_api_stored_food__delete: {
+    parameters: {
+      query: {
+        user_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        content: never;
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
    * Consume Stored Food
    * @description Consume portions from a stored food entry.
    */
@@ -1136,6 +1183,29 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["StoredFoodRead"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Delete Stored Food
+   * @description Remove a stored food entry.
+   */
+  delete_stored_food_api_stored_food__stored_food_id__delete: {
+    parameters: {
+      path: {
+        stored_food_id: number;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        content: never;
       };
       /** @description Validation Error */
       422: {
@@ -1189,6 +1259,53 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["DailyLogEntryRead"];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Clear Daily Logs
+   * @description Remove daily log entries for a user, optionally filtered by day.
+   */
+  clear_daily_logs_api_logs__delete: {
+    parameters: {
+      query: {
+        user_id: string;
+        log_date?: string | null;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        content: never;
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Delete Daily Log
+   * @description Remove a single daily log entry.
+   */
+  delete_daily_log_api_logs__entry_id__delete: {
+    parameters: {
+      path: {
+        entry_id: number;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        content: never;
       };
       /** @description Validation Error */
       422: {
