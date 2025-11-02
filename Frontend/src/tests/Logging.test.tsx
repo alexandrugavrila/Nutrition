@@ -188,18 +188,27 @@ describe("Logging component", () => {
       expect(endRequest).toHaveBeenCalled();
     });
 
-    const totalHeader = await screen.findByText("Total", { selector: "th" });
-    const totalRow = totalHeader.closest("tr");
-    if (!totalRow) {
-      throw new Error("Total row not found");
-    }
-    const totals = within(totalRow).getAllByRole("cell");
-    expect(totals[0]).toHaveTextContent("1.5");
-    expect(totals[1]).toHaveTextContent("150");
-    expect(totals[2]).toHaveTextContent("15");
-    expect(totals[3]).toHaveTextContent("22.5");
-    expect(totals[4]).toHaveTextContent("7.5");
-    expect(totals[5]).toHaveTextContent("9");
+    const totalSummary = await screen.findByRole("group", {
+      name: /Daily Total/i,
+    });
+    expect(
+      within(totalSummary).getByLabelText(/Total portions/i),
+    ).toHaveTextContent("1.5");
+    expect(
+      within(totalSummary).getByLabelText(/Total calories/i),
+    ).toHaveTextContent("150");
+    expect(
+      within(totalSummary).getByLabelText(/Total protein/i),
+    ).toHaveTextContent("15");
+    expect(
+      within(totalSummary).getByLabelText(/Total carbs/i),
+    ).toHaveTextContent("22.5");
+    expect(
+      within(totalSummary).getByLabelText(/Total fat/i),
+    ).toHaveTextContent("7.5");
+    expect(
+      within(totalSummary).getByLabelText(/Total fiber/i),
+    ).toHaveTextContent("9");
   });
 
   it("removes fridge items when requested", async () => {
