@@ -41,6 +41,25 @@ const mockFood = {
   tags: [],
 };
 
+const mockFridgeItem = {
+  id: 500,
+  label: "Stored oats",
+  user_id: "user-1",
+  food_id: null,
+  ingredient_id: 1,
+  prepared_portions: 4,
+  remaining_portions: 2,
+  per_portion_calories: 50,
+  per_portion_protein: 5,
+  per_portion_carbohydrates: 10,
+  per_portion_fat: 2,
+  per_portion_fiber: 1,
+  is_finished: false,
+  prepared_at: "2024-01-01T00:00:00Z",
+  updated_at: "2024-01-02T00:00:00Z",
+  completed_at: null,
+};
+
 vi.mock("@/components/data/ingredient/IngredientTable", () => ({
   __esModule: true,
   default: ({ onIngredientDoubleClick }) => (
@@ -100,7 +119,7 @@ describe("Planning - ingredient editing updates macros", () => {
     // Expect summary totals for 100g with the per-gram nutrition above
     // calories: 2*100=200, protein: 0.1*100=10, carbs: 0.5*100=50, fat: 0.05*100=5, fiber: 0.02*100=2
     await waitFor(() => {
-      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total");
+      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total in Plan");
       expect(cal).toBe("200");
       expect(pro).toBe("10");
       expect(carb).toBe("50");
@@ -114,7 +133,7 @@ describe("Planning - ingredient editing updates macros", () => {
     await userEvent.type(rowAmountInput, "150");
 
     await waitFor(() => {
-      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total");
+      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total in Plan");
       expect(cal).toBe("300"); // 2*150
       expect(pro).toBe("15"); // 0.1*150
       expect(carb).toBe("75"); // 0.5*150
@@ -145,7 +164,7 @@ describe("Planning - ingredient editing updates macros", () => {
     // Value stays at previous (100) and totals unchanged
     await waitFor(() => {
       expect(rowAmountInput).toHaveValue(100);
-      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total");
+      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total in Plan");
       expect(cal).toBe("200");
       expect(pro).toBe("10");
       expect(carb).toBe("50");
@@ -176,7 +195,7 @@ describe("Planning - ingredient editing updates macros", () => {
 
     // Verify totals vs targets are rendered as entered/calculated
     await waitFor(() => {
-      const [tCal, tPro] = getSummaryNumbers("Total");
+      const [tCal, tPro] = getSummaryNumbers("Total Overall");
       expect(tCal).toBe("300"); // Total calories for 150g
       expect(tPro).toBe("15"); // Total protein for 150g
 
@@ -184,6 +203,70 @@ describe("Planning - ingredient editing updates macros", () => {
       const targetCells = within(targetRow).getAllByRole("cell");
       expect(targetCells[1]).toHaveTextContent("100"); // Target calories
       expect(targetCells[2]).toHaveTextContent("5"); // Target protein
+    });
+  });
+
+  it("optionally includes fridge totals in the overall summary", async () => {
+    (useData as unknown as Mock).mockReturnValue({
+      ingredients: [mockIngredient],
+      foods: [mockFood],
+      fridgeInventory: [mockFridgeItem],
+      setFridgeInventory: vi.fn(),
+      setFridgeNeedsRefetch: vi.fn(),
+    });
+
+    render(<MemoryRouter><Planning /></MemoryRouter>);
+
+    await userEvent.click(screen.getByRole("button", { name: /Add Ingredient/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Select Oats/i }));
+
+    const ingredientCell = await screen.findByText("Oats");
+    const ingredientRow = ingredientCell.closest("tr");
+    if (!ingredientRow) throw new Error("Ingredient row not found");
+    const amountInput = within(ingredientRow).getByLabelText(
+      /portion size quantity/i,
+    ) as HTMLInputElement;
+    await userEvent.clear(amountInput);
+    await userEvent.type(amountInput, "100");
+
+    await waitFor(() => {
+      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total in Plan");
+      expect(cal).toBe("200");
+      expect(pro).toBe("10");
+      expect(carb).toBe("50");
+      expect(fat).toBe("5");
+      expect(fib).toBe("2");
+    });
+
+    const [fridgeCal, fridgePro, fridgeCarb, fridgeFat, fridgeFib] = getSummaryNumbers(
+      "Total in Fridge",
+    );
+    expect(fridgeCal).toBe("100");
+    expect(fridgePro).toBe("10");
+    expect(fridgeCarb).toBe("20");
+    expect(fridgeFat).toBe("4");
+    expect(fridgeFib).toBe("2");
+
+    await waitFor(() => {
+      const [overallCal, overallPro, overallCarb, overallFat, overallFib] =
+        getSummaryNumbers("Total Overall");
+      expect(overallCal).toBe("200");
+      expect(overallPro).toBe("10");
+      expect(overallCarb).toBe("50");
+      expect(overallFat).toBe("5");
+      expect(overallFib).toBe("2");
+    });
+
+    await userEvent.click(screen.getByLabelText(/Include fridge inventory/i));
+
+    await waitFor(() => {
+      const [overallCal, overallPro, overallCarb, overallFat, overallFib] =
+        getSummaryNumbers("Total Overall");
+      expect(overallCal).toBe("300");
+      expect(overallPro).toBe("20");
+      expect(overallCarb).toBe("70");
+      expect(overallFat).toBe("9");
+      expect(overallFib).toBe("4");
     });
   });
 });
