@@ -201,4 +201,98 @@ describe("Logging component", () => {
     expect(totals[4]).toHaveTextContent("7.5");
     expect(totals[5]).toHaveTextContent("9");
   });
+
+  it("removes fridge items when requested", async () => {
+    const deleteHandler = vi.fn(async () => ({ data: {} }));
+    requestHandlers.set(
+      `DELETE /api/stored_food/${fridgeItem.id}`,
+      deleteHandler,
+    );
+
+    render(<Logging />);
+
+    await waitFor(() => {
+      expect(mockedClient.path).toHaveBeenCalledWith(`/api/logs/${today}`);
+    });
+
+    const fridgeLabel = screen.getAllByText(fridgeItem.label)[0];
+    const fridgeRow = fridgeLabel.closest("tr");
+    if (!fridgeRow) {
+      throw new Error("Fridge row not found");
+    }
+    const removeButton = within(fridgeRow).getByRole("button", {
+      name: "Remove",
+    });
+
+    await userEvent.click(removeButton);
+
+    await waitFor(() => {
+      expect(deleteHandler).toHaveBeenCalled();
+      expect(setFridgeNeedsRefetch).toHaveBeenCalledWith(true);
+      expect(startRequest).toHaveBeenCalled();
+      expect(endRequest).toHaveBeenCalled();
+    });
+
+    expect(
+      await screen.findByText(/Removed Veg Chili from the fridge/i),
+    ).toBeInTheDocument();
+  });
+
+  it("removes logged entries and updates the table", async () => {
+    const logResponse = {
+      id: 101,
+      user_id: fridgeItem.user_id,
+      log_date: today,
+      stored_food_id: fridgeItem.id,
+      ingredient_id: null,
+      food_id: fridgeItem.food_id,
+      portions_consumed: 1,
+      calories: 100,
+      protein: 10,
+      carbohydrates: 15,
+      fat: 5,
+      fiber: 6,
+      created_at: `${today}T07:00:00Z`,
+    };
+
+    const listLogsHandler = vi.fn(async () => ({ data: [logResponse] }));
+    requestHandlers.set(`GET /api/logs/${today}`, listLogsHandler);
+
+    const deleteLogHandler = vi.fn(async () => ({ data: {} }));
+    requestHandlers.set(
+      `DELETE /api/logs/${logResponse.id}`,
+      deleteLogHandler,
+    );
+
+    render(<Logging />);
+
+    const logsHeading = screen.getByText(/Daily Logs/i);
+    const logsCard = logsHeading.closest(".MuiCard-root") ?? logsHeading.parentElement;
+    if (!logsCard) {
+      throw new Error("Logs card not found");
+    }
+    const logsTable = await within(logsCard).findByRole("table");
+    const logRow = await within(logsTable).findByRole("row", { name: /Veg Chili/i });
+    const removeButton = within(logRow).getByRole("button", { name: "Remove" });
+
+    await userEvent.click(removeButton);
+
+    await waitFor(() => {
+      expect(deleteLogHandler).toHaveBeenCalled();
+      expect(startRequest).toHaveBeenCalled();
+      expect(endRequest).toHaveBeenCalled();
+    });
+
+    expect(
+      await screen.findByText(/Removed Veg Chili from the log/i),
+    ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          /No items have been logged yet\. Log fridge items to see them here\./i,
+        ),
+      ).toBeInTheDocument();
+    });
+  });
 });
