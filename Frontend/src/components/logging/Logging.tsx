@@ -101,6 +101,8 @@ function Logging() {
   const [feedback, setFeedback] = useState<SnackbarMessage | null>(null);
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [logsByDate, setLogsByDate] = useState<DailyLogEntryMap>({});
+  const [removingStoredId, setRemovingStoredId] = useState<number | null>(null);
+  const [removingLogId, setRemovingLogId] = useState<number | null>(null);
   const handleFeedbackClose = useCallback(() => {
     setFeedback(null);
   }, []);
@@ -401,6 +403,86 @@ function Logging() {
     ],
   );
 
+  const handleRemoveStoredItem = useCallback(
+    async (item: CookedBatch) => {
+      const displayName = resolveDisplayName(item);
+      setFeedback(null);
+      setRemovingStoredId(item.id);
+      startRequest();
+
+      try {
+        const request = apiClient
+          .path(`/api/stored_food/${item.id}`)
+          .method("delete")
+          .create();
+        await request({});
+
+        setFridgeNeedsRefetch(true);
+        setPortionsInput((prev) => {
+          const next = { ...prev };
+          delete next[item.id];
+          return next;
+        });
+        setFeedback({
+          severity: "success",
+          message: `Removed ${displayName} from the fridge.`,
+        });
+      } catch (error) {
+        console.error("Failed to remove stored food", error);
+        setFeedback({
+          severity: "error",
+          message: "Failed to remove the item from the fridge. Please try again.",
+        });
+      } finally {
+        setRemovingStoredId(null);
+        endRequest();
+      }
+    },
+    [resolveDisplayName, startRequest, setFridgeNeedsRefetch, endRequest],
+  );
+
+  const handleRemoveLogEntry = useCallback(
+    async (entryId: number, label: string) => {
+      setFeedback(null);
+      setRemovingLogId(entryId);
+      startRequest();
+
+      try {
+        const request = apiClient
+          .path(`/api/logs/${entryId}`)
+          .method("delete")
+          .create();
+        await request({});
+
+        setLogsByDate((prev) => {
+          const nextEntries: DailyLogEntryMap = {};
+          Object.entries(prev).forEach(([dateKey, entries]) => {
+            const filtered = entries.filter((entry) => entry.id !== entryId);
+            if (filtered.length > 0) {
+              nextEntries[dateKey] = filtered;
+            }
+          });
+          return nextEntries;
+        });
+
+        setFeedback({
+          severity: "success",
+          message: `Removed ${label} from the log.`,
+        });
+      } catch (error) {
+        console.error("Failed to remove log entry", error);
+        setFeedback({
+          severity: "error",
+          message: "Failed to remove the log entry. Please try again.",
+        });
+      } finally {
+        setRemovingLogId(null);
+        endRequest();
+      }
+    },
+    [startRequest, endRequest],
+  );
+
   const displayLogsByDate = useMemo(() => {
     const mapped: Record<string, LoggedEntry[]> = {};
     Object.entries(logsByDate).forEach(([dateKey, entries]) => {
@@ -536,18 +618,39 @@ function Logging() {
                                       [item.id]: event.target.value,
                                     }))
                                   }
-                                  disabled={isDepleted || pendingId === item.id}
+                                  disabled={
+                                    isDepleted ||
+                                    pendingId === item.id ||
+                                    removingStoredId === item.id
+                                  }
                                 />
                               </TableCell>
                               <TableCell align="right">
-                                <Button
-                                  variant="contained"
-                                  size="small"
-                                  onClick={() => handleLogItem(item)}
-                                  disabled={isDepleted || pendingId === item.id}
-                                >
-                                  {pendingId === item.id ? "Logging..." : "Add to log"}
-                                </Button>
+                                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                  <Button
+                                    variant="contained"
+                                    size="small"
+                                    onClick={() => handleLogItem(item)}
+                                    disabled={
+                                      isDepleted ||
+                                      pendingId === item.id ||
+                                      removingStoredId === item.id
+                                    }
+                                  >
+                                    {pendingId === item.id ? "Logging..." : "Add to log"}
+                                  </Button>
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    color="error"
+                                    onClick={() => handleRemoveStoredItem(item)}
+                                    disabled={
+                                      removingStoredId === item.id || pendingId === item.id
+                                    }
+                                  >
+                                    {removingStoredId === item.id ? "Removing..." : "Remove"}
+                                  </Button>
+                                </Stack>
                               </TableCell>
                             </TableRow>
                           );
@@ -592,6 +695,7 @@ function Logging() {
                             <TableCell align="right">Carbs</TableCell>
                             <TableCell align="right">Fat</TableCell>
                             <TableCell align="right">Fiber</TableCell>
+                            <TableCell align="right">Actions</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -615,6 +719,19 @@ function Logging() {
                               </TableCell>
                               <TableCell align="right">
                                 {formatCellNumber(entry.macros.fiber)}
+                              </TableCell>
+                              <TableCell align="right">
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  color="error"
+                                  onClick={() =>
+                                    handleRemoveLogEntry(entry.id, entry.label)
+                                  }
+                                  disabled={removingLogId === entry.id}
+                                >
+                                  {removingLogId === entry.id ? "Removing..." : "Remove"}
+                                </Button>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -645,6 +762,7 @@ function Logging() {
                             <TableCell align="right">
                               {formatCellNumber(totals.fiber)}
                             </TableCell>
+                            <TableCell />
                           </TableRow>
                         </TableBody>
                       </Table>
