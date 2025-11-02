@@ -3,11 +3,13 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Collapse,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   IconButton,
   MenuItem,
   Paper,
@@ -143,7 +145,7 @@ const NameWithEdit: React.FC<NameWithEditProps> = ({ name, onEdit }) => {
 };
 
 function Planning() {
-  const { foods, ingredients } = useData();
+  const { foods, ingredients, fridgeInventory } = useData();
   const navigate = useNavigate();
   const location = useLocation();
   const ingredientLookup = useMemo(() => createIngredientLookup(ingredients), [ingredients]);
@@ -162,6 +164,10 @@ function Planning() {
   );
   const [activeMacro, setActiveMacro] = useState<MacroKey | null>(null);
   const [plan, setPlan] = useSessionStorageState<PlanItem[]>("planning-plan", () => []); // FoodPlanItem or IngredientPlanItem
+  const [includeFridge, setIncludeFridge] = useSessionStorageState<boolean>(
+    "planning-include-fridge",
+    false,
+  );
 
   const [activePlan, setActivePlan] = useSessionStorageState<{
     id: number | null;
@@ -782,7 +788,7 @@ function Planning() {
     [foods, calculateFoodMacros, calculateIngredientMacros]
   );
 
-  const totalMacros = useMemo(() => {
+  const planTotalMacros = useMemo(() => {
     return plan.reduce(
       (totals, item) => {
         const macros = calculateItemMacros(item);
@@ -797,18 +803,48 @@ function Planning() {
     );
   }, [plan, calculateItemMacros]);
 
+  const fridgeTotalMacros = useMemo(() => {
+    return fridgeInventory.reduce(
+      (totals, item) => {
+        const remaining = Number.isFinite(item.remaining_portions)
+          ? Math.max(0, item.remaining_portions)
+          : 0;
+        totals.calories += item.per_portion_calories * remaining;
+        totals.protein += item.per_portion_protein * remaining;
+        totals.fat += item.per_portion_fat * remaining;
+        totals.carbs += item.per_portion_carbohydrates * remaining;
+        totals.fiber += item.per_portion_fiber * remaining;
+        return totals;
+      },
+      { ...ZERO_MACROS },
+    );
+  }, [fridgeInventory]);
+
+  const overallTotalMacros = useMemo(() => {
+    if (!includeFridge) {
+      return planTotalMacros;
+    }
+    return {
+      calories: planTotalMacros.calories + fridgeTotalMacros.calories,
+      protein: planTotalMacros.protein + fridgeTotalMacros.protein,
+      fat: planTotalMacros.fat + fridgeTotalMacros.fat,
+      carbs: planTotalMacros.carbs + fridgeTotalMacros.carbs,
+      fiber: planTotalMacros.fiber + fridgeTotalMacros.fiber,
+    };
+  }, [includeFridge, planTotalMacros, fridgeTotalMacros]);
+
   const perDayMacros = useMemo(() => {
     if (days <= 0) {
       return { ...ZERO_MACROS };
     }
     return {
-      calories: totalMacros.calories / days,
-      protein: totalMacros.protein / days,
-      fat: totalMacros.fat / days,
-      carbs: totalMacros.carbs / days,
-      fiber: totalMacros.fiber / days,
+      calories: overallTotalMacros.calories / days,
+      protein: overallTotalMacros.protein / days,
+      fat: overallTotalMacros.fat / days,
+      carbs: overallTotalMacros.carbs / days,
+      fiber: overallTotalMacros.fiber / days,
     };
-  }, [totalMacros, days]);
+  }, [overallTotalMacros, days]);
 
   const handleDaysChange = (e) => {
     const value = parseInt(e.target.value, 10);
@@ -1246,7 +1282,7 @@ function Planning() {
                 (ingredient?.units || []).find(
                   (candidate) => normalizePlanUnitId(candidate.id) === normalizedUnitId,
                 )?.name ?? (normalizedUnitId === GRAM_UNIT_SENTINEL ? "g" : "");
-              const totalMacros = {
+              const itemTotalMacros = {
                 calories: perPortionMacros.calories * item.portions,
                 protein: perPortionMacros.protein * item.portions,
                 carbs: perPortionMacros.carbs * item.portions,
@@ -1390,11 +1426,11 @@ function Planning() {
                       </Box>
                     </Box>
                   </TableCell>
-                  <TableCell>{formatCellNumber(totalMacros.calories)}</TableCell>
-                  <TableCell>{formatCellNumber(totalMacros.protein)}</TableCell>
-                  <TableCell>{formatCellNumber(totalMacros.carbs)}</TableCell>
-                  <TableCell>{formatCellNumber(totalMacros.fat)}</TableCell>
-                  <TableCell>{formatCellNumber(totalMacros.fiber)}</TableCell>
+                  <TableCell>{formatCellNumber(itemTotalMacros.calories)}</TableCell>
+                  <TableCell>{formatCellNumber(itemTotalMacros.protein)}</TableCell>
+                  <TableCell>{formatCellNumber(itemTotalMacros.carbs)}</TableCell>
+                  <TableCell>{formatCellNumber(itemTotalMacros.fat)}</TableCell>
+                  <TableCell>{formatCellNumber(itemTotalMacros.fiber)}</TableCell>
                   <TableCell>
                     <Button color="error" onClick={() => handleRemoveItem(index)}>
                       Remove
@@ -1442,7 +1478,26 @@ function Planning() {
       </Dialog>
 
       <Box>
-        <h2>Summary</h2>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          sx={{ mb: 1 }}
+        >
+          <Typography variant="h5" component="h2">
+            Summary
+          </Typography>
+          <FormControlLabel
+            control={(
+              <Checkbox
+                checked={includeFridge}
+                onChange={(event) => setIncludeFridge(event.target.checked)}
+                inputProps={{ "aria-label": "Include fridge inventory" }}
+              />
+            )}
+            label="Include fridge inventory"
+          />
+        </Stack>
         <TableContainer component={Paper}>
           <Table>
           <TableHead>
@@ -1457,12 +1512,28 @@ function Planning() {
           </TableHead>
           <TableBody>
             <TableRow>
-              <TableCell>Total</TableCell>
-              <TableCell>{formatCellNumber(totalMacros.calories)}</TableCell>
-              <TableCell>{formatCellNumber(totalMacros.protein)}</TableCell>
-              <TableCell>{formatCellNumber(totalMacros.carbs)}</TableCell>
-              <TableCell>{formatCellNumber(totalMacros.fat)}</TableCell>
-              <TableCell>{formatCellNumber(totalMacros.fiber)}</TableCell>
+              <TableCell>Total in Fridge</TableCell>
+              <TableCell>{formatCellNumber(fridgeTotalMacros.calories)}</TableCell>
+              <TableCell>{formatCellNumber(fridgeTotalMacros.protein)}</TableCell>
+              <TableCell>{formatCellNumber(fridgeTotalMacros.carbs)}</TableCell>
+              <TableCell>{formatCellNumber(fridgeTotalMacros.fat)}</TableCell>
+              <TableCell>{formatCellNumber(fridgeTotalMacros.fiber)}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell>Total in Plan</TableCell>
+              <TableCell>{formatCellNumber(planTotalMacros.calories)}</TableCell>
+              <TableCell>{formatCellNumber(planTotalMacros.protein)}</TableCell>
+              <TableCell>{formatCellNumber(planTotalMacros.carbs)}</TableCell>
+              <TableCell>{formatCellNumber(planTotalMacros.fat)}</TableCell>
+              <TableCell>{formatCellNumber(planTotalMacros.fiber)}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell>Total Overall</TableCell>
+              <TableCell>{formatCellNumber(overallTotalMacros.calories)}</TableCell>
+              <TableCell>{formatCellNumber(overallTotalMacros.protein)}</TableCell>
+              <TableCell>{formatCellNumber(overallTotalMacros.carbs)}</TableCell>
+              <TableCell>{formatCellNumber(overallTotalMacros.fat)}</TableCell>
+              <TableCell>{formatCellNumber(overallTotalMacros.fiber)}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell>Per Day</TableCell>
