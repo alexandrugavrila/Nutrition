@@ -119,7 +119,7 @@ describe("Planning - ingredient editing updates macros", () => {
     // Expect summary totals for 100g with the per-gram nutrition above
     // calories: 2*100=200, protein: 0.1*100=10, carbs: 0.5*100=50, fat: 0.05*100=5, fiber: 0.02*100=2
     await waitFor(() => {
-      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total in Plan");
+      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total Overall");
       expect(cal).toBe("200");
       expect(pro).toBe("10");
       expect(carb).toBe("50");
@@ -133,7 +133,7 @@ describe("Planning - ingredient editing updates macros", () => {
     await userEvent.type(rowAmountInput, "150");
 
     await waitFor(() => {
-      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total in Plan");
+      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total Overall");
       expect(cal).toBe("300"); // 2*150
       expect(pro).toBe("15"); // 0.1*150
       expect(carb).toBe("75"); // 0.5*150
@@ -164,7 +164,7 @@ describe("Planning - ingredient editing updates macros", () => {
     // Value stays at previous (100) and totals unchanged
     await waitFor(() => {
       expect(rowAmountInput).toHaveValue(100);
-      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total in Plan");
+      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total Overall");
       expect(cal).toBe("200");
       expect(pro).toBe("10");
       expect(carb).toBe("50");
@@ -230,24 +230,6 @@ describe("Planning - ingredient editing updates macros", () => {
     await userEvent.type(amountInput, "100");
 
     await waitFor(() => {
-      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total in Plan");
-      expect(cal).toBe("200");
-      expect(pro).toBe("10");
-      expect(carb).toBe("50");
-      expect(fat).toBe("5");
-      expect(fib).toBe("2");
-    });
-
-    const [fridgeCal, fridgePro, fridgeCarb, fridgeFat, fridgeFib] = getSummaryNumbers(
-      "Total in Fridge",
-    );
-    expect(fridgeCal).toBe("100");
-    expect(fridgePro).toBe("10");
-    expect(fridgeCarb).toBe("20");
-    expect(fridgeFat).toBe("4");
-    expect(fridgeFib).toBe("2");
-
-    await waitFor(() => {
       const [overallCal, overallPro, overallCarb, overallFat, overallFib] =
         getSummaryNumbers("Total Overall");
       expect(overallCal).toBe("200");
@@ -257,7 +239,30 @@ describe("Planning - ingredient editing updates macros", () => {
       expect(overallFib).toBe("2");
     });
 
+    expect(screen.queryByText("Total in Plan")).not.toBeInTheDocument();
+    expect(screen.queryByText("Total in Fridge")).not.toBeInTheDocument();
+
     await userEvent.click(screen.getByLabelText(/Include fridge inventory/i));
+
+    await waitFor(() => {
+      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total in Plan");
+      expect(cal).toBe("200");
+      expect(pro).toBe("10");
+      expect(carb).toBe("50");
+      expect(fat).toBe("5");
+      expect(fib).toBe("2");
+    });
+
+    await waitFor(() => {
+      const [fridgeCal, fridgePro, fridgeCarb, fridgeFat, fridgeFib] = getSummaryNumbers(
+        "Total in Fridge",
+      );
+      expect(fridgeCal).toBe("100");
+      expect(fridgePro).toBe("10");
+      expect(fridgeCarb).toBe("20");
+      expect(fridgeFat).toBe("4");
+      expect(fridgeFib).toBe("2");
+    });
 
     await waitFor(() => {
       const [overallCal, overallPro, overallCarb, overallFat, overallFib] =

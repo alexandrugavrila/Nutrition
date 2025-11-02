@@ -1511,22 +1511,26 @@ function Planning() {
             </TableRow>
           </TableHead>
           <TableBody>
-            <TableRow>
-              <TableCell>Total in Fridge</TableCell>
-              <TableCell>{formatCellNumber(fridgeTotalMacros.calories)}</TableCell>
-              <TableCell>{formatCellNumber(fridgeTotalMacros.protein)}</TableCell>
-              <TableCell>{formatCellNumber(fridgeTotalMacros.carbs)}</TableCell>
-              <TableCell>{formatCellNumber(fridgeTotalMacros.fat)}</TableCell>
-              <TableCell>{formatCellNumber(fridgeTotalMacros.fiber)}</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell>Total in Plan</TableCell>
-              <TableCell>{formatCellNumber(planTotalMacros.calories)}</TableCell>
-              <TableCell>{formatCellNumber(planTotalMacros.protein)}</TableCell>
-              <TableCell>{formatCellNumber(planTotalMacros.carbs)}</TableCell>
-              <TableCell>{formatCellNumber(planTotalMacros.fat)}</TableCell>
-              <TableCell>{formatCellNumber(planTotalMacros.fiber)}</TableCell>
-            </TableRow>
+            {includeFridge && (
+              <>
+                <TableRow>
+                  <TableCell>Total in Fridge</TableCell>
+                  <TableCell>{formatCellNumber(fridgeTotalMacros.calories)}</TableCell>
+                  <TableCell>{formatCellNumber(fridgeTotalMacros.protein)}</TableCell>
+                  <TableCell>{formatCellNumber(fridgeTotalMacros.carbs)}</TableCell>
+                  <TableCell>{formatCellNumber(fridgeTotalMacros.fat)}</TableCell>
+                  <TableCell>{formatCellNumber(fridgeTotalMacros.fiber)}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Total in Plan</TableCell>
+                  <TableCell>{formatCellNumber(planTotalMacros.calories)}</TableCell>
+                  <TableCell>{formatCellNumber(planTotalMacros.protein)}</TableCell>
+                  <TableCell>{formatCellNumber(planTotalMacros.carbs)}</TableCell>
+                  <TableCell>{formatCellNumber(planTotalMacros.fat)}</TableCell>
+                  <TableCell>{formatCellNumber(planTotalMacros.fiber)}</TableCell>
+                </TableRow>
+              </>
+            )}
             <TableRow>
               <TableCell>Total Overall</TableCell>
               <TableCell>{formatCellNumber(overallTotalMacros.calories)}</TableCell>
