@@ -677,8 +677,7 @@ function Logging() {
 
         <Card sx={{ flex: 1, minWidth: 0 }}>
           <CardHeader
-            title="Daily Logs"
-            subheader="Review the portions you've logged and macro totals"
+            title="Daily Log"
           />
           <CardContent>
             {sortedLogDates.length === 0 ? (
@@ -696,11 +695,6 @@ function Logging() {
                   );
                   const summaryId = `${dateKey}-daily-total`;
                   const summaryMetrics = [
-                    {
-                      label: "Portions",
-                      value: formatCellNumber(totalPortions),
-                      ariaLabel: "Total portions",
-                    },
                     {
                       label: "Calories",
                       value: formatCellNumber(totals.calories),
