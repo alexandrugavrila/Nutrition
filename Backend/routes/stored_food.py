@@ -12,6 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ..db import get_db
 from ..models import (
+    DailyLogEntry,
     Food,
     Ingredient,
     StoredFood,
@@ -179,6 +180,18 @@ def delete_stored_food(stored_food_id: int, db: Session = Depends(get_db)) -> No
     stored_food = db.get(StoredFood, stored_food_id)
     if stored_food is None:
         raise HTTPException(status_code=404, detail="Stored food not found")
+
+    entries = db.exec(
+        select(DailyLogEntry).where(DailyLogEntry.stored_food_id == stored_food_id)
+    ).all()
+    for entry in entries:
+        entry.stored_food_id = None
+        if stored_food.food_id is not None:
+            entry.food_id = stored_food.food_id
+            entry.ingredient_id = None
+        elif stored_food.ingredient_id is not None:
+            entry.ingredient_id = stored_food.ingredient_id
+            entry.food_id = None
 
     db.delete(stored_food)
     db.commit()
