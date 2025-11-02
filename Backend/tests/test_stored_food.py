@@ -179,14 +179,17 @@ def test_list_stored_food_handles_missing_table(
         ingredient = _create_ingredient(session, "Quinoa")
 
     # Drop the stored_food table to emulate an out-of-date database schema.
+    DailyLogEntry.__table__.drop(engine, checkfirst=True)
     StoredFood.__table__.drop(engine)
 
-    response = client.get("/api/stored_food/")
-    assert response.status_code == 200
-    assert response.json() == []
-
-    # Recreate the table so other operations in this test can verify behavior.
-    StoredFood.__table__.create(engine)
+    try:
+        response = client.get("/api/stored_food/")
+        assert response.status_code == 200
+        assert response.json() == []
+    finally:
+        # Recreate the tables so other operations in this test can verify behavior.
+        StoredFood.__table__.create(engine, checkfirst=True)
+        DailyLogEntry.__table__.create(engine, checkfirst=True)
 
     payload = {
         "user_id": "user-migration",
@@ -209,6 +212,7 @@ def test_create_stored_food_reports_missing_table(
     with Session(engine) as session:
         ingredient = _create_ingredient(session, "Tofu")
 
+    DailyLogEntry.__table__.drop(engine, checkfirst=True)
     StoredFood.__table__.drop(engine)
 
     payload = {
@@ -222,9 +226,13 @@ def test_create_stored_food_reports_missing_table(
         "per_portion_fiber": 4,
     }
 
-    response = client.post("/api/stored_food/", json=payload)
-    assert response.status_code == 503
-    assert "Run the latest database migrations" in response.json()["detail"]
+    try:
+        response = client.post("/api/stored_food/", json=payload)
+        assert response.status_code == 503
+        assert "Run the latest database migrations" in response.json()["detail"]
+    finally:
+        StoredFood.__table__.create(engine, checkfirst=True)
+        DailyLogEntry.__table__.create(engine, checkfirst=True)
 
 
 def test_consume_stored_food_reports_missing_table(
@@ -248,13 +256,18 @@ def test_consume_stored_food_reports_missing_table(
     assert created.status_code == 201
     stored_id = created.json()["id"]
 
+    DailyLogEntry.__table__.drop(engine, checkfirst=True)
     StoredFood.__table__.drop(engine)
 
-    response = client.post(
-        f"/api/stored_food/{stored_id}/consume", json={"portions": 1}
-    )
-    assert response.status_code == 503
-    assert "Run the latest database migrations" in response.json()["detail"]
+    try:
+        response = client.post(
+            f"/api/stored_food/{stored_id}/consume", json={"portions": 1}
+        )
+        assert response.status_code == 503
+        assert "Run the latest database migrations" in response.json()["detail"]
+    finally:
+        StoredFood.__table__.create(engine, checkfirst=True)
+        DailyLogEntry.__table__.create(engine, checkfirst=True)
 
 
 def test_delete_stored_food_entry(client: TestClient, engine) -> None:
