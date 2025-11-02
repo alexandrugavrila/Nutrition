@@ -11,6 +11,8 @@ import {
   CardContent,
   CardHeader,
   CircularProgress,
+  Grid,
+  Paper,
   Stack,
   Table,
   TableBody,
@@ -20,6 +22,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 import apiClient from "@/apiClient";
 import { useData } from "@/contexts/DataContext";
@@ -68,7 +71,15 @@ const formatIsoDate = (value: string): string => {
     if (Number.isNaN(date.getTime())) {
       return value;
     }
-    return date.toLocaleDateString();
+    const weekday = new Intl.DateTimeFormat(undefined, {
+      weekday: "long",
+    }).format(date);
+    const datePortion = new Intl.DateTimeFormat(undefined, {
+      month: "numeric",
+      day: "numeric",
+      year: "2-digit",
+    }).format(date);
+    return `${weekday}, ${datePortion}`;
   } catch (error) {
     console.error("Unable to format date", error);
     return value;
@@ -679,93 +690,144 @@ function Logging() {
                 {sortedLogDates.map((dateKey) => {
                   const entries = displayLogsByDate[dateKey] ?? [];
                   const totals = sumMacroTotals(entries.map((entry) => entry.macros));
+                  const totalPortions = entries.reduce(
+                    (total, entry) => total + entry.portions,
+                    0,
+                  );
+                  const summaryId = `${dateKey}-daily-total`;
+                  const summaryMetrics = [
+                    {
+                      label: "Portions",
+                      value: formatCellNumber(totalPortions),
+                      ariaLabel: "Total portions",
+                    },
+                    {
+                      label: "Calories",
+                      value: formatCellNumber(totals.calories),
+                      ariaLabel: "Total calories",
+                    },
+                    {
+                      label: "Protein",
+                      value: formatCellNumber(totals.protein),
+                      ariaLabel: "Total protein",
+                    },
+                    {
+                      label: "Carbs",
+                      value: formatCellNumber(totals.carbs),
+                      ariaLabel: "Total carbs",
+                    },
+                    {
+                      label: "Fat",
+                      value: formatCellNumber(totals.fat),
+                      ariaLabel: "Total fat",
+                    },
+                    {
+                      label: "Fiber",
+                      value: formatCellNumber(totals.fiber),
+                      ariaLabel: "Total fiber",
+                    },
+                  ];
                   return (
                     <Box key={dateKey}>
-                      <Typography variant="h6" component="h3" gutterBottom>
-                        {formatIsoDate(dateKey)}
-                        {dateKey === selectedDate ? " (selected)" : ""}
-                      </Typography>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Item</TableCell>
-                            <TableCell align="right">Portions</TableCell>
-                            <TableCell align="right">Calories</TableCell>
-                            <TableCell align="right">Protein</TableCell>
-                            <TableCell align="right">Carbs</TableCell>
-                            <TableCell align="right">Fat</TableCell>
-                            <TableCell align="right">Fiber</TableCell>
-                            <TableCell align="right">Actions</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {entries.map((entry) => (
-                            <TableRow key={entry.id}>
-                              <TableCell>{entry.label}</TableCell>
-                              <TableCell align="right">
-                                {formatCellNumber(entry.portions)}
-                              </TableCell>
-                              <TableCell align="right">
-                                {formatCellNumber(entry.macros.calories)}
-                              </TableCell>
-                              <TableCell align="right">
-                                {formatCellNumber(entry.macros.protein)}
-                              </TableCell>
-                              <TableCell align="right">
-                                {formatCellNumber(entry.macros.carbs)}
-                              </TableCell>
-                              <TableCell align="right">
-                                {formatCellNumber(entry.macros.fat)}
-                              </TableCell>
-                              <TableCell align="right">
-                                {formatCellNumber(entry.macros.fiber)}
-                              </TableCell>
-                              <TableCell align="right">
-                                <Button
-                                  variant="outlined"
-                                  size="small"
-                                  color="error"
-                                  onClick={() =>
-                                    handleRemoveLogEntry(entry.id, entry.label)
-                                  }
-                                  disabled={removingLogId === entry.id}
-                                >
-                                  {removingLogId === entry.id ? "Removing..." : "Remove"}
-                                </Button>
-                              </TableCell>
+                      <Stack spacing={2}>
+                        <Typography variant="h6" component="h3">
+                          {formatIsoDate(dateKey)}
+                        </Typography>
+                        <Paper
+                          role="group"
+                          aria-labelledby={summaryId}
+                          variant="outlined"
+                          sx={{
+                            p: 2,
+                            borderWidth: 2,
+                            borderColor: (theme) => theme.palette.primary.light,
+                            bgcolor: (theme) =>
+                              alpha(theme.palette.primary.light, 0.12),
+                          }}
+                        >
+                          <Stack spacing={2}>
+                            <Typography
+                              id={summaryId}
+                              variant="subtitle1"
+                              sx={{ fontWeight: 600 }}
+                            >
+                              Daily Total
+                            </Typography>
+                            <Grid container spacing={2}>
+                              {summaryMetrics.map((metric) => (
+                                <Grid item xs={6} sm={4} md={3} lg={2} key={metric.label}>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{ textTransform: "uppercase" }}
+                                  >
+                                    {metric.label}
+                                  </Typography>
+                                  <Typography
+                                    variant="h6"
+                                    component="p"
+                                    aria-label={metric.ariaLabel}
+                                  >
+                                    {metric.value}
+                                  </Typography>
+                                </Grid>
+                              ))}
+                            </Grid>
+                          </Stack>
+                        </Paper>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Item</TableCell>
+                              <TableCell align="right">Portions</TableCell>
+                              <TableCell align="right">Calories</TableCell>
+                              <TableCell align="right">Protein</TableCell>
+                              <TableCell align="right">Carbs</TableCell>
+                              <TableCell align="right">Fat</TableCell>
+                              <TableCell align="right">Fiber</TableCell>
+                              <TableCell align="right">Actions</TableCell>
                             </TableRow>
-                          ))}
-                          <TableRow>
-                            <TableCell component="th" scope="row" sx={{ fontWeight: 600 }}>
-                              Total
-                            </TableCell>
-                            <TableCell align="right">
-                              {formatCellNumber(
-                                entries.reduce(
-                                  (total, entry) => total + entry.portions,
-                                  0,
-                                ),
-                              )}
-                            </TableCell>
-                            <TableCell align="right">
-                              {formatCellNumber(totals.calories)}
-                            </TableCell>
-                            <TableCell align="right">
-                              {formatCellNumber(totals.protein)}
-                            </TableCell>
-                            <TableCell align="right">
-                              {formatCellNumber(totals.carbs)}
-                            </TableCell>
-                            <TableCell align="right">
-                              {formatCellNumber(totals.fat)}
-                            </TableCell>
-                            <TableCell align="right">
-                              {formatCellNumber(totals.fiber)}
-                            </TableCell>
-                            <TableCell />
-                          </TableRow>
-                        </TableBody>
-                      </Table>
+                          </TableHead>
+                          <TableBody>
+                            {entries.map((entry) => (
+                              <TableRow key={entry.id}>
+                                <TableCell>{entry.label}</TableCell>
+                                <TableCell align="right">
+                                  {formatCellNumber(entry.portions)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {formatCellNumber(entry.macros.calories)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {formatCellNumber(entry.macros.protein)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {formatCellNumber(entry.macros.carbs)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {formatCellNumber(entry.macros.fat)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {formatCellNumber(entry.macros.fiber)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    color="error"
+                                    onClick={() =>
+                                      handleRemoveLogEntry(entry.id, entry.label)
+                                    }
+                                    disabled={removingLogId === entry.id}
+                                  >
+                                    {removingLogId === entry.id ? "Removing..." : "Remove"}
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </Stack>
                     </Box>
                   );
                 })}
