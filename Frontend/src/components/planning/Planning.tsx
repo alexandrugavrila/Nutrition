@@ -28,7 +28,6 @@ import {
   KeyboardArrowDown,
   KeyboardArrowRight,
   Add,
-  Remove,
   Edit as EditIcon,
   Save as SaveIcon,
   RestartAlt as ResetIcon,
@@ -1090,15 +1089,6 @@ function Planning() {
                     <TableCell>{food ? food.name : ""}</TableCell>
                     <TableCell>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <IconButton
-                          size="small"
-                          aria-label="decrement portions"
-                          onClick={() =>
-                            handleQuantityChange(index, Math.max(1, item.portions - 1))
-                          }
-                        >
-                          <Remove fontSize="small" />
-                        </IconButton>
                         <TextField
                           type="number"
                           value={item.portions}
@@ -1107,13 +1097,6 @@ function Planning() {
                           }
                           sx={{ width: 80 }}
                         />
-                        <IconButton
-                          size="small"
-                          aria-label="increment portions"
-                          onClick={() => handleQuantityChange(index, item.portions + 1)}
-                        >
-                          <Add fontSize="small" />
-                        </IconButton>
                       </Box>
                     </TableCell>
                     <TableCell>
@@ -1204,19 +1187,6 @@ function Planning() {
                                   </TableCell>
                                   <TableCell>
                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                      <IconButton
-                                        size="small"
-                                        aria-label="decrement quantity"
-                                        onClick={() =>
-                                          handleQuantityChange(
-                                            index,
-                                            Math.max(1, (quantity || 0) - 1),
-                                            { ingredientId: ingredient.ingredient_id }
-                                          )
-                                        }
-                                      >
-                                        <Remove fontSize="small" />
-                                      </IconButton>
                                       <TextField
                                         type="number"
                                         value={quantity}
@@ -1229,19 +1199,6 @@ function Planning() {
                                         }
                                         sx={{ width: 80 }}
                                       />
-                                      <IconButton
-                                        size="small"
-                                        aria-label="increment quantity"
-                                        onClick={() =>
-                                          handleQuantityChange(
-                                            index,
-                                            (quantity || 0) + 1,
-                                            { ingredientId: ingredient.ingredient_id }
-                                          )
-                                        }
-                                      >
-                                        <Add fontSize="small" />
-                                      </IconButton>
                                       <Box component="span">x {item.portions}</Box>
                                     </Box>
                                   </TableCell>
@@ -1319,15 +1276,6 @@ function Planning() {
                         <Typography variant="body2" sx={{ minWidth: 90 }}>
                           Portion size
                         </Typography>
-                        <IconButton
-                          size="small"
-                          aria-label="decrement portion size"
-                          onClick={() =>
-                            handleQuantityChange(index, Math.max(1, item.amount - 1))
-                          }
-                        >
-                          <Remove fontSize="small" />
-                        </IconButton>
                         <TextField
                           type="number"
                           value={item.amount}
@@ -1341,13 +1289,6 @@ function Planning() {
                             "aria-label": "portion size quantity",
                           }}
                         />
-                        <IconButton
-                          size="small"
-                          aria-label="increment portion size"
-                          onClick={() => handleQuantityChange(index, item.amount + 1)}
-                        >
-                          <Add fontSize="small" />
-                        </IconButton>
                         <TextField
                           select
                           value={normalizedUnitId}
@@ -1381,18 +1322,6 @@ function Planning() {
                         <Typography variant="body2" sx={{ minWidth: 90 }}>
                           Portions
                         </Typography>
-                        <IconButton
-                          size="small"
-                          aria-label="decrement ingredient portions"
-                          onClick={() =>
-                            handleIngredientPortionsChange(
-                              index,
-                              Math.max(1, item.portions - 1),
-                            )
-                          }
-                        >
-                          <Remove fontSize="small" />
-                        </IconButton>
                         <TextField
                           type="number"
                           value={item.portions}
@@ -1409,15 +1338,6 @@ function Planning() {
                             "aria-label": "planned portions",
                           }}
                         />
-                        <IconButton
-                          size="small"
-                          aria-label="increment ingredient portions"
-                          onClick={() =>
-                            handleIngredientPortionsChange(index, item.portions + 1)
-                          }
-                        >
-                          <Add fontSize="small" />
-                        </IconButton>
                         <Typography variant="body2" color="text.secondary">
                           {`Total: ${formatCellNumber(item.amount * item.portions)}${
                             unitName ? ` ${unitName}` : ""
