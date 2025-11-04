@@ -11,6 +11,7 @@ import {
   CardContent,
   CardHeader,
   CircularProgress,
+  Dialog,
   Divider,
   Grid,
   MenuItem,
@@ -25,6 +26,7 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import { Add } from "@mui/icons-material";
 
 import apiClient from "@/apiClient";
 import { useData } from "@/contexts/DataContext";
@@ -33,6 +35,8 @@ import type { components } from "@/api-types";
 import FeedbackSnackbar, {
   SnackbarMessage,
 } from "@/components/common/FeedbackSnackbar";
+import IngredientTable from "@/components/data/ingredient/IngredientTable";
+import FoodTable from "@/components/data/food/FoodTable";
 import {
   createIngredientLookup,
   findIngredientInLookup,
@@ -142,6 +146,8 @@ function Logging() {
     foodId: "",
     portions: "1",
   });
+  const [ingredientPickerOpen, setIngredientPickerOpen] = useState(false);
+  const [foodPickerOpen, setFoodPickerOpen] = useState(false);
   const [pendingIngredientLog, setPendingIngredientLog] = useState(false);
   const [pendingFoodLog, setPendingFoodLog] = useState(false);
   const handleFeedbackClose = useCallback(() => {
@@ -215,34 +221,31 @@ function Logging() {
     return candidate ?? DEFAULT_LOGGING_USER_ID;
   }, [fridgeInventory]);
 
-  const sortedIngredients = useMemo(() => {
-    return [...ingredients].sort((a, b) => {
-      const nameA = a.name?.toLowerCase() ?? "";
-      const nameB = b.name?.toLowerCase() ?? "";
-      if (nameA === nameB) {
-        return 0;
-      }
-      return nameA < nameB ? -1 : 1;
-    });
-  }, [ingredients]);
-
-  const sortedFoods = useMemo(() => {
-    return [...foods].sort((a, b) => {
-      const nameA = a.name?.toLowerCase() ?? "";
-      const nameB = b.name?.toLowerCase() ?? "";
-      if (nameA === nameB) {
-        return 0;
-      }
-      return nameA < nameB ? -1 : 1;
-    });
-  }, [foods]);
-
   const selectedIngredient = useMemo(() => {
     if (!ingredientLog.ingredientId) {
       return undefined;
     }
     return findIngredientInLookup(ingredientLookup, ingredientLog.ingredientId);
   }, [ingredientLookup, ingredientLog.ingredientId]);
+
+  const handleIngredientSelection = useCallback(
+    (ingredient: components["schemas"]["IngredientRead"]) => {
+      const defaultUnit = ingredient.units?.[0];
+      setIngredientLog({
+        ingredientId:
+          ingredient.id === null || ingredient.id === undefined
+            ? ""
+            : String(ingredient.id),
+        unitId:
+          defaultUnit?.id === null || defaultUnit?.id === undefined
+            ? ""
+            : String(defaultUnit.id),
+        quantity: "1",
+      });
+      setIngredientPickerOpen(false);
+    },
+    [setIngredientLog, setIngredientPickerOpen],
+  );
 
   const ingredientUnitId = ingredientLog.unitId === "" ? null : ingredientLog.unitId;
 
@@ -300,6 +303,18 @@ function Logging() {
     }
     return foodLookup.get(foodLog.foodId);
   }, [foodLookup, foodLog.foodId]);
+
+  const handleFoodSelection = useCallback(
+    (food: components["schemas"]["FoodRead"]) => {
+      setFoodLog({
+        foodId:
+          food.id === null || food.id === undefined ? "" : String(food.id),
+        portions: "1",
+      });
+      setFoodPickerOpen(false);
+    },
+    [setFoodLog, setFoodPickerOpen],
+  );
 
   const foodPortionValue = useMemo(() => {
     const parsed = Number.parseFloat(foodLog.portions);
@@ -868,46 +883,30 @@ function Logging() {
                       <Typography variant="h6" component="h2">
                         Log an Ingredient
                       </Typography>
-                      <TextField
-                        select
-                        fullWidth
-                        label="Ingredient"
-                        value={ingredientLog.ingredientId}
-                        onChange={(event) => {
-                          const nextIngredientId = event.target.value;
-                          const match = sortedIngredients.find(
-                            (candidate) =>
-                              String(candidate.id ?? "") === String(nextIngredientId ?? ""),
-                          );
-                          const defaultUnit = match?.units?.[0];
-                          setIngredientLog({
-                            ingredientId: nextIngredientId,
-                            unitId:
-                              defaultUnit?.id == null
-                                ? ""
-                                : String(defaultUnit.id),
-                            quantity: "1",
-                          });
-                        }}
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={1}
+                        alignItems={{ xs: "stretch", sm: "center" }}
                       >
-                        {sortedIngredients.length === 0 ? (
-                          <MenuItem value="" disabled>
-                            No ingredients available
-                          </MenuItem>
-                        ) : (
-                          sortedIngredients.map((ingredient, index) => (
-                            <MenuItem
-                              key={
-                                ingredient.id ??
-                                `${ingredient.name ?? "ingredient"}-${index}`
-                              }
-                              value={ingredient.id == null ? "" : String(ingredient.id)}
-                            >
-                              {ingredient.name ?? `Ingredient #${ingredient.id ?? index + 1}`}
-                            </MenuItem>
-                          ))
-                        )}
-                      </TextField>
+                        <Button
+                          variant="contained"
+                          startIcon={<Add />}
+                          onClick={() => setIngredientPickerOpen(true)}
+                          disabled={hydrating || ingredients.length === 0}
+                        >
+                          Add Ingredient
+                        </Button>
+                        <Typography
+                          variant="body2"
+                          color={selectedIngredient ? "text.primary" : "text.secondary"}
+                        >
+                          {selectedIngredient
+                            ? selectedIngredient.name
+                            : ingredients.length === 0 && !hydrating
+                              ? "No ingredients available"
+                              : "No ingredient selected"}
+                        </Typography>
+                      </Stack>
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                         <TextField
                           select
@@ -984,33 +983,30 @@ function Logging() {
                       <Typography variant="h6" component="h2">
                         Log a Food
                       </Typography>
-                      <TextField
-                        select
-                        fullWidth
-                        label="Food"
-                        value={foodLog.foodId}
-                        onChange={(event) =>
-                          setFoodLog({
-                            foodId: event.target.value,
-                            portions: "1",
-                          })
-                        }
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={1}
+                        alignItems={{ xs: "stretch", sm: "center" }}
                       >
-                        {sortedFoods.length === 0 ? (
-                          <MenuItem value="" disabled>
-                            No foods available
-                          </MenuItem>
-                        ) : (
-                          sortedFoods.map((food, index) => (
-                            <MenuItem
-                              key={food.id ?? `${food.name ?? "food"}-${index}`}
-                              value={food.id == null ? "" : String(food.id)}
-                            >
-                              {food.name ?? `Food #${food.id ?? index + 1}`}
-                            </MenuItem>
-                          ))
-                        )}
-                      </TextField>
+                        <Button
+                          variant="contained"
+                          startIcon={<Add />}
+                          onClick={() => setFoodPickerOpen(true)}
+                          disabled={hydrating || foods.length === 0}
+                        >
+                          Add Food
+                        </Button>
+                        <Typography
+                          variant="body2"
+                          color={selectedFood ? "text.primary" : "text.secondary"}
+                        >
+                          {selectedFood
+                            ? selectedFood.name ?? ""
+                            : foods.length === 0 && !hydrating
+                              ? "No foods available"
+                              : "No food selected"}
+                        </Typography>
+                      </Stack>
                       <TextField
                         label="Servings"
                         type="number"
@@ -1349,6 +1345,34 @@ function Logging() {
           </CardContent>
         </Card>
       </Stack>
+      <Dialog
+        open={ingredientPickerOpen}
+        onClose={() => setIngredientPickerOpen(false)}
+        fullWidth
+        maxWidth="lg"
+        scroll="paper"
+      >
+        <IngredientTable
+          onIngredientDoubleClick={(ingredient) => {
+            handleIngredientSelection(ingredient);
+          }}
+        />
+      </Dialog>
+
+      <Dialog
+        open={foodPickerOpen}
+        onClose={() => setFoodPickerOpen(false)}
+        fullWidth
+        maxWidth="lg"
+        scroll="paper"
+      >
+        <FoodTable
+          onFoodDoubleClick={(food) => {
+            handleFoodSelection(food);
+          }}
+        />
+      </Dialog>
+
       <FeedbackSnackbar
         snackbar={feedback}
         onClose={handleFeedbackClose}
