@@ -11,7 +11,9 @@ import {
   CardContent,
   CardHeader,
   CircularProgress,
+  Divider,
   Grid,
+  MenuItem,
   Paper,
   Stack,
   Table,
@@ -34,7 +36,11 @@ import FeedbackSnackbar, {
 import {
   createIngredientLookup,
   findIngredientInLookup,
+  gramsForIngredientPortion,
+  macrosForIngredientPortion,
+  macrosForFood,
   MacroTotals,
+  scaleMacroTotals,
   sumMacroTotals,
 } from "@/utils/nutrition";
 import { formatCellNumber } from "@/utils/utils";
@@ -94,6 +100,19 @@ const computePortionMacros = (item: CookedBatch, portions: number): MacroTotals 
   fiber: item.per_portion_fiber * portions,
 });
 
+const DEFAULT_LOGGING_USER_ID = "demo-user";
+
+type IngredientLogFormState = {
+  ingredientId: string;
+  unitId: string;
+  quantity: string;
+};
+
+type FoodLogFormState = {
+  foodId: string;
+  portions: string;
+};
+
 function Logging() {
   const {
     fridgeInventory,
@@ -114,6 +133,17 @@ function Logging() {
   const [logsByDate, setLogsByDate] = useState<DailyLogEntryMap>({});
   const [removingStoredId, setRemovingStoredId] = useState<number | null>(null);
   const [removingLogId, setRemovingLogId] = useState<number | null>(null);
+  const [ingredientLog, setIngredientLog] = useState<IngredientLogFormState>({
+    ingredientId: "",
+    unitId: "",
+    quantity: "1",
+  });
+  const [foodLog, setFoodLog] = useState<FoodLogFormState>({
+    foodId: "",
+    portions: "1",
+  });
+  const [pendingIngredientLog, setPendingIngredientLog] = useState(false);
+  const [pendingFoodLog, setPendingFoodLog] = useState(false);
   const handleFeedbackClose = useCallback(() => {
     setFeedback(null);
   }, []);
@@ -179,6 +209,119 @@ function Logging() {
     });
     return map;
   }, [foods]);
+
+  const defaultUserId = useMemo(() => {
+    const candidate = fridgeInventory.find((item) => item.user_id)?.user_id;
+    return candidate ?? DEFAULT_LOGGING_USER_ID;
+  }, [fridgeInventory]);
+
+  const sortedIngredients = useMemo(() => {
+    return [...ingredients].sort((a, b) => {
+      const nameA = a.name?.toLowerCase() ?? "";
+      const nameB = b.name?.toLowerCase() ?? "";
+      if (nameA === nameB) {
+        return 0;
+      }
+      return nameA < nameB ? -1 : 1;
+    });
+  }, [ingredients]);
+
+  const sortedFoods = useMemo(() => {
+    return [...foods].sort((a, b) => {
+      const nameA = a.name?.toLowerCase() ?? "";
+      const nameB = b.name?.toLowerCase() ?? "";
+      if (nameA === nameB) {
+        return 0;
+      }
+      return nameA < nameB ? -1 : 1;
+    });
+  }, [foods]);
+
+  const selectedIngredient = useMemo(() => {
+    if (!ingredientLog.ingredientId) {
+      return undefined;
+    }
+    return findIngredientInLookup(ingredientLookup, ingredientLog.ingredientId);
+  }, [ingredientLookup, ingredientLog.ingredientId]);
+
+  const ingredientUnitId = ingredientLog.unitId === "" ? null : ingredientLog.unitId;
+
+  const ingredientMacros = useMemo(
+    () =>
+      macrosForIngredientPortion({
+        ingredient: selectedIngredient,
+        unitId: ingredientUnitId,
+        quantity: ingredientLog.quantity,
+      }),
+    [selectedIngredient, ingredientUnitId, ingredientLog.quantity],
+  );
+
+  const ingredientGrams = useMemo(
+    () =>
+      gramsForIngredientPortion({
+        ingredient: selectedIngredient,
+        unitId: ingredientUnitId,
+        quantity: ingredientLog.quantity,
+      }),
+    [selectedIngredient, ingredientUnitId, ingredientLog.quantity],
+  );
+
+  const selectedIngredientUnit = useMemo(() => {
+    if (!selectedIngredient) {
+      return undefined;
+    }
+    return (selectedIngredient.units ?? []).find((unit) => {
+      const unitKey = unit?.id == null ? "" : String(unit.id);
+      return unitKey === ingredientLog.unitId;
+    });
+  }, [selectedIngredient, ingredientLog.unitId]);
+
+  const ingredientQuantityValue = useMemo(() => {
+    const parsed = Number.parseFloat(ingredientLog.quantity);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }, [ingredientLog.quantity]);
+
+  const canSubmitIngredientLog = useMemo(() => {
+    if (!selectedIngredient) {
+      return false;
+    }
+    if (!Number.isFinite(ingredientQuantityValue) || ingredientQuantityValue <= 0) {
+      return false;
+    }
+    if (!Number.isFinite(ingredientGrams) || ingredientGrams <= 0) {
+      return false;
+    }
+    return true;
+  }, [selectedIngredient, ingredientQuantityValue, ingredientGrams]);
+
+  const selectedFood = useMemo(() => {
+    if (!foodLog.foodId) {
+      return undefined;
+    }
+    return foodLookup.get(foodLog.foodId);
+  }, [foodLookup, foodLog.foodId]);
+
+  const foodPortionValue = useMemo(() => {
+    const parsed = Number.parseFloat(foodLog.portions);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }, [foodLog.portions]);
+
+  const foodBaseMacros = useMemo(
+    () => macrosForFood(selectedFood, ingredientLookup),
+    [selectedFood, ingredientLookup],
+  );
+
+  const foodLogMacros = useMemo(
+    () => scaleMacroTotals(foodBaseMacros, foodPortionValue),
+    [foodBaseMacros, foodPortionValue],
+  );
+
+  const canSubmitFoodLog = useMemo(() => {
+    if (!selectedFood) {
+      return false;
+    }
+    return Number.isFinite(foodPortionValue) && foodPortionValue > 0;
+  }, [selectedFood, foodPortionValue]);
 
   useEffect(() => {
     setPortionsInput((prev) => {
@@ -414,6 +557,169 @@ function Logging() {
     ],
   );
 
+  const appendLogEntry = useCallback(
+    (entry: DailyLogEntry) => {
+      setLogsByDate((prev) => {
+        const existing = prev[selectedDate] ?? [];
+        return {
+          ...prev,
+          [selectedDate]: [...existing, entry],
+        };
+      });
+    },
+    [selectedDate],
+  );
+
+  const handleLogIngredient = useCallback(async () => {
+    if (!selectedIngredient || !canSubmitIngredientLog) {
+      setFeedback({
+        severity: "error",
+        message: "Select an ingredient, unit, and quantity to log.",
+      });
+      return;
+    }
+
+    if (selectedIngredient.id == null) {
+      setFeedback({
+        severity: "error",
+        message: "The selected ingredient is missing an identifier.",
+      });
+      return;
+    }
+
+    setFeedback(null);
+    setPendingIngredientLog(true);
+    startRequest();
+
+    try {
+      const request = apiClient.path("/api/logs/").method("post").create();
+      const { data: rawLog } = (await request({
+        body: {
+          user_id: defaultUserId,
+          log_date: selectedDate,
+          ingredient_id: selectedIngredient.id,
+          stored_food_id: null,
+          food_id: null,
+          portions_consumed: ingredientGrams,
+          calories: ingredientMacros.calories,
+          protein: ingredientMacros.protein,
+          carbohydrates: ingredientMacros.carbs,
+          fat: ingredientMacros.fat,
+          fiber: ingredientMacros.fiber,
+        },
+      })) as { data: unknown };
+
+      const normalizedLog = normalizeLogEntry(
+        (rawLog ?? {}) as Record<string, unknown>,
+      );
+      appendLogEntry(normalizedLog);
+
+      const unitName = selectedIngredientUnit?.name?.trim();
+      const unitLabel = unitName && unitName.length > 0 ? unitName : "units";
+      setFeedback({
+        severity: "success",
+        message: `Logged ${formatCellNumber(ingredientQuantityValue)} ${unitLabel} of ${
+          selectedIngredient.name ?? "the ingredient"
+        }.`,
+      });
+    } catch (error) {
+      console.error("Failed to log ingredient", error);
+      setFeedback({
+        severity: "error",
+        message: "Failed to log the ingredient. Please try again.",
+      });
+    } finally {
+      setPendingIngredientLog(false);
+      endRequest();
+    }
+  }, [
+    selectedIngredient,
+    canSubmitIngredientLog,
+    defaultUserId,
+    selectedDate,
+    ingredientGrams,
+    ingredientMacros,
+    normalizeLogEntry,
+    appendLogEntry,
+    selectedIngredientUnit,
+    ingredientQuantityValue,
+    startRequest,
+    endRequest,
+  ]);
+
+  const handleLogFood = useCallback(async () => {
+    if (!selectedFood || !canSubmitFoodLog) {
+      setFeedback({
+        severity: "error",
+        message: "Select a food and enter the number of servings to log.",
+      });
+      return;
+    }
+
+    if (selectedFood.id == null) {
+      setFeedback({
+        severity: "error",
+        message: "The selected food is missing an identifier.",
+      });
+      return;
+    }
+
+    setFeedback(null);
+    setPendingFoodLog(true);
+    startRequest();
+
+    try {
+      const request = apiClient.path("/api/logs/").method("post").create();
+      const { data: rawLog } = (await request({
+        body: {
+          user_id: defaultUserId,
+          log_date: selectedDate,
+          food_id: selectedFood.id,
+          stored_food_id: null,
+          ingredient_id: null,
+          portions_consumed: foodPortionValue,
+          calories: foodLogMacros.calories,
+          protein: foodLogMacros.protein,
+          carbohydrates: foodLogMacros.carbs,
+          fat: foodLogMacros.fat,
+          fiber: foodLogMacros.fiber,
+        },
+      })) as { data: unknown };
+
+      const normalizedLog = normalizeLogEntry(
+        (rawLog ?? {}) as Record<string, unknown>,
+      );
+      appendLogEntry(normalizedLog);
+
+      setFeedback({
+        severity: "success",
+        message: `Logged ${formatCellNumber(foodPortionValue)} serving${
+          foodPortionValue === 1 ? "" : "s"
+        } of ${selectedFood.name ?? "the food"}.`,
+      });
+    } catch (error) {
+      console.error("Failed to log food", error);
+      setFeedback({
+        severity: "error",
+        message: "Failed to log the food. Please try again.",
+      });
+    } finally {
+      setPendingFoodLog(false);
+      endRequest();
+    }
+  }, [
+    selectedFood,
+    canSubmitFoodLog,
+    defaultUserId,
+    selectedDate,
+    foodPortionValue,
+    foodLogMacros,
+    normalizeLogEntry,
+    appendLogEntry,
+    startRequest,
+    endRequest,
+  ]);
+
   const handleRemoveStoredItem = useCallback(
     async (item: CookedBatch) => {
       const displayName = resolveDisplayName(item);
@@ -532,148 +838,356 @@ function Logging() {
         Food Logging
       </Typography>
 
-      <Stack direction={{ xs: "column", md: "row" }} spacing={3} alignItems="flex-start">
-        <Card sx={{ flex: 1, minWidth: 0 }}>
-          <CardHeader
-            title="Fridge Inventory"
-            subheader="Select items to log against your chosen day"
-          />
-          <CardContent>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }}>
-              <TextField
-                label="Log date"
-                type="date"
-                value={selectedDate}
-                onChange={(event) => setSelectedDate(event.target.value)}
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-              />
-            </Stack>
+      <Box sx={{ maxWidth: 260 }}>
+        <TextField
+          label="Log date"
+          type="date"
+          value={selectedDate}
+          onChange={(event) => setSelectedDate(event.target.value)}
+          InputLabelProps={{ shrink: true }}
+          fullWidth
+        />
+      </Box>
 
-            {hydrating ? (
-              <Stack alignItems="center" justifyContent="center" sx={{ py: 4 }}>
-                <CircularProgress aria-label="Loading fridge inventory" />
-              </Stack>
-            ) : groupedInventory.length === 0 ? (
-              <Typography color="text.secondary">
-                Your fridge is empty. Cook or add items to log consumption.
-              </Typography>
-            ) : (
-              <Stack spacing={3}>
-                {groupedInventory.map((group) => (
-                  <Box key={group.key}>
-                    <Typography variant="h6" component="h2" gutterBottom>
-                      {group.label}
-                    </Typography>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Item</TableCell>
-                          <TableCell align="right">Remaining portions</TableCell>
-                          <TableCell align="right">Log portions</TableCell>
-                          <TableCell align="right">Actions</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {group.items.map((item) => {
-                          const displayName = resolveDisplayName(item);
-                          const isDepleted = item.remaining_portions <= 0;
-                          const value = portionsInput[item.id] ?? "1";
-                          const preparedDate = item.prepared_at
-                            ? new Date(item.prepared_at).toLocaleDateString()
-                            : null;
-                          return (
-                            <TableRow key={item.id} hover>
-                              <TableCell>
-                                <Stack spacing={0.5}>
-                                  <Typography component="span" fontWeight={600}>
-                                    {displayName}
-                                  </Typography>
-                                  {preparedDate && (
-                                    <Typography
-                                      component="span"
-                                      variant="body2"
-                                      color="text.secondary"
-                                    >
-                                      Prepared {preparedDate}
+      <Stack direction={{ xs: "column", md: "row" }} spacing={3} alignItems="flex-start">
+        <Stack spacing={3} sx={{ flex: 1, minWidth: 0 }}>
+          <Card>
+            <CardHeader
+              title="Quick Log"
+              subheader="Log ingredients or foods without storing them first"
+            />
+            <CardContent>
+              {hydrating ? (
+                <Stack alignItems="center" justifyContent="center" sx={{ py: 4 }}>
+                  <CircularProgress aria-label="Loading quick log data" />
+                </Stack>
+              ) : (
+                <Stack spacing={4}>
+                  <Box>
+                    <Stack spacing={2}>
+                      <Typography variant="h6" component="h2">
+                        Log an Ingredient
+                      </Typography>
+                      <TextField
+                        select
+                        fullWidth
+                        label="Ingredient"
+                        value={ingredientLog.ingredientId}
+                        onChange={(event) => {
+                          const nextIngredientId = event.target.value;
+                          const match = sortedIngredients.find(
+                            (candidate) =>
+                              String(candidate.id ?? "") === String(nextIngredientId ?? ""),
+                          );
+                          const defaultUnit = match?.units?.[0];
+                          setIngredientLog({
+                            ingredientId: nextIngredientId,
+                            unitId:
+                              defaultUnit?.id == null
+                                ? ""
+                                : String(defaultUnit.id),
+                            quantity: "1",
+                          });
+                        }}
+                      >
+                        {sortedIngredients.length === 0 ? (
+                          <MenuItem value="" disabled>
+                            No ingredients available
+                          </MenuItem>
+                        ) : (
+                          sortedIngredients.map((ingredient, index) => (
+                            <MenuItem
+                              key={
+                                ingredient.id ??
+                                `${ingredient.name ?? "ingredient"}-${index}`
+                              }
+                              value={ingredient.id == null ? "" : String(ingredient.id)}
+                            >
+                              {ingredient.name ?? `Ingredient #${ingredient.id ?? index + 1}`}
+                            </MenuItem>
+                          ))
+                        )}
+                      </TextField>
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                        <TextField
+                          select
+                          label="Unit"
+                          fullWidth
+                          value={ingredientLog.unitId}
+                          onChange={(event) =>
+                            setIngredientLog((prev) => ({
+                              ...prev,
+                              unitId: event.target.value,
+                            }))
+                          }
+                          disabled={!selectedIngredient}
+                        >
+                          {(selectedIngredient?.units ?? []).map((unit, index) => (
+                            <MenuItem
+                              key={
+                                unit?.id ?? `${unit?.name ?? "unit"}-${index}`
+                              }
+                              value={unit?.id == null ? "" : String(unit.id)}
+                            >
+                              {unit?.name ?? "Unit"}
+                            </MenuItem>
+                          ))}
+                          {(selectedIngredient?.units ?? []).length === 0 && (
+                            <MenuItem value="" disabled>
+                              No units available
+                            </MenuItem>
+                          )}
+                        </TextField>
+                        <TextField
+                          label="Quantity"
+                          type="number"
+                          inputProps={{ min: 0, step: "any" }}
+                          fullWidth
+                          value={ingredientLog.quantity}
+                          onChange={(event) =>
+                            setIngredientLog((prev) => ({
+                              ...prev,
+                              quantity: event.target.value,
+                            }))
+                          }
+                          disabled={!selectedIngredient}
+                        />
+                      </Stack>
+                      {selectedIngredient && (
+                        <Stack spacing={0.5}>
+                          <Typography variant="body2" color="text.secondary">
+                            Estimated total: {formatCellNumber(ingredientMacros.calories)} cal, {" "}
+                            {formatCellNumber(ingredientMacros.protein)} g protein, {" "}
+                            {formatCellNumber(ingredientMacros.carbs)} g carbs, {" "}
+                            {formatCellNumber(ingredientMacros.fat)} g fat, {" "}
+                            {formatCellNumber(ingredientMacros.fiber)} g fiber
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Approximate weight: {formatCellNumber(ingredientGrams)} g
+                          </Typography>
+                        </Stack>
+                      )}
+                      <Button
+                        variant="contained"
+                        onClick={handleLogIngredient}
+                        disabled={pendingIngredientLog || !canSubmitIngredientLog}
+                      >
+                        {pendingIngredientLog ? "Logging..." : "Log ingredient"}
+                      </Button>
+                    </Stack>
+                  </Box>
+
+                  <Divider />
+
+                  <Box>
+                    <Stack spacing={2}>
+                      <Typography variant="h6" component="h2">
+                        Log a Food
+                      </Typography>
+                      <TextField
+                        select
+                        fullWidth
+                        label="Food"
+                        value={foodLog.foodId}
+                        onChange={(event) =>
+                          setFoodLog({
+                            foodId: event.target.value,
+                            portions: "1",
+                          })
+                        }
+                      >
+                        {sortedFoods.length === 0 ? (
+                          <MenuItem value="" disabled>
+                            No foods available
+                          </MenuItem>
+                        ) : (
+                          sortedFoods.map((food, index) => (
+                            <MenuItem
+                              key={food.id ?? `${food.name ?? "food"}-${index}`}
+                              value={food.id == null ? "" : String(food.id)}
+                            >
+                              {food.name ?? `Food #${food.id ?? index + 1}`}
+                            </MenuItem>
+                          ))
+                        )}
+                      </TextField>
+                      <TextField
+                        label="Servings"
+                        type="number"
+                        inputProps={{ min: 0, step: "any" }}
+                        fullWidth
+                        value={foodLog.portions}
+                        onChange={(event) =>
+                          setFoodLog((prev) => ({
+                            ...prev,
+                            portions: event.target.value,
+                          }))
+                        }
+                        disabled={!selectedFood}
+                      />
+                      {selectedFood && (
+                        <Stack spacing={0.5}>
+                          <Typography variant="body2" color="text.secondary">
+                            Estimated per serving: {formatCellNumber(foodBaseMacros.calories)} cal, {" "}
+                            {formatCellNumber(foodBaseMacros.protein)} g protein, {" "}
+                            {formatCellNumber(foodBaseMacros.carbs)} g carbs, {" "}
+                            {formatCellNumber(foodBaseMacros.fat)} g fat, {" "}
+                            {formatCellNumber(foodBaseMacros.fiber)} g fiber
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Logging total: {formatCellNumber(foodLogMacros.calories)} cal, {" "}
+                            {formatCellNumber(foodLogMacros.protein)} g protein, {" "}
+                            {formatCellNumber(foodLogMacros.carbs)} g carbs, {" "}
+                            {formatCellNumber(foodLogMacros.fat)} g fat, {" "}
+                            {formatCellNumber(foodLogMacros.fiber)} g fiber
+                          </Typography>
+                        </Stack>
+                      )}
+                      <Button
+                        variant="contained"
+                        onClick={handleLogFood}
+                        disabled={pendingFoodLog || !canSubmitFoodLog}
+                      >
+                        {pendingFoodLog ? "Logging..." : "Log food"}
+                      </Button>
+                    </Stack>
+                  </Box>
+                </Stack>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Fridge Inventory"
+              subheader="Select items to log against your chosen day"
+            />
+            <CardContent>
+              {hydrating ? (
+                <Stack alignItems="center" justifyContent="center" sx={{ py: 4 }}>
+                  <CircularProgress aria-label="Loading fridge inventory" />
+                </Stack>
+              ) : groupedInventory.length === 0 ? (
+                <Typography color="text.secondary">
+                  Your fridge is empty. Cook or add items to log consumption.
+                </Typography>
+              ) : (
+                <Stack spacing={3}>
+                  {groupedInventory.map((group) => (
+                    <Box key={group.key}>
+                      <Typography variant="h6" component="h2" gutterBottom>
+                        {group.label}
+                      </Typography>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Item</TableCell>
+                            <TableCell align="right">Remaining portions</TableCell>
+                            <TableCell align="right">Log portions</TableCell>
+                            <TableCell align="right">Actions</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {group.items.map((item) => {
+                            const displayName = resolveDisplayName(item);
+                            const isDepleted = item.remaining_portions <= 0;
+                            const value = portionsInput[item.id] ?? "1";
+                            const preparedDate = item.prepared_at
+                              ? new Date(item.prepared_at).toLocaleDateString()
+                              : null;
+                            return (
+                              <TableRow key={item.id} hover>
+                                <TableCell>
+                                  <Stack spacing={0.5}>
+                                    <Typography component="span" fontWeight={600}>
+                                      {displayName}
                                     </Typography>
-                                  )}
-                                  <Typography component="span" variant="body2" color="text.secondary">
-                                    Per portion: {formatCellNumber(item.per_portion_calories)} cal,
-                                    {" "}
-                                    {formatCellNumber(item.per_portion_protein)} g protein,
-                                    {" "}
-                                    {formatCellNumber(item.per_portion_carbohydrates)} g carbs,
-                                    {" "}
-                                    {formatCellNumber(item.per_portion_fat)} g fat,
-                                    {" "}
-                                    {formatCellNumber(item.per_portion_fiber)} g fiber
-                                  </Typography>
-                                </Stack>
-                              </TableCell>
-                              <TableCell align="right">
-                                {formatCellNumber(item.remaining_portions)}
-                              </TableCell>
-                              <TableCell align="right">
-                                <TextField
-                                  type="text"
-                                  size="small"
-                                  inputProps={{
-                                    inputMode: "decimal",
-                                    "aria-label": `Portions to log for ${displayName}`,
-                                  }}
-                                  value={value}
-                                  onChange={(event) =>
-                                    setPortionsInput((prev) => ({
-                                      ...prev,
-                                      [item.id]: event.target.value,
-                                    }))
-                                  }
-                                  disabled={
-                                    isDepleted ||
-                                    pendingId === item.id ||
-                                    removingStoredId === item.id
-                                  }
-                                />
-                              </TableCell>
-                              <TableCell align="right">
-                                <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                  <Button
-                                    variant="contained"
+                                    {preparedDate && (
+                                      <Typography
+                                        component="span"
+                                        variant="body2"
+                                        color="text.secondary"
+                                      >
+                                        Prepared {preparedDate}
+                                      </Typography>
+                                    )}
+                                    <Typography component="span" variant="body2" color="text.secondary">
+                                      Per portion: {formatCellNumber(item.per_portion_calories)} cal,
+                                      {" "}
+                                      {formatCellNumber(item.per_portion_protein)} g protein,
+                                      {" "}
+                                      {formatCellNumber(item.per_portion_carbohydrates)} g carbs,
+                                      {" "}
+                                      {formatCellNumber(item.per_portion_fat)} g fat,
+                                      {" "}
+                                      {formatCellNumber(item.per_portion_fiber)} g fiber
+                                    </Typography>
+                                  </Stack>
+                                </TableCell>
+                                <TableCell align="right">
+                                  {formatCellNumber(item.remaining_portions)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  <TextField
+                                    type="text"
                                     size="small"
-                                    onClick={() => handleLogItem(item)}
+                                    inputProps={{
+                                      inputMode: "decimal",
+                                      "aria-label": `Portions to log for ${displayName}`,
+                                    }}
+                                    value={value}
+                                    onChange={(event) =>
+                                      setPortionsInput((prev) => ({
+                                        ...prev,
+                                        [item.id]: event.target.value,
+                                      }))
+                                    }
                                     disabled={
                                       isDepleted ||
                                       pendingId === item.id ||
                                       removingStoredId === item.id
                                     }
-                                  >
-                                    {pendingId === item.id ? "Logging..." : "Add to log"}
-                                  </Button>
-                                  <Button
-                                    variant="outlined"
-                                    size="small"
-                                    color="error"
-                                    onClick={() => handleRemoveStoredItem(item)}
-                                    disabled={
-                                      removingStoredId === item.id || pendingId === item.id
-                                    }
-                                  >
-                                    {removingStoredId === item.id ? "Removing..." : "Remove"}
-                                  </Button>
-                                </Stack>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </Box>
-                ))}
-              </Stack>
-            )}
-          </CardContent>
-        </Card>
+                                  />
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                    <Button
+                                      variant="contained"
+                                      size="small"
+                                      onClick={() => handleLogItem(item)}
+                                      disabled={
+                                        isDepleted ||
+                                        pendingId === item.id ||
+                                        removingStoredId === item.id
+                                      }
+                                    >
+                                      {pendingId === item.id ? "Logging..." : "Add to log"}
+                                    </Button>
+                                    <Button
+                                      variant="outlined"
+                                      size="small"
+                                      color="error"
+                                      onClick={() => handleRemoveStoredItem(item)}
+                                      disabled={
+                                        removingStoredId === item.id || pendingId === item.id
+                                      }
+                                    >
+                                      {removingStoredId === item.id ? "Removing..." : "Remove"}
+                                    </Button>
+                                  </Stack>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+            </CardContent>
+          </Card>
+        </Stack>
 
         <Card sx={{ flex: 1, minWidth: 0 }}>
           <CardHeader
@@ -682,7 +1196,7 @@ function Logging() {
           <CardContent>
             {sortedLogDates.length === 0 ? (
               <Typography color="text.secondary">
-                No items have been logged yet. Log fridge items to see them here.
+                No items have been logged yet. Log items to see them here.
               </Typography>
             ) : (
               <Stack spacing={3}>
@@ -695,6 +1209,11 @@ function Logging() {
                   );
                   const summaryId = `${dateKey}-daily-total`;
                   const summaryMetrics = [
+                    {
+                      label: "Portions",
+                      value: formatCellNumber(totalPortions),
+                      ariaLabel: "Total portions",
+                    },
                     {
                       label: "Calories",
                       value: formatCellNumber(totals.calories),

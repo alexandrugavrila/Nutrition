@@ -5,6 +5,7 @@ import {
   findIngredientInLookup,
   macrosForFood,
   macrosForIngredientPortion,
+  scaleMacroTotals,
   ZERO_MACROS,
 } from "@/utils/nutrition";
 import type { FoodRead, IngredientRead } from "@/utils/nutrition";
@@ -134,6 +135,26 @@ describe("createIngredientLookup and findIngredientInLookup", () => {
     expect(findIngredientInLookup(lookup, "  ")).toBeUndefined();
     expect(findIngredientInLookup(lookup, "not-a-number")).toBeUndefined();
     expect(findIngredientInLookup(lookup, 999)).toBeUndefined();
+  });
+});
+
+describe("scaleMacroTotals", () => {
+  it("scales totals with positive multipliers", () => {
+    const totals = { calories: 10, protein: 5, fat: 2, carbs: 3, fiber: 1 };
+    expect(scaleMacroTotals(totals, 2)).toEqual({
+      calories: 20,
+      protein: 10,
+      fat: 4,
+      carbs: 6,
+      fiber: 2,
+    });
+  });
+
+  it("returns zero totals when multiplier is invalid", () => {
+    const totals = { calories: 10, protein: 5, fat: 2, carbs: 3, fiber: 1 };
+    expect(scaleMacroTotals(totals, 0)).toEqual(ZERO_MACROS);
+    expect(scaleMacroTotals(totals, Number.NaN)).toEqual(ZERO_MACROS);
+    expect(scaleMacroTotals(totals, -1)).toEqual(ZERO_MACROS);
   });
 });
 

@@ -127,9 +127,10 @@ describe("Logging component", () => {
     render(<Logging />);
 
     expect(screen.getByText(/Fridge Inventory/i)).toBeInTheDocument();
+    expect(screen.getByText(/Quick Log/i)).toBeInTheDocument();
     expect(screen.getByText(/Prepared Foods/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Log date/i)).toBeInTheDocument();
-    expect(screen.getByText(/Daily Logs/i)).toBeInTheDocument();
+    expect(screen.getByText(/Daily Log/i)).toBeInTheDocument();
   });
 
   it("logs consumption and records totals for the selected day", async () => {
@@ -211,6 +212,192 @@ describe("Logging component", () => {
     ).toHaveTextContent("9");
   });
 
+  it("logs a standalone ingredient entry", async () => {
+    const standaloneIngredient = {
+      id: 20,
+      name: "Spinach",
+      units: [{ id: 1, name: "gram", grams: 1 }],
+      nutrition: {
+        calories: 1,
+        protein: 2,
+        fat: 3,
+        carbohydrates: 4,
+        fiber: 5,
+      },
+      tags: [],
+      shoppingUnitId: null,
+    };
+
+    const logResponse = {
+      id: 99,
+      user_id: "demo-user",
+      log_date: today,
+      stored_food_id: null,
+      ingredient_id: standaloneIngredient.id,
+      food_id: null,
+      portions_consumed: 2,
+      calories: 2,
+      protein: 4,
+      carbohydrates: 8,
+      fat: 6,
+      fiber: 10,
+      created_at: `${today}T09:00:00Z`,
+    };
+
+    logHandler = vi.fn(async (options = {}) => {
+      expect(options?.body).toMatchObject({
+        user_id: "demo-user",
+        log_date: today,
+        ingredient_id: standaloneIngredient.id,
+        stored_food_id: null,
+        food_id: null,
+        portions_consumed: 2,
+        calories: 2,
+        protein: 4,
+        carbohydrates: 8,
+        fat: 6,
+        fiber: 10,
+      });
+      return { data: logResponse };
+    });
+    requestHandlers.set("POST /api/logs/", logHandler);
+
+    (useData as unknown as Mock).mockReturnValue({
+      fridgeInventory: [],
+      foods: [],
+      ingredients: [standaloneIngredient],
+      setFridgeNeedsRefetch,
+      startRequest,
+      endRequest,
+      hydrating: false,
+    });
+
+    render(<Logging />);
+
+    await waitFor(() => {
+      expect(mockedClient.path).toHaveBeenCalledWith(`/api/logs/${today}`);
+    });
+
+    await userEvent.click(screen.getByLabelText("Ingredient"));
+    await userEvent.click(screen.getByRole("option", { name: /Spinach/i }));
+
+    const quantityInput = screen.getByLabelText("Quantity") as HTMLInputElement;
+    await userEvent.clear(quantityInput);
+    await userEvent.type(quantityInput, "2");
+
+    await userEvent.click(screen.getByRole("button", { name: /Log ingredient/i }));
+
+    await waitFor(() => {
+      expect(logHandler).toHaveBeenCalled();
+      expect(startRequest).toHaveBeenCalled();
+      expect(endRequest).toHaveBeenCalled();
+    });
+
+    expect(setFridgeNeedsRefetch).not.toHaveBeenCalled();
+    const dailyLogTable = await screen.findByRole("table");
+    expect(within(dailyLogTable).getByText("Spinach")).toBeInTheDocument();
+  });
+
+  it("logs a standalone food entry", async () => {
+    const standaloneIngredient = {
+      id: 30,
+      name: "Tofu",
+      units: [{ id: 11, name: "gram", grams: 1 }],
+      nutrition: {
+        calories: 2,
+        protein: 4,
+        fat: 6,
+        carbohydrates: 8,
+        fiber: 10,
+      },
+      tags: [],
+      shoppingUnitId: null,
+    };
+
+    const standaloneFood = {
+      id: 31,
+      name: "Protein Bowl",
+      ingredients: [
+        {
+          ingredient_id: standaloneIngredient.id,
+          unit_id: 11,
+          unit_quantity: 3,
+        },
+      ],
+      tags: [],
+    };
+
+    const logResponse = {
+      id: 100,
+      user_id: "demo-user",
+      log_date: today,
+      stored_food_id: null,
+      ingredient_id: null,
+      food_id: standaloneFood.id,
+      portions_consumed: 0.5,
+      calories: 3,
+      protein: 6,
+      carbohydrates: 12,
+      fat: 9,
+      fiber: 15,
+      created_at: `${today}T10:00:00Z`,
+    };
+
+    logHandler = vi.fn(async (options = {}) => {
+      const payload = options?.body as Record<string, unknown>;
+      expect(payload).toMatchObject({
+        user_id: "demo-user",
+        log_date: today,
+        food_id: standaloneFood.id,
+        stored_food_id: null,
+        ingredient_id: null,
+      });
+      expect(Number(payload?.portions_consumed)).toBeCloseTo(0.5);
+      expect(Number(payload?.calories)).toBeCloseTo(3);
+      expect(Number(payload?.protein)).toBeCloseTo(6);
+      expect(Number(payload?.carbohydrates)).toBeCloseTo(12);
+      expect(Number(payload?.fat)).toBeCloseTo(9);
+      expect(Number(payload?.fiber)).toBeCloseTo(15);
+      return { data: logResponse };
+    });
+    requestHandlers.set("POST /api/logs/", logHandler);
+
+    (useData as unknown as Mock).mockReturnValue({
+      fridgeInventory: [],
+      foods: [standaloneFood],
+      ingredients: [standaloneIngredient],
+      setFridgeNeedsRefetch,
+      startRequest,
+      endRequest,
+      hydrating: false,
+    });
+
+    render(<Logging />);
+
+    await waitFor(() => {
+      expect(mockedClient.path).toHaveBeenCalledWith(`/api/logs/${today}`);
+    });
+
+    await userEvent.click(screen.getByLabelText("Food"));
+    await userEvent.click(screen.getByRole("option", { name: /Protein Bowl/i }));
+
+    const servingsInput = screen.getByLabelText("Servings") as HTMLInputElement;
+    await userEvent.clear(servingsInput);
+    await userEvent.type(servingsInput, "0.5");
+
+    await userEvent.click(screen.getByRole("button", { name: /Log food/i }));
+
+    await waitFor(() => {
+      expect(logHandler).toHaveBeenCalled();
+      expect(startRequest).toHaveBeenCalled();
+      expect(endRequest).toHaveBeenCalled();
+    });
+
+    expect(setFridgeNeedsRefetch).not.toHaveBeenCalled();
+    const dailyLogTable = await screen.findByRole("table");
+    expect(within(dailyLogTable).getByText("Protein Bowl")).toBeInTheDocument();
+  });
+
   it("removes fridge items when requested", async () => {
     const deleteHandler = vi.fn(async () => ({ data: {} }));
     requestHandlers.set(
@@ -275,7 +462,7 @@ describe("Logging component", () => {
 
     render(<Logging />);
 
-    const logsHeading = screen.getByText(/Daily Logs/i);
+    const logsHeading = screen.getByText(/Daily Log/i);
     const logsCard = logsHeading.closest(".MuiCard-root") ?? logsHeading.parentElement;
     if (!logsCard) {
       throw new Error("Logs card not found");
@@ -297,11 +484,11 @@ describe("Logging component", () => {
     ).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(
-        screen.getByText(
-          /No items have been logged yet\. Log fridge items to see them here\./i,
-        ),
-      ).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            /No items have been logged yet\. Log items to see them here\./i,
+          ),
+        ).toBeInTheDocument();
     });
   });
 });
