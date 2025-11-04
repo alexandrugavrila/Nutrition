@@ -48,9 +48,15 @@ describe("Logging component", () => {
   const ingredient = {
     id: 5,
     name: "Beans",
-    units: [],
+    units: [{ id: 7, name: "cup", grams: 100 }],
     tags: [],
-    nutrition: null,
+    nutrition: {
+      calories: 1,
+      protein: 2,
+      fat: 3,
+      carbohydrates: 4,
+      fiber: 5,
+    },
     shoppingUnitId: null,
   };
 
@@ -70,6 +76,33 @@ describe("Logging component", () => {
   let lastMethod: string;
   let consumeHandler: RequestHandler;
   let logHandler: RequestHandler;
+
+  const createDataContextValue = (
+    overrides: Record<string, unknown> = {},
+  ) => ({
+    fridgeInventory: [fridgeItem],
+    foods: [food],
+    ingredients: [ingredient],
+    setFridgeInventory: vi.fn(),
+    setIngredients: vi.fn(),
+    setFridgeNeedsRefetch,
+    setIngredientsNeedsRefetch: vi.fn(),
+    setFoodsNeedsRefetch: vi.fn(),
+    startRequest,
+    endRequest,
+    hydrating: false,
+    fetching: false,
+    hydrated: true,
+    ingredientProcessingTags: [],
+    ingredientGroupTags: [],
+    ingredientOtherTags: [],
+    foodDietTags: [],
+    foodTypeTags: [],
+    foodOtherTags: [],
+    addPossibleIngredientTag: vi.fn(async () => null),
+    addPossibleFoodTag: vi.fn(async () => null),
+    ...overrides,
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -112,15 +145,7 @@ describe("Logging component", () => {
     startRequest = vi.fn();
     endRequest = vi.fn();
 
-    (useData as unknown as Mock).mockReturnValue({
-      fridgeInventory: [fridgeItem],
-      foods: [food],
-      ingredients: [ingredient],
-      setFridgeNeedsRefetch,
-      startRequest,
-      endRequest,
-      hydrating: false,
-    });
+    (useData as unknown as Mock).mockReturnValue(createDataContextValue());
   });
 
   it("renders fridge items grouped and shows the log date picker", () => {
@@ -262,15 +287,13 @@ describe("Logging component", () => {
     });
     requestHandlers.set("POST /api/logs/", logHandler);
 
-    (useData as unknown as Mock).mockReturnValue({
-      fridgeInventory: [],
-      foods: [],
-      ingredients: [standaloneIngredient],
-      setFridgeNeedsRefetch,
-      startRequest,
-      endRequest,
-      hydrating: false,
-    });
+    (useData as unknown as Mock).mockReturnValue(
+      createDataContextValue({
+        fridgeInventory: [],
+        foods: [],
+        ingredients: [standaloneIngredient],
+      }),
+    );
 
     render(<Logging />);
 
@@ -278,8 +301,22 @@ describe("Logging component", () => {
       expect(mockedClient.path).toHaveBeenCalledWith(`/api/logs/${today}`);
     });
 
-    await userEvent.click(screen.getByLabelText("Ingredient"));
-    await userEvent.click(screen.getByRole("option", { name: /Spinach/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Add Ingredient/i }),
+    );
+    const ingredientDialog = await screen.findByRole("dialog");
+    const ingredientRow = within(ingredientDialog)
+      .getByText(/Spinach/i)
+      .closest("tr");
+    if (!ingredientRow) {
+      throw new Error("Ingredient row not found");
+    }
+    await userEvent.click(
+      within(ingredientRow).getByRole("button", { name: /Select/i }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
 
     const quantityInput = screen.getByLabelText("Quantity") as HTMLInputElement;
     await userEvent.clear(quantityInput);
@@ -362,15 +399,13 @@ describe("Logging component", () => {
     });
     requestHandlers.set("POST /api/logs/", logHandler);
 
-    (useData as unknown as Mock).mockReturnValue({
-      fridgeInventory: [],
-      foods: [standaloneFood],
-      ingredients: [standaloneIngredient],
-      setFridgeNeedsRefetch,
-      startRequest,
-      endRequest,
-      hydrating: false,
-    });
+    (useData as unknown as Mock).mockReturnValue(
+      createDataContextValue({
+        fridgeInventory: [],
+        foods: [standaloneFood],
+        ingredients: [standaloneIngredient],
+      }),
+    );
 
     render(<Logging />);
 
@@ -378,8 +413,18 @@ describe("Logging component", () => {
       expect(mockedClient.path).toHaveBeenCalledWith(`/api/logs/${today}`);
     });
 
-    await userEvent.click(screen.getByLabelText("Food"));
-    await userEvent.click(screen.getByRole("option", { name: /Protein Bowl/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Add Food/i }));
+    const foodDialog = await screen.findByRole("dialog");
+    const foodRow = within(foodDialog).getByText(/Protein Bowl/i).closest("tr");
+    if (!foodRow) {
+      throw new Error("Food row not found");
+    }
+    await userEvent.click(
+      within(foodRow).getByRole("button", { name: /Select/i }),
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
 
     const servingsInput = screen.getByLabelText("Servings") as HTMLInputElement;
     await userEvent.clear(servingsInput);
