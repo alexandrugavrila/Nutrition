@@ -12,7 +12,6 @@ import {
   CardHeader,
   CircularProgress,
   Dialog,
-  Divider,
   Grid,
   MenuItem,
   Paper,
@@ -148,6 +147,9 @@ function Logging() {
   });
   const [ingredientPickerOpen, setIngredientPickerOpen] = useState(false);
   const [foodPickerOpen, setFoodPickerOpen] = useState(false);
+  const [activeLogType, setActiveLogType] = useState<"ingredient" | "food" | null>(
+    null,
+  );
   const [pendingIngredientLog, setPendingIngredientLog] = useState(false);
   const [pendingFoodLog, setPendingFoodLog] = useState(false);
   const handleFeedbackClose = useCallback(() => {
@@ -877,125 +879,124 @@ function Logging() {
                   <CircularProgress aria-label="Loading quick log data" />
                 </Stack>
               ) : (
-                <Stack spacing={4}>
-                  <Box>
-                    <Stack spacing={2}>
-                      <Typography variant="h6" component="h2">
-                        Log an Ingredient
-                      </Typography>
-                      <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        spacing={1}
-                        alignItems={{ xs: "stretch", sm: "center" }}
-                      >
-                        <Button
-                          variant="contained"
-                          startIcon={<Add />}
-                          onClick={() => setIngredientPickerOpen(true)}
-                          disabled={hydrating || ingredients.length === 0}
-                        >
-                          Add Ingredient
-                        </Button>
+                <Stack spacing={3}>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.5}
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                  >
+                    <Button
+                      variant={activeLogType === "ingredient" ? "contained" : "outlined"}
+                      startIcon={<Add />}
+                      onClick={() => {
+                        setActiveLogType("ingredient");
+                        setIngredientPickerOpen(true);
+                      }}
+                      disabled={hydrating || ingredients.length === 0}
+                    >
+                      Add Ingredient
+                    </Button>
+                    <Button
+                      variant={activeLogType === "food" ? "contained" : "outlined"}
+                      startIcon={<Add />}
+                      onClick={() => {
+                        setActiveLogType("food");
+                        setFoodPickerOpen(true);
+                      }}
+                      disabled={hydrating || foods.length === 0}
+                    >
+                      Add Food
+                    </Button>
+                  </Stack>
+
+                  {activeLogType === "ingredient" && (
+                    <Box>
+                      <Stack spacing={2}>
                         <Typography
                           variant="body2"
-                          color={selectedIngredient ? "text.primary" : "text.secondary"}
+                          color={
+                            selectedIngredient ? "text.primary" : "text.secondary"
+                          }
                         >
                           {selectedIngredient
                             ? selectedIngredient.name
                             : ingredients.length === 0 && !hydrating
                               ? "No ingredients available"
-                              : "No ingredient selected"}
+                              : "No ingredient selected. Use the Add Ingredient button above."}
                         </Typography>
-                      </Stack>
-                      <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                        <TextField
-                          select
-                          label="Unit"
-                          fullWidth
-                          value={ingredientLog.unitId}
-                          onChange={(event) =>
-                            setIngredientLog((prev) => ({
-                              ...prev,
-                              unitId: event.target.value,
-                            }))
-                          }
-                          disabled={!selectedIngredient}
-                        >
-                          {(selectedIngredient?.units ?? []).map((unit, index) => (
-                            <MenuItem
-                              key={
-                                unit?.id ?? `${unit?.name ?? "unit"}-${index}`
-                              }
-                              value={unit?.id == null ? "" : String(unit.id)}
-                            >
-                              {unit?.name ?? "Unit"}
-                            </MenuItem>
-                          ))}
-                          {(selectedIngredient?.units ?? []).length === 0 && (
-                            <MenuItem value="" disabled>
-                              No units available
-                            </MenuItem>
-                          )}
-                        </TextField>
-                        <TextField
-                          label="Quantity"
-                          type="number"
-                          inputProps={{ min: 0, step: "any" }}
-                          fullWidth
-                          value={ingredientLog.quantity}
-                          onChange={(event) =>
-                            setIngredientLog((prev) => ({
-                              ...prev,
-                              quantity: event.target.value,
-                            }))
-                          }
-                          disabled={!selectedIngredient}
-                        />
-                      </Stack>
-                      {selectedIngredient && (
-                        <Stack spacing={0.5}>
-                          <Typography variant="body2" color="text.secondary">
-                            Estimated total: {formatCellNumber(ingredientMacros.calories)} cal, {" "}
-                            {formatCellNumber(ingredientMacros.protein)} g protein, {" "}
-                            {formatCellNumber(ingredientMacros.carbs)} g carbs, {" "}
-                            {formatCellNumber(ingredientMacros.fat)} g fat, {" "}
-                            {formatCellNumber(ingredientMacros.fiber)} g fiber
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Approximate weight: {formatCellNumber(ingredientGrams)} g
-                          </Typography>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                          <TextField
+                            select
+                            label="Unit"
+                            fullWidth
+                            value={ingredientLog.unitId}
+                            onChange={(event) =>
+                              setIngredientLog((prev) => ({
+                                ...prev,
+                                unitId: event.target.value,
+                              }))
+                            }
+                            disabled={!selectedIngredient}
+                          >
+                            {(selectedIngredient?.units ?? []).map((unit, index) => (
+                              <MenuItem
+                                key={
+                                  unit?.id ?? `${unit?.name ?? "unit"}-${index}`
+                                }
+                                value={unit?.id == null ? "" : String(unit.id)}
+                              >
+                                {unit?.name ?? "Unit"}
+                              </MenuItem>
+                            ))}
+                            {(selectedIngredient?.units ?? []).length === 0 && (
+                              <MenuItem value="" disabled>
+                                No units available
+                              </MenuItem>
+                            )}
+                          </TextField>
+                          <TextField
+                            label="Quantity"
+                            type="number"
+                            inputProps={{ min: 0, step: "any" }}
+                            fullWidth
+                            value={ingredientLog.quantity}
+                            onChange={(event) =>
+                              setIngredientLog((prev) => ({
+                                ...prev,
+                                quantity: event.target.value,
+                              }))
+                            }
+                            disabled={!selectedIngredient}
+                          />
                         </Stack>
-                      )}
-                      <Button
-                        variant="contained"
-                        onClick={handleLogIngredient}
-                        disabled={pendingIngredientLog || !canSubmitIngredientLog}
-                      >
-                        {pendingIngredientLog ? "Logging..." : "Log ingredient"}
-                      </Button>
-                    </Stack>
-                  </Box>
-
-                  <Divider />
-
-                  <Box>
-                    <Stack spacing={2}>
-                      <Typography variant="h6" component="h2">
-                        Log a Food
-                      </Typography>
-                      <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        spacing={1}
-                        alignItems={{ xs: "stretch", sm: "center" }}
-                      >
+                        {selectedIngredient && (
+                          <Stack spacing={0.5}>
+                            <Typography variant="body2" color="text.secondary">
+                              Estimated total: {formatCellNumber(ingredientMacros.calories)} cal, {" "}
+                              {formatCellNumber(ingredientMacros.protein)} g protein, {" "}
+                              {formatCellNumber(ingredientMacros.carbs)} g carbs, {" "}
+                              {formatCellNumber(ingredientMacros.fat)} g fat, {" "}
+                              {formatCellNumber(ingredientMacros.fiber)} g fiber
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Approximate weight: {formatCellNumber(ingredientGrams)} g
+                            </Typography>
+                          </Stack>
+                        )}
                         <Button
                           variant="contained"
-                          startIcon={<Add />}
-                          onClick={() => setFoodPickerOpen(true)}
-                          disabled={hydrating || foods.length === 0}
+                          onClick={handleLogIngredient}
+                          disabled={pendingIngredientLog || !canSubmitIngredientLog}
                         >
-                          Add Food
+                          {pendingIngredientLog ? "Logging..." : "Log ingredient"}
                         </Button>
+                      </Stack>
+                    </Box>
+                  )}
+
+                  {activeLogType === "food" && (
+                    <Box>
+                      <Stack spacing={2}>
                         <Typography
                           variant="body2"
                           color={selectedFood ? "text.primary" : "text.secondary"}
@@ -1004,50 +1005,50 @@ function Logging() {
                             ? selectedFood.name ?? ""
                             : foods.length === 0 && !hydrating
                               ? "No foods available"
-                              : "No food selected"}
+                              : "No food selected. Use the Add Food button above."}
                         </Typography>
+                        <TextField
+                          label="Servings"
+                          type="number"
+                          inputProps={{ min: 0, step: "any" }}
+                          fullWidth
+                          value={foodLog.portions}
+                          onChange={(event) =>
+                            setFoodLog((prev) => ({
+                              ...prev,
+                              portions: event.target.value,
+                            }))
+                          }
+                          disabled={!selectedFood}
+                        />
+                        {selectedFood && (
+                          <Stack spacing={0.5}>
+                            <Typography variant="body2" color="text.secondary">
+                              Estimated per serving: {formatCellNumber(foodBaseMacros.calories)} cal, {" "}
+                              {formatCellNumber(foodBaseMacros.protein)} g protein, {" "}
+                              {formatCellNumber(foodBaseMacros.carbs)} g carbs, {" "}
+                              {formatCellNumber(foodBaseMacros.fat)} g fat, {" "}
+                              {formatCellNumber(foodBaseMacros.fiber)} g fiber
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Logging total: {formatCellNumber(foodLogMacros.calories)} cal, {" "}
+                              {formatCellNumber(foodLogMacros.protein)} g protein, {" "}
+                              {formatCellNumber(foodLogMacros.carbs)} g carbs, {" "}
+                              {formatCellNumber(foodLogMacros.fat)} g fat, {" "}
+                              {formatCellNumber(foodLogMacros.fiber)} g fiber
+                            </Typography>
+                          </Stack>
+                        )}
+                        <Button
+                          variant="contained"
+                          onClick={handleLogFood}
+                          disabled={pendingFoodLog || !canSubmitFoodLog}
+                        >
+                          {pendingFoodLog ? "Logging..." : "Log food"}
+                        </Button>
                       </Stack>
-                      <TextField
-                        label="Servings"
-                        type="number"
-                        inputProps={{ min: 0, step: "any" }}
-                        fullWidth
-                        value={foodLog.portions}
-                        onChange={(event) =>
-                          setFoodLog((prev) => ({
-                            ...prev,
-                            portions: event.target.value,
-                          }))
-                        }
-                        disabled={!selectedFood}
-                      />
-                      {selectedFood && (
-                        <Stack spacing={0.5}>
-                          <Typography variant="body2" color="text.secondary">
-                            Estimated per serving: {formatCellNumber(foodBaseMacros.calories)} cal, {" "}
-                            {formatCellNumber(foodBaseMacros.protein)} g protein, {" "}
-                            {formatCellNumber(foodBaseMacros.carbs)} g carbs, {" "}
-                            {formatCellNumber(foodBaseMacros.fat)} g fat, {" "}
-                            {formatCellNumber(foodBaseMacros.fiber)} g fiber
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Logging total: {formatCellNumber(foodLogMacros.calories)} cal, {" "}
-                            {formatCellNumber(foodLogMacros.protein)} g protein, {" "}
-                            {formatCellNumber(foodLogMacros.carbs)} g carbs, {" "}
-                            {formatCellNumber(foodLogMacros.fat)} g fat, {" "}
-                            {formatCellNumber(foodLogMacros.fiber)} g fiber
-                          </Typography>
-                        </Stack>
-                      )}
-                      <Button
-                        variant="contained"
-                        onClick={handleLogFood}
-                        disabled={pendingFoodLog || !canSubmitFoodLog}
-                      >
-                        {pendingFoodLog ? "Logging..." : "Log food"}
-                      </Button>
-                    </Stack>
-                  </Box>
+                    </Box>
+                  )}
                 </Stack>
               )}
             </CardContent>
