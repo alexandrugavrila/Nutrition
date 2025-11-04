@@ -122,6 +122,24 @@ export const sumMacroTotals = (
   values: MacroTotals[],
 ): MacroTotals => values.reduce(addMacro, { ...ZERO_MACROS });
 
+export const scaleMacroTotals = (
+  totals: MacroTotals,
+  multiplier: number,
+): MacroTotals => {
+  const safeMultiplier = Number.isFinite(multiplier) ? multiplier : 0;
+  if (safeMultiplier <= 0) {
+    return { ...ZERO_MACROS };
+  }
+
+  return {
+    calories: totals.calories * safeMultiplier,
+    protein: totals.protein * safeMultiplier,
+    fat: totals.fat * safeMultiplier,
+    carbs: totals.carbs * safeMultiplier,
+    fiber: totals.fiber * safeMultiplier,
+  };
+};
+
 export const macrosForIngredientPortion = (
   { ingredient, unitId, quantity }: IngredientPortionInput,
 ): MacroTotals => {
