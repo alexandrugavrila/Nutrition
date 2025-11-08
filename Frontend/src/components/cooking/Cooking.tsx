@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
+  Button,
   IconButton,
   MenuItem,
   Paper,
@@ -18,6 +19,11 @@ import {
 } from "@mui/material";
 import { Add, Remove } from "@mui/icons-material";
 
+import apiClient from "@/apiClient";
+import type { StoredFoodCreate } from "@/api-extra-types";
+import FeedbackSnackbar, {
+  SnackbarMessage,
+} from "@/components/common/FeedbackSnackbar";
 import { useData } from "@/contexts/DataContext";
 import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type {
@@ -98,6 +104,8 @@ const planItemKey = (item: PlanItem, index: number): string => {
   }
   return `ingredient:${index}:${String(item.ingredientId ?? "")}`;
 };
+
+const DEFAULT_COOKING_USER_ID = "demo-user";
 
 const foodIngredientKey = (
   planIndex: number,
@@ -243,7 +251,7 @@ const pluralize = (value: number, noun: string): string => {
 };
 
 function Cooking() {
-  const { foods, ingredients } = useData();
+  const { foods, ingredients, setFridgeNeedsRefetch } = useData();
   const foodLookup = useMemo(() => {
     const map = new Map<string, FoodRead>();
     foods.forEach((food) => {
@@ -270,6 +278,50 @@ function Cooking() {
       "cooking-actuals",
       () => ({ ...initialActualState }),
     );
+  const [completedPlanKeyList, setCompletedPlanKeyList] =
+    useSessionStorageState<string[]>("cooking-completed-plan-keys", () => []);
+  const completedPlanKeys = useMemo(
+    () => new Set(completedPlanKeyList),
+    [completedPlanKeyList],
+  );
+  const [pendingCompletionKeys, setPendingCompletionKeys] =
+    useState<Set<string>>(() => new Set());
+  const [feedback, setFeedback] = useState<SnackbarMessage | null>(null);
+  const handleFeedbackClose = useCallback(() => {
+    setFeedback(null);
+  }, []);
+
+  useEffect(() => {
+    setCompletedPlanKeyList((prev) => {
+      const planKeys = new Set<string>();
+      plan.forEach((item, index) => {
+        planKeys.add(planItemKey(item, index));
+      });
+      const filtered = prev.filter((key) => planKeys.has(key));
+      if (filtered.length === prev.length) {
+        return prev;
+      }
+      return filtered;
+    });
+    setPendingCompletionKeys((prev) => {
+      const next = new Set<string>();
+      plan.forEach((item, index) => {
+        const key = planItemKey(item, index);
+        if (prev.has(key)) {
+          next.add(key);
+        }
+      });
+      return next;
+    });
+  }, [plan, setCompletedPlanKeyList]);
+
+  const activePlanEntries = useMemo(
+    () =>
+      plan
+        .map((item, index) => ({ item, index, key: planItemKey(item, index) }))
+        .filter(({ key }) => !completedPlanKeys.has(key)),
+    [plan, completedPlanKeys],
+  );
 
   const sanitizeActualState = useCallback(
     (prev: CookingActualState): CookingActualState => {
@@ -312,13 +364,18 @@ function Cooking() {
             });
           }
         } else {
-          const amount = roundDisplayValue(
+          const amountPerPortion = roundDisplayValue(
             clampNonNegative(toFiniteNumber(item.amount)),
           );
+          const plannedPortions = roundDisplayValue(
+            clampNonNegative(toFiniteNumber((item as IngredientPlanItem).portions ?? 1)),
+          );
+          const defaultTotal =
+            amountPerPortion * (plannedPortions > 0 ? plannedPortions : 1);
           const defaultUnitId = normalizePlanUnitId(item.unitId);
           nextIngredientTotals[itemKey] = normalizeMeasurement(
             prev.ingredientTotals[itemKey],
-            amount,
+            defaultTotal,
             defaultUnitId,
           );
         }
@@ -463,7 +520,7 @@ function Cooking() {
 
   const totalActualMacros = useMemo(
     () =>
-      plan.reduce((totals, item, index) => {
+      activePlanEntries.reduce((totals, { item, index }) => {
         if (item.type === "food") {
           const foodMacros = computeFoodActualMacros(item, index);
           return addMacroTotals(totals, foodMacros);
@@ -475,9 +532,14 @@ function Cooking() {
         const key = planItemKey(item, index);
         const ingredientPlan = item as IngredientPlanItem;
         const defaultUnitId = normalizePlanUnitId(ingredientPlan.unitId);
-        const defaultQuantity = clampNonNegative(
+        const amountPerPortion = clampNonNegative(
           toFiniteNumber(ingredientPlan.amount),
         );
+        const plannedPortions = clampNonNegative(
+          toFiniteNumber(ingredientPlan.portions ?? 1),
+        );
+        const defaultQuantity =
+          amountPerPortion * (plannedPortions > 0 ? plannedPortions : 1);
         const measurement = readMeasurementWithFallback(
           actualState.ingredientTotals,
           key,
@@ -492,10 +554,10 @@ function Cooking() {
         return addMacroTotals(totals, macros);
       }, { ...ZERO_MACROS }),
     [
+      activePlanEntries,
       actualState.ingredientTotals,
       computeFoodActualMacros,
       ingredientLookup,
-      plan,
     ],
   );
 
@@ -512,9 +574,252 @@ function Cooking() {
   );
 
   const planIsEmpty = !plan || plan.length === 0;
+  const hasActivePlanItems = activePlanEntries.length > 0;
   const planLabel = activePlan.label?.trim()
     ? `Based on plan "${activePlan.label}"`
     : "Based on current plan";
+
+  const markItemComplete = useCallback(
+    async (item: PlanItem, index: number) => {
+      const planKey = planItemKey(item, index);
+      if (pendingCompletionKeys.has(planKey)) {
+        return;
+      }
+      setFeedback(null);
+      setPendingCompletionKeys((prev) => {
+        const next = new Set(prev);
+        next.add(planKey);
+        return next;
+      });
+      setCompletedPlanKeyList((prev) => {
+        if (prev.includes(planKey)) {
+          return prev;
+        }
+        return [...prev, planKey];
+      });
+
+      const buildFoodPayload = (foodItem: FoodPlanItem): StoredFoodCreate => {
+        const food = foodLookup.get(String(foodItem.foodId ?? ""));
+        if (!food) {
+          throw new Error("Food details are unavailable.");
+        }
+        const portionKey = planItemKey(foodItem, index);
+        const actualPortions = roundDisplayValue(
+          clampNonNegative(
+            toFiniteNumber(actualState.portions[portionKey] ?? foodItem.portions),
+          ),
+        );
+        if (actualPortions <= 0) {
+          throw new Error("Enter the cooked portions before marking complete.");
+        }
+        const totalMacros = computeFoodActualMacros(foodItem, index);
+        const perPortionMacros = divideMacroTotals(totalMacros, actualPortions);
+
+        const numericFoodId = Number(foodItem.foodId);
+        if (!Number.isFinite(numericFoodId)) {
+          throw new Error("Unable to determine the food identifier.");
+        }
+
+        const payload: StoredFoodCreate = {
+          label: food.name ?? null,
+          user_id: DEFAULT_COOKING_USER_ID,
+          food_id: numericFoodId,
+          ingredient_id: null,
+          prepared_portions: actualPortions,
+          remaining_portions: actualPortions,
+          per_portion_calories: roundDisplayValue(perPortionMacros.calories),
+          per_portion_protein: roundDisplayValue(perPortionMacros.protein),
+          per_portion_carbohydrates: roundDisplayValue(perPortionMacros.carbs),
+          per_portion_fat: roundDisplayValue(perPortionMacros.fat),
+          per_portion_fiber: roundDisplayValue(perPortionMacros.fiber),
+        };
+
+        return payload;
+      };
+
+      const buildIngredientPayload = (
+        ingredientPlan: IngredientPlanItem,
+      ): StoredFoodCreate => {
+        const ingredient = findIngredientInLookup(
+          ingredientLookup,
+          ingredientPlan.ingredientId,
+        );
+        if (!ingredient) {
+          throw new Error("Ingredient details are unavailable.");
+        }
+        const key = planItemKey(ingredientPlan, index);
+        const defaultUnitId = normalizePlanUnitId(ingredientPlan.unitId);
+        const amountPerPortion = clampNonNegative(
+          toFiniteNumber(ingredientPlan.amount),
+        );
+        const plannedPortions = clampNonNegative(
+          toFiniteNumber(ingredientPlan.portions ?? 1),
+        );
+        const defaultQuantity =
+          amountPerPortion * (plannedPortions > 0 ? plannedPortions : 1);
+        const measurement = readMeasurementWithFallback(
+          actualState.ingredientTotals,
+          key,
+          defaultQuantity,
+          defaultUnitId,
+        );
+        if (measurement.quantity <= 0) {
+          throw new Error("Enter the cooked amount before marking complete.");
+        }
+        const totalMacros = macrosForIngredientPortion({
+          ingredient,
+          unitId: measurement.unitId,
+          quantity: measurement.quantity,
+        });
+        const numericIngredientId = Number(ingredientPlan.ingredientId);
+        if (!Number.isFinite(numericIngredientId)) {
+          throw new Error("Unable to determine the ingredient identifier.");
+        }
+
+        const portionSizeGrams = gramsForIngredientPortion({
+          ingredient,
+          unitId: defaultUnitId,
+          quantity: amountPerPortion,
+        });
+        const totalGrams = gramsForIngredientPortion({
+          ingredient,
+          unitId: measurement.unitId,
+          quantity: measurement.quantity,
+        });
+
+        let computedPortions = 1;
+        if (portionSizeGrams > 0 && totalGrams > 0) {
+          computedPortions = totalGrams / portionSizeGrams;
+        } else if (plannedPortions > 0) {
+          computedPortions = plannedPortions;
+        } else if (measurement.quantity > 0) {
+          computedPortions = measurement.quantity;
+        }
+
+        const preparedPortions = roundDisplayValue(
+          clampNonNegative(toFiniteNumber(computedPortions)),
+        );
+        const normalizedPortions = preparedPortions > 0 ? preparedPortions : 1;
+        const perPortionMacros = divideMacroTotals(
+          totalMacros,
+          normalizedPortions,
+        );
+
+        const unitName = resolveIngredientUnitName(ingredient, measurement.unitId);
+        const label = ingredient.name
+          ? `${ingredient.name}${
+              measurement.quantity
+                ? ` (${formatCellNumber(measurement.quantity)}${
+                    unitName ? ` ${unitName}` : ""
+                  })`
+                : ""
+            }`
+          : null;
+
+        const payload: StoredFoodCreate = {
+          label,
+          user_id: DEFAULT_COOKING_USER_ID,
+          food_id: null,
+          ingredient_id: numericIngredientId,
+          prepared_portions: normalizedPortions,
+          remaining_portions: normalizedPortions,
+          per_portion_calories: roundDisplayValue(perPortionMacros.calories),
+          per_portion_protein: roundDisplayValue(perPortionMacros.protein),
+          per_portion_carbohydrates: roundDisplayValue(perPortionMacros.carbs),
+          per_portion_fat: roundDisplayValue(perPortionMacros.fat),
+          per_portion_fiber: roundDisplayValue(perPortionMacros.fiber),
+        };
+
+        return payload;
+      };
+
+      try {
+        const payload =
+          item.type === "food"
+            ? buildFoodPayload(item as FoodPlanItem)
+            : buildIngredientPayload(item as IngredientPlanItem);
+
+        const displayName =
+          payload.label ??
+          (item.type === "food"
+            ? foodLookup.get(String((item as FoodPlanItem).foodId ?? ""))?.name ??
+              "prepared food"
+            : findIngredientInLookup(
+                ingredientLookup,
+                (item as IngredientPlanItem).ingredientId,
+              )?.name ?? "prepared ingredient");
+
+        const request = apiClient
+          .path("/api/stored_food/")
+          .method("post")
+          .create();
+        await request({ body: payload });
+        setFridgeNeedsRefetch(true);
+
+        setFeedback({
+          severity: "success",
+          message: `Added ${displayName} to the fridge.`,
+        });
+
+        setActualState((prev) => {
+          const nextPortions = { ...prev.portions };
+          const nextTotals = { ...prev.ingredientTotals };
+          if (item.type === "food") {
+            const foodItem = item as FoodPlanItem;
+            const portionKey = planItemKey(foodItem, index);
+            delete nextPortions[portionKey];
+            const food = foodLookup.get(String(foodItem.foodId ?? ""));
+            if (food && Array.isArray(food.ingredients)) {
+              food.ingredients.forEach((ingredient) => {
+                const ingredientKey = foodIngredientKey(
+                  index,
+                  ingredient.ingredient_id,
+                );
+                delete nextTotals[ingredientKey];
+              });
+            }
+          } else {
+            const ingredientKey = planKey;
+            delete nextTotals[ingredientKey];
+          }
+          return { portions: nextPortions, ingredientTotals: nextTotals };
+        });
+      } catch (error) {
+        setCompletedPlanKeyList((prev) => {
+          if (!prev.includes(planKey)) {
+            return prev;
+          }
+          return prev.filter((key) => key !== planKey);
+        });
+        const fallbackMessage = "Failed to mark item complete.";
+        const detail =
+          error instanceof Error && error.message
+            ? `${fallbackMessage} ${error.message}`.trim()
+            : fallbackMessage;
+        setFeedback({ severity: "error", message: detail });
+      } finally {
+        setPendingCompletionKeys((prev) => {
+          if (!prev.has(planKey)) {
+            return prev;
+          }
+          const next = new Set(prev);
+          next.delete(planKey);
+          return next;
+        });
+      }
+    },
+    [
+      actualState.ingredientTotals,
+      actualState.portions,
+      computeFoodActualMacros,
+      foodLookup,
+      ingredientLookup,
+      pendingCompletionKeys,
+      setCompletedPlanKeyList,
+      setActualState,
+      setFridgeNeedsRefetch,
+    ],
+  );
 
   return (
     <Stack spacing={3}>
@@ -533,288 +838,335 @@ function Cooking() {
         </Alert>
       ) : (
         <>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Item</TableCell>
-                  <TableCell>Planned</TableCell>
-                  <TableCell>Actual</TableCell>
-                  <TableCell>Calories</TableCell>
-                  <TableCell>Protein</TableCell>
-                  <TableCell>Carbs</TableCell>
-                  <TableCell>Fat</TableCell>
-                  <TableCell>Fiber</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {plan.map((item, index) => {
-                  if (item.type === "food") {
-                    const foodItem = item as FoodPlanItem;
-                    const food = foodLookup.get(String(foodItem.foodId ?? ""));
-                    const portionKey = planItemKey(foodItem, index);
-                    const actualPortions = roundDisplayValue(
-                      clampNonNegative(
-                        toFiniteNumber(
-                          actualState.portions[portionKey] ?? foodItem.portions,
-                        ),
-                      ),
-                    );
-                    const foodTotalMacros = computeFoodActualMacros(foodItem, index);
-                    const foodMacros =
-                      actualPortions > 0
-                        ? divideMacroTotals(foodTotalMacros, actualPortions)
-                        : { ...ZERO_MACROS };
-                    const plannedPortionsLabel = pluralize(foodItem.portions, "portion");
-
-                    return (
-                      <React.Fragment key={`food-${index}-${foodItem.foodId}`}>
-                        <TableRow sx={{ backgroundColor: "action.hover" }}>
-                          <TableCell sx={{ fontWeight: 600 }}>
-                            {food?.name ?? "Unnamed food"}
-                          </TableCell>
-                          <TableCell>{plannedPortionsLabel}</TableCell>
-                          <TableCell>
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                              <IconButton
-                                size="small"
-                                aria-label="decrement actual portions"
-                                onClick={() =>
-                                  updateFoodPortion(
-                                    foodItem,
-                                    index,
-                                    Math.max(0, actualPortions - 1),
-                                  )
-                                }
-                                disabled={actualPortions <= 0}
-                              >
-                                <Remove fontSize="small" />
-                              </IconButton>
-                              <TextField
-                                type="number"
-                                value={actualPortions}
-                                onChange={(event) =>
-                                  updateFoodPortion(
-                                    foodItem,
-                                    index,
-                                    clampNonNegative(
-                                      Number.parseFloat(event.target.value) || 0,
-                                    ),
-                                  )
-                                }
-                                sx={{ width: 100 }}
-                                inputProps={{ min: 0, step: "any" }}
-                              />
-                              <IconButton
-                                size="small"
-                                aria-label="increment actual portions"
-                                onClick={() =>
-                                  updateFoodPortion(foodItem, index, actualPortions + 1)
-                                }
-                              >
-                                <Add fontSize="small" />
-                              </IconButton>
-                              <Box component="span" sx={{ whiteSpace: "nowrap" }}>
-                                portions
-                              </Box>
-                            </Box>
-                          </TableCell>
-                          <TableCell>{formatCellNumber(foodMacros.calories)}</TableCell>
-                          <TableCell>{formatCellNumber(foodMacros.protein)}</TableCell>
-                          <TableCell>{formatCellNumber(foodMacros.carbs)}</TableCell>
-                          <TableCell>{formatCellNumber(foodMacros.fat)}</TableCell>
-                          <TableCell>{formatCellNumber(foodMacros.fiber)}</TableCell>
-                        </TableRow>
-                        {(food?.ingredients ?? []).map((ingredient) => {
-                          const dataIngredient = findIngredientInLookup(
-                            ingredientLookup,
-                            ingredient.ingredient_id,
-                          );
-                          const override =
-                            foodItem.overrides[String(ingredient.ingredient_id)];
-                          const defaultUnitId = normalizePlanUnitId(
-                            override?.unitId ?? ingredient.unit_id,
-                          );
-                          const quantityPerPortion = roundDisplayValue(
-                            clampNonNegative(
-                              toFiniteNumber(
-                                override?.quantity ?? ingredient.unit_quantity,
-                              ),
+          {hasActivePlanItems ? (
+            <>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Item</TableCell>
+                      <TableCell>Planned</TableCell>
+                      <TableCell>Actual</TableCell>
+                      <TableCell>Calories</TableCell>
+                      <TableCell>Protein</TableCell>
+                      <TableCell>Carbs</TableCell>
+                      <TableCell>Fat</TableCell>
+                      <TableCell>Fiber</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {activePlanEntries.map(({ item, index, key }) => {
+                      if (item.type === "food") {
+                        const foodItem = item as FoodPlanItem;
+                        const food = foodLookup.get(String(foodItem.foodId ?? ""));
+                        const portionKey = planItemKey(foodItem, index);
+                        const actualPortions = roundDisplayValue(
+                          clampNonNegative(
+                            toFiniteNumber(
+                              actualState.portions[portionKey] ??
+                                foodItem.portions,
                             ),
-                          );
-                          const plannedTotal = quantityPerPortion * foodItem.portions;
-                          const plannedUnitName = resolveIngredientUnitName(
-                            dataIngredient,
-                            defaultUnitId,
-                          );
-                          const plannedGrams = gramsForIngredientPortion({
-                            ingredient: dataIngredient,
-                            unitId: defaultUnitId,
-                            quantity: plannedTotal,
-                          });
-                          const ingredientKey = foodIngredientKey(
-                            index,
-                            ingredient.ingredient_id,
-                          );
-                          const fallbackMeasurement: IngredientMeasurement = {
-                            quantity: roundDisplayValue(
-                              quantityPerPortion * actualPortions,
-                            ),
-                            unitId: defaultUnitId,
-                          };
-                          const measurement = readMeasurementWithFallback(
-                            actualState.ingredientTotals,
-                            ingredientKey,
-                            fallbackMeasurement.quantity,
-                            fallbackMeasurement.unitId,
-                          );
-                          const ingredientMacros = macrosForIngredientPortion({
-                            ingredient: dataIngredient,
-                            unitId: measurement.unitId,
-                            quantity: measurement.quantity,
-                          });
-                          const actualGrams = gramsForIngredientPortion({
-                            ingredient: dataIngredient,
-                            unitId: measurement.unitId,
-                            quantity: measurement.quantity,
-                          });
-                          const rawUnitOptions = (dataIngredient?.units ?? []).map((unit) => ({
-                            id: normalizePlanUnitId(unit.id),
-                            name: unit.name ?? "",
-                          }));
-                          const seenUnitIds = new Set<number>();
-                          const unitOptions = rawUnitOptions.filter((option) => {
-                            if (seenUnitIds.has(option.id)) {
-                              return false;
-                            }
-                            seenUnitIds.add(option.id);
-                            return true;
-                          });
-                          if (unitOptions.length === 0) {
-                            unitOptions.push({ id: GRAM_UNIT_SENTINEL, name: "g" });
-                          }
-                          if (!unitOptions.some((option) => option.id === measurement.unitId)) {
-                            unitOptions.push({
-                              id: measurement.unitId,
-                              name:
-                                resolveIngredientUnitName(
-                                  dataIngredient,
-                                  measurement.unitId,
-                                ) || "g",
-                            });
-                          }
+                          ),
+                        );
+                        const foodTotalMacros = computeFoodActualMacros(
+                          foodItem,
+                          index,
+                        );
+                        const foodMacros =
+                          actualPortions > 0
+                            ? divideMacroTotals(foodTotalMacros, actualPortions)
+                            : { ...ZERO_MACROS };
+                        const plannedPortionsLabel = pluralize(
+                          foodItem.portions,
+                          "portion",
+                        );
+                        const completionPending = pendingCompletionKeys.has(key);
+                        const foodCompletionDisabled =
+                          !food || actualPortions <= 0 || completionPending;
 
-                          return (
-                            <TableRow
-                              key={`food-${index}-ingredient-${ingredient.ingredient_id}`}
-                            >
-                              <TableCell sx={{ pl: 4 }}>
-                                {dataIngredient?.name ?? "Ingredient"}
+                        return (
+                          <React.Fragment key={key}>
+                            <TableRow sx={{ backgroundColor: "action.hover" }}>
+                              <TableCell sx={{ fontWeight: 600 }}>
+                                {food?.name ?? "Unnamed food"}
                               </TableCell>
-                              <TableCell>
-                                <Box sx={{ display: "flex", flexDirection: "column" }}>
-                                  <Typography component="span">
-                                    {`${formatCellNumber(plannedTotal)}${
-                                      plannedUnitName ? ` ${plannedUnitName}` : ""
-                                    }`}
-                                  </Typography>
-                                  <Typography
-                                    component="span"
-                                    variant="body2"
-                                    color="text.secondary"
-                                  >
-                                    {`${formatCellNumber(plannedGrams)} g`}
-                                  </Typography>
-                                </Box>
-                              </TableCell>
+                              <TableCell>{plannedPortionsLabel}</TableCell>
                               <TableCell>
                                 <Box
-                                  sx={{
-                                    display: "flex",
-                                    flexWrap: "wrap",
-                                    alignItems: "center",
-                                    gap: 1,
-                                  }}
+                                  sx={{ display: "flex", alignItems: "center", gap: 1 }}
                                 >
+                                  <IconButton
+                                    size="small"
+                                    aria-label="decrement actual portions"
+                                    onClick={() =>
+                                      updateFoodPortion(
+                                        foodItem,
+                                        index,
+                                        Math.max(0, actualPortions - 1),
+                                      )
+                                    }
+                                    disabled={actualPortions <= 0}
+                                  >
+                                    <Remove fontSize="small" />
+                                  </IconButton>
                                   <TextField
                                     type="number"
-                                    value={measurement.quantity}
-                                    onChange={(event) => {
-                                      const parsed = Number.parseFloat(event.target.value);
-                                      updateIngredientMeasurement(
-                                        ingredientKey,
-                                        fallbackMeasurement,
-                                        {
-                                          quantity: Number.isFinite(parsed) ? parsed : 0,
-                                        },
-                                      );
-                                    }}
-                                    sx={{ width: 120 }}
+                                    value={actualPortions}
+                                    onChange={(event) =>
+                                      updateFoodPortion(
+                                        foodItem,
+                                        index,
+                                        clampNonNegative(
+                                          Number.parseFloat(event.target.value) || 0,
+                                        ),
+                                      )
+                                    }
+                                    sx={{ width: 100 }}
                                     inputProps={{ min: 0, step: "any" }}
                                   />
-                                  <Select
+                                  <IconButton
                                     size="small"
-                                    value={measurement.unitId}
-                                    onChange={(event) => {
-                                      const selectedUnit = normalizePlanUnitId(
-                                        event.target.value,
-                                      );
-                                      updateIngredientMeasurement(
-                                        ingredientKey,
-                                        fallbackMeasurement,
-                                        { unitId: selectedUnit },
-                                      );
-                                    }}
+                                    aria-label="increment actual portions"
+                                    onClick={() =>
+                                      updateFoodPortion(
+                                        foodItem,
+                                        index,
+                                        actualPortions + 1,
+                                      )
+                                    }
                                   >
-                                    {unitOptions.map((option) => (
-                                      <MenuItem
-                                        key={`${ingredientKey}-${option.id}`}
-                                        value={option.id}
-                                      >
-                                        {option.name}
-                                      </MenuItem>
-                                    ))}
-                                  </Select>
-                                  <Typography
-                                    component="span"
-                                    variant="body2"
-                                    color="text.secondary"
-                                    sx={{ whiteSpace: "nowrap" }}
-                                  >
-                                    {`${formatCellNumber(actualGrams)} g`}
-                                  </Typography>
+                                    <Add fontSize="small" />
+                                  </IconButton>
+                                  <Box component="span" sx={{ whiteSpace: "nowrap" }}>
+                                    portions
+                                  </Box>
                                 </Box>
                               </TableCell>
                               <TableCell>
-                                {formatCellNumber(ingredientMacros.calories)}
+                                {formatCellNumber(foodMacros.calories)}
                               </TableCell>
                               <TableCell>
-                                {formatCellNumber(ingredientMacros.protein)}
+                                {formatCellNumber(foodMacros.protein)}
                               </TableCell>
+                              <TableCell>{formatCellNumber(foodMacros.carbs)}</TableCell>
+                              <TableCell>{formatCellNumber(foodMacros.fat)}</TableCell>
+                              <TableCell>{formatCellNumber(foodMacros.fiber)}</TableCell>
                               <TableCell>
-                                {formatCellNumber(ingredientMacros.carbs)}
-                              </TableCell>
-                              <TableCell>
-                                {formatCellNumber(ingredientMacros.fat)}
-                              </TableCell>
-                              <TableCell>
-                                {formatCellNumber(ingredientMacros.fiber)}
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  onClick={() => markItemComplete(item, index)}
+                                  disabled={foodCompletionDisabled}
+                                >
+                                  Mark complete
+                                </Button>
                               </TableCell>
                             </TableRow>
-                          );
-                        })}
-                      </React.Fragment>
-                    );
-                  }
+                            {(food?.ingredients ?? []).map((ingredient) => {
+                              const dataIngredient = findIngredientInLookup(
+                                ingredientLookup,
+                                ingredient.ingredient_id,
+                              );
+                              const override =
+                                foodItem.overrides[String(ingredient.ingredient_id)];
+                              const defaultUnitId = normalizePlanUnitId(
+                                override?.unitId ?? ingredient.unit_id,
+                              );
+                              const quantityPerPortion = roundDisplayValue(
+                                clampNonNegative(
+                                  toFiniteNumber(
+                                    override?.quantity ?? ingredient.unit_quantity,
+                                  ),
+                                ),
+                              );
+                              const plannedTotal =
+                                quantityPerPortion * foodItem.portions;
+                              const plannedUnitName = resolveIngredientUnitName(
+                                dataIngredient,
+                                defaultUnitId,
+                              );
+                              const plannedGrams = gramsForIngredientPortion({
+                                ingredient: dataIngredient,
+                                unitId: defaultUnitId,
+                                quantity: plannedTotal,
+                              });
+                              const ingredientKey = foodIngredientKey(
+                                index,
+                                ingredient.ingredient_id,
+                              );
+                              const fallbackMeasurement: IngredientMeasurement = {
+                                quantity: roundDisplayValue(
+                                  quantityPerPortion * actualPortions,
+                                ),
+                                unitId: defaultUnitId,
+                              };
+                              const measurement = readMeasurementWithFallback(
+                                actualState.ingredientTotals,
+                                ingredientKey,
+                                fallbackMeasurement.quantity,
+                                fallbackMeasurement.unitId,
+                              );
+                              const ingredientMacros = macrosForIngredientPortion({
+                                ingredient: dataIngredient,
+                                unitId: measurement.unitId,
+                                quantity: measurement.quantity,
+                              });
+                              const actualGrams = gramsForIngredientPortion({
+                                ingredient: dataIngredient,
+                                unitId: measurement.unitId,
+                                quantity: measurement.quantity,
+                              });
+                              const rawUnitOptions = (dataIngredient?.units ?? []).map(
+                                (unit) => ({
+                                  id: normalizePlanUnitId(unit.id),
+                                  name: unit.name ?? "",
+                                }),
+                              );
+                              const seenUnitIds = new Set<number>();
+                              const unitOptions = rawUnitOptions.filter((option) => {
+                                if (seenUnitIds.has(option.id)) {
+                                  return false;
+                                }
+                                seenUnitIds.add(option.id);
+                                return true;
+                              });
+                              if (unitOptions.length === 0) {
+                                unitOptions.push({ id: GRAM_UNIT_SENTINEL, name: "g" });
+                              }
+                              if (
+                                !unitOptions.some(
+                                  (option) => option.id === measurement.unitId,
+                                )
+                              ) {
+                                unitOptions.push({
+                                  id: measurement.unitId,
+                                  name:
+                                    resolveIngredientUnitName(
+                                      dataIngredient,
+                                      measurement.unitId,
+                                    ) || "g",
+                                });
+                              }
 
-                  const ingredientItem = item as IngredientPlanItem;
+                              return (
+                                <TableRow
+                                  key={`food-${index}-ingredient-${ingredient.ingredient_id}`}
+                                >
+                                  <TableCell sx={{ pl: 4 }}>
+                                    {dataIngredient?.name ?? "Ingredient"}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Box sx={{ display: "flex", flexDirection: "column" }}>
+                                      <Typography component="span">
+                                        {`${formatCellNumber(plannedTotal)}${
+                                          plannedUnitName ? ` ${plannedUnitName}` : ""
+                                        }`}
+                                      </Typography>
+                                      <Typography
+                                        component="span"
+                                        variant="body2"
+                                        color="text.secondary"
+                                      >
+                                        {`${formatCellNumber(plannedGrams)} g`}
+                                      </Typography>
+                                    </Box>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        flexWrap: "wrap",
+                                        alignItems: "center",
+                                        gap: 1,
+                                      }}
+                                    >
+                                      <TextField
+                                        type="number"
+                                        value={measurement.quantity}
+                                        onChange={(event) => {
+                                          const parsed = Number.parseFloat(event.target.value);
+                                          updateIngredientMeasurement(
+                                            ingredientKey,
+                                            fallbackMeasurement,
+                                            {
+                                              quantity: Number.isFinite(parsed) ? parsed : 0,
+                                            },
+                                          );
+                                        }}
+                                        sx={{ width: 120 }}
+                                        inputProps={{ min: 0, step: "any" }}
+                                      />
+                                      <Select
+                                        size="small"
+                                        value={measurement.unitId}
+                                        onChange={(event) => {
+                                          const selectedUnit = normalizePlanUnitId(
+                                            event.target.value,
+                                          );
+                                          updateIngredientMeasurement(
+                                            ingredientKey,
+                                            fallbackMeasurement,
+                                            { unitId: selectedUnit },
+                                          );
+                                        }}
+                                      >
+                                        {unitOptions.map((option) => (
+                                          <MenuItem
+                                            key={`${ingredientKey}-${option.id}`}
+                                            value={option.id}
+                                          >
+                                            {option.name}
+                                          </MenuItem>
+                                        ))}
+                                      </Select>
+                                      <Typography
+                                        component="span"
+                                        variant="body2"
+                                        color="text.secondary"
+                                        sx={{ whiteSpace: "nowrap" }}
+                                      >
+                                        {`${formatCellNumber(actualGrams)} g`}
+                                      </Typography>
+                                    </Box>
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(ingredientMacros.calories)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(ingredientMacros.protein)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(ingredientMacros.carbs)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(ingredientMacros.fat)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatCellNumber(ingredientMacros.fiber)}
+                                  </TableCell>
+                                  <TableCell></TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </React.Fragment>
+                        );
+                      }
+
+                      const ingredientItem = item as IngredientPlanItem;
                   const ingredient = findIngredientInLookup(
                     ingredientLookup,
                     ingredientItem.ingredientId,
                   );
                   const defaultUnitId = normalizePlanUnitId(ingredientItem.unitId);
-                  const plannedQuantity = roundDisplayValue(
+                  const perPortionQuantity = roundDisplayValue(
                     clampNonNegative(toFiniteNumber(ingredientItem.amount)),
+                  );
+                  const plannedPortions = roundDisplayValue(
+                    clampNonNegative(toFiniteNumber(ingredientItem.portions ?? 1)),
+                  );
+                  const plannedQuantity = roundDisplayValue(
+                    perPortionQuantity * (plannedPortions > 0 ? plannedPortions : 1),
                   );
                   const plannedUnitName = resolveIngredientUnitName(
                     ingredient,
@@ -869,79 +1221,88 @@ function Cooking() {
                     });
                   }
 
-                  return (
-                    <TableRow key={`ingredient-${index}-${ingredientItem.ingredientId}`}>
+                      return (
+                    <TableRow key={key}>
                       <TableCell>{ingredient?.name ?? "Ingredient"}</TableCell>
                       <TableCell>
                         <Box sx={{ display: "flex", flexDirection: "column" }}>
-                          <Typography component="span">
-                            {`${formatCellNumber(plannedQuantity)}${
-                              plannedUnitName ? ` ${plannedUnitName}` : ""
-                            }`}
-                          </Typography>
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color="text.secondary"
-                          >
-                            {`${formatCellNumber(plannedGrams)} g`}
-                          </Typography>
+                            <Typography component="span">
+                              {`${formatCellNumber(plannedQuantity)}${
+                                plannedUnitName ? ` ${plannedUnitName}` : ""
+                              }`}
+                            </Typography>
+                            <Typography
+                              component="span"
+                              variant="body2"
+                              color="text.secondary"
+                            >
+                              {`${formatCellNumber(perPortionQuantity)}${
+                                plannedUnitName ? ` ${plannedUnitName}` : ""
+                              } × ${formatCellNumber(plannedPortions)} portions`}
+                            </Typography>
+                            <Typography
+                              component="span"
+                              variant="body2"
+                              color="text.secondary"
+                            >
+                              {`${formatCellNumber(plannedGrams)} g`}
+                            </Typography>
                         </Box>
                       </TableCell>
                       <TableCell>
                         <Box
-                          sx={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            alignItems: "center",
-                            gap: 1,
-                          }}
+                            sx={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
                         >
-                          <TextField
-                            type="number"
-                            value={measurement.quantity}
-                            onChange={(event) => {
-                              const parsed = Number.parseFloat(event.target.value);
-                              updateIngredientMeasurement(
-                                ingredientKey,
-                                fallbackMeasurement,
-                                {
-                                  quantity: Number.isFinite(parsed) ? parsed : 0,
-                                },
-                              );
-                            }}
-                            sx={{ width: 120 }}
-                            inputProps={{ min: 0, step: "any" }}
-                          />
-                          <Select
-                            size="small"
-                            value={measurement.unitId}
-                            onChange={(event) => {
-                              const selectedUnit = normalizePlanUnitId(event.target.value);
-                              updateIngredientMeasurement(
-                                ingredientKey,
-                                fallbackMeasurement,
-                                { unitId: selectedUnit },
-                              );
-                            }}
-                          >
-                            {unitOptions.map((option) => (
-                              <MenuItem
-                                key={`${ingredientKey}-${option.id}`}
-                                value={option.id}
-                              >
-                                {option.name}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ whiteSpace: "nowrap" }}
-                          >
-                            {`${formatCellNumber(actualGrams)} g`}
-                          </Typography>
+                            <TextField
+                              type="number"
+                              value={measurement.quantity}
+                              onChange={(event) => {
+                                const parsed = Number.parseFloat(event.target.value);
+                                updateIngredientMeasurement(
+                                  ingredientKey,
+                                  fallbackMeasurement,
+                                  {
+                                    quantity: Number.isFinite(parsed) ? parsed : 0,
+                                  },
+                                );
+                              }}
+                              sx={{ width: 120 }}
+                              inputProps={{ min: 0, step: "any" }}
+                            />
+                            <Select
+                              size="small"
+                              value={measurement.unitId}
+                              onChange={(event) => {
+                                const selectedUnit = normalizePlanUnitId(event.target.value);
+                                updateIngredientMeasurement(
+                                  ingredientKey,
+                                  fallbackMeasurement,
+                                  { unitId: selectedUnit },
+                                );
+                              }}
+                            >
+                              {unitOptions.map((option) => (
+                                <MenuItem
+                                  key={`${ingredientKey}-${option.id}`}
+                                  value={option.id}
+                                >
+                                  {option.name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                            <Typography
+                              component="span"
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ whiteSpace: "nowrap" }}
+                            >
+                              {`${formatCellNumber(actualGrams)} g`}
+                            </Typography>
                         </Box>
                       </TableCell>
                       <TableCell>
@@ -959,14 +1320,27 @@ function Cooking() {
                       <TableCell>
                         {formatCellNumber(ingredientMacros.fiber)}
                       </TableCell>
+                      <TableCell>
+                        <Button
+                            variant="contained"
+                            size="small"
+                            onClick={() => markItemComplete(item, index)}
+                            disabled={
+                              !ingredient ||
+                              measurement.quantity <= 0 ||
+                              pendingCompletionKeys.has(key)
+                            }
+                        >
+                            Mark complete
+                        </Button>
+                      </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          <Box>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <Box>
             <Typography variant="h6" component="h2" gutterBottom>
               Actual Nutrition Summary
             </Typography>
@@ -1021,8 +1395,15 @@ function Cooking() {
               </Table>
             </TableContainer>
           </Box>
+            </>
+          ) : (
+            <Alert severity="success">
+              All plan items have been marked complete.
+            </Alert>
+          )}
         </>
       )}
+      <FeedbackSnackbar snackbar={feedback} onClose={handleFeedbackClose} />
     </Stack>
   );
 }

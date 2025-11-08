@@ -59,7 +59,7 @@ describe("Shopping component", () => {
 
     mockUseSessionStorageState.mockImplementation((key: string, initial: unknown) => {
       if (key === "planning-plan") {
-        return [[{ type: "ingredient", ingredientId: "1", unitId: 10, amount: 1 }], vi.fn()];
+        return [[{ type: "ingredient", ingredientId: "1", unitId: 10, amount: 1, portions: 1 }], vi.fn()];
       }
       if (key === "planning-days") {
         return [1, vi.fn()];
@@ -87,6 +87,9 @@ describe("Shopping component", () => {
       foodDietTags: [],
       foodTypeTags: [],
       foodOtherTags: [],
+      fridgeInventory: [],
+      setFridgeInventory: vi.fn(),
+      setFridgeNeedsRefetch: vi.fn(),
     });
   });
 

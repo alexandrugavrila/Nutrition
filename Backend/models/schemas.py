@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, model_validator
 from sqlmodel import SQLModel, Field
 
 from .ingredient_unit import IngredientUnit
@@ -146,6 +146,126 @@ class PlanRead(SQLModel):
     updated_at: datetime
 
 
+class StoredFoodBase(SQLModel):
+    """Common fields shared by stored food payloads."""
+
+    label: Optional[str] = None
+    user_id: str
+    food_id: Optional[int] = None
+    ingredient_id: Optional[int] = None
+    prepared_portions: float
+    per_portion_calories: float
+    per_portion_protein: float
+    per_portion_carbohydrates: float
+    per_portion_fat: float
+    per_portion_fiber: float
+
+    @model_validator(mode="after")
+    def _validate_source(self) -> "StoredFoodBase":
+        """Ensure exactly one of food_id or ingredient_id is provided."""
+
+        if bool(self.food_id) == bool(self.ingredient_id):
+            raise ValueError("Provide either food_id or ingredient_id, but not both.")
+
+        numeric_fields = {
+            "prepared_portions": self.prepared_portions,
+            "per_portion_calories": self.per_portion_calories,
+            "per_portion_protein": self.per_portion_protein,
+            "per_portion_carbohydrates": self.per_portion_carbohydrates,
+            "per_portion_fat": self.per_portion_fat,
+            "per_portion_fiber": self.per_portion_fiber,
+        }
+        for field, value in numeric_fields.items():
+            if value < 0:
+                raise ValueError(f"{field} cannot be negative")
+        return self
+
+
+class StoredFoodCreate(StoredFoodBase):
+    """Schema for creating stored food entries."""
+
+    remaining_portions: Optional[float] = None
+    prepared_at: Optional[datetime] = None
+
+
+class StoredFoodRead(StoredFoodBase):
+    """Schema returned when reading stored food entries."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    remaining_portions: float
+    is_finished: bool
+    prepared_at: datetime
+    updated_at: datetime
+    completed_at: Optional[datetime] = None
+
+
+class StoredFoodConsume(SQLModel):
+    """Payload for consuming stored food portions."""
+
+    portions: float
+
+
+class DailyLogEntryBase(SQLModel):
+    """Shared fields for daily log entry payloads."""
+
+    user_id: str
+    log_date: date
+    stored_food_id: Optional[int] = None
+    ingredient_id: Optional[int] = None
+    food_id: Optional[int] = None
+    portions_consumed: float
+    calories: float
+    protein: float
+    carbohydrates: float
+    fat: float
+    fiber: float
+
+    @model_validator(mode="after")
+    def _validate_source(self) -> "DailyLogEntryBase":
+        """Ensure exactly one source reference is provided."""
+
+        provided = [
+            self.stored_food_id is not None,
+            self.ingredient_id is not None,
+            self.food_id is not None,
+        ]
+        if sum(provided) != 1:
+            raise ValueError(
+                "Provide exactly one of stored_food_id, ingredient_id, or food_id.",
+            )
+        if self.portions_consumed <= 0:
+            raise ValueError("portions_consumed must be greater than zero")
+
+        macro_fields = {
+            "calories": self.calories,
+            "protein": self.protein,
+            "carbohydrates": self.carbohydrates,
+            "fat": self.fat,
+            "fiber": self.fiber,
+        }
+        for field, value in macro_fields.items():
+            if value < 0:
+                raise ValueError(f"{field} cannot be negative")
+        return self
+
+
+class DailyLogEntryCreate(DailyLogEntryBase):
+    """Schema for creating a new daily log entry."""
+
+    pass
+
+
+class DailyLogEntryRead(DailyLogEntryBase):
+    """Schema returned when reading daily log entries."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime
+
+
 __all__ = [
     "NutritionCreate",
     "IngredientUnitCreate",
@@ -161,4 +281,9 @@ __all__ = [
     "PlanCreate",
     "PlanUpdate",
     "PlanRead",
+    "StoredFoodCreate",
+    "StoredFoodRead",
+    "StoredFoodConsume",
+    "DailyLogEntryCreate",
+    "DailyLogEntryRead",
 ]

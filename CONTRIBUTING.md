@@ -305,6 +305,16 @@ Additional tooling:
 
 ---
 
+## Fridge Workflow Notes
+
+- Domain logic around stored foods now validates macro values on both the FastAPI schemas and database constraints. When you
+  touch the fridge routes or models, update the corresponding tests under `Backend/tests/test_stored_food.py` and
+  `Backend/tests/test_logs.py` so over-consumption and negative macro scenarios stay covered.
+- The Cooking and Food Logging panes share a `FeedbackSnackbar` component to surface success and error toasts. Reuse that helper
+  when adding new fridge interactions so the UX remains consistent.
+
+---
+
 ## Tooling & Ports
 
 - Vite dev server: `http://localhost:$DEV_FRONTEND_PORT`

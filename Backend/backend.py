@@ -6,7 +6,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from Backend.db import Base, engine
-from Backend.routes import ingredients_router, foods_router, plans_router
+from Backend.routes import (
+    ingredients_router,
+    foods_router,
+    plans_router,
+    stored_food_router,
+    logs_router,
+)
 from Backend.settings import settings
 
 
@@ -34,6 +40,8 @@ app.add_middleware(
 app.include_router(ingredients_router, prefix="/api")
 app.include_router(foods_router, prefix="/api")
 app.include_router(plans_router, prefix="/api")
+app.include_router(stored_food_router, prefix="/api")
+app.include_router(logs_router, prefix="/api")
 
 
 __all__ = ["app"]

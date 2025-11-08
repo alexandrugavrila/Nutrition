@@ -76,6 +76,17 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm, recipeYield, onRe
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
   }, [recipeYield]);
 
+  const perPortionMacros = useMemo(
+    () => ({
+      calories: totalMacros.calories / parsedRecipeYield,
+      protein: totalMacros.protein / parsedRecipeYield,
+      fat: totalMacros.fat / parsedRecipeYield,
+      carbs: totalMacros.carbs / parsedRecipeYield,
+      fiber: totalMacros.fiber / parsedRecipeYield,
+    }),
+    [parsedRecipeYield, totalMacros],
+  );
+
   const handleRecipeYieldInputChange = useCallback(
     (event) => {
       onRecipeYieldChange(event.target.value);
@@ -255,6 +266,18 @@ function FoodIngredientsForm({ food, dispatch, needsClearForm, recipeYield, onRe
               <TableCell>{formatCellNumber(totalMacros.carbs)}</TableCell>
               <TableCell>{formatCellNumber(totalMacros.fiber)}</TableCell>
             </TableRow>
+            {!isEditMode && (
+              <TableRow>
+                <TableCell>Per portion</TableCell>
+                <TableCell></TableCell>
+                <TableCell></TableCell>
+                <TableCell>{formatCellNumber(perPortionMacros.calories)}</TableCell>
+                <TableCell>{formatCellNumber(perPortionMacros.protein)}</TableCell>
+                <TableCell>{formatCellNumber(perPortionMacros.fat)}</TableCell>
+                <TableCell>{formatCellNumber(perPortionMacros.carbs)}</TableCell>
+                <TableCell>{formatCellNumber(perPortionMacros.fiber)}</TableCell>
+              </TableRow>
+            )}
             <TableRow>
               <TableCell>Name</TableCell>
               <TableCell>Unit</TableCell>

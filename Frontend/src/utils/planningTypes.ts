@@ -17,6 +17,7 @@ export type IngredientPlanItem = {
   ingredientId: string;
   unitId: number;
   amount: number;
+  portions: number;
 };
 
 export type PlanItem = FoodPlanItem | IngredientPlanItem;
