@@ -1065,11 +1065,11 @@ function Planning() {
             <TableCell></TableCell>
             <TableCell>Item</TableCell>
             <TableCell>Amount</TableCell>
-            <TableCell>Calories</TableCell>
-            <TableCell>Protein</TableCell>
-            <TableCell>Carbs</TableCell>
-            <TableCell>Fat</TableCell>
-            <TableCell>Fiber</TableCell>
+            <TableCell>Calories (per portion)</TableCell>
+            <TableCell>Protein (per portion)</TableCell>
+            <TableCell>Carbs (per portion)</TableCell>
+            <TableCell>Fat (per portion)</TableCell>
+            <TableCell>Fiber (per portion)</TableCell>
             <TableCell></TableCell>
           </TableRow>
         </TableHead>
@@ -1099,21 +1099,11 @@ function Planning() {
                         />
                       </Box>
                     </TableCell>
-                    <TableCell>
-                      {formatCellNumber(macros.calories * item.portions)}
-                    </TableCell>
-                    <TableCell>
-                      {formatCellNumber(macros.protein * item.portions)}
-                    </TableCell>
-                    <TableCell>
-                      {formatCellNumber(macros.carbs * item.portions)}
-                    </TableCell>
-                    <TableCell>
-                      {formatCellNumber(macros.fat * item.portions)}
-                    </TableCell>
-                    <TableCell>
-                      {formatCellNumber(macros.fiber * item.portions)}
-                    </TableCell>
+                    <TableCell>{formatCellNumber(macros.calories)}</TableCell>
+                    <TableCell>{formatCellNumber(macros.protein)}</TableCell>
+                    <TableCell>{formatCellNumber(macros.carbs)}</TableCell>
+                    <TableCell>{formatCellNumber(macros.fat)}</TableCell>
+                    <TableCell>{formatCellNumber(macros.fiber)}</TableCell>
                     <TableCell>
                       <Button color="error" onClick={() => handleRemoveItem(index)}>
                         Remove
@@ -1132,11 +1122,11 @@ function Planning() {
                               <TableCell>Name</TableCell>
                               <TableCell>Unit</TableCell>
                               <TableCell>Amount</TableCell>
-                              <TableCell>Calories</TableCell>
-                              <TableCell>Protein</TableCell>
-                              <TableCell>Carbs</TableCell>
-                              <TableCell>Fat</TableCell>
-                              <TableCell>Fiber</TableCell>
+                              <TableCell>Calories (per portion)</TableCell>
+                              <TableCell>Protein (per portion)</TableCell>
+                              <TableCell>Carbs (per portion)</TableCell>
+                              <TableCell>Fat (per portion)</TableCell>
+                              <TableCell>Fiber (per portion)</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
@@ -1203,19 +1193,19 @@ function Planning() {
                                     </Box>
                                   </TableCell>
                                   <TableCell>
-                                    {formatCellNumber(ingMacros.calories * item.portions)}
+                                    {formatCellNumber(ingMacros.calories)}
                                   </TableCell>
                                   <TableCell>
-                                    {formatCellNumber(ingMacros.protein * item.portions)}
+                                    {formatCellNumber(ingMacros.protein)}
                                   </TableCell>
                                   <TableCell>
-                                    {formatCellNumber(ingMacros.carbs * item.portions)}
+                                    {formatCellNumber(ingMacros.carbs)}
                                   </TableCell>
                                   <TableCell>
-                                    {formatCellNumber(ingMacros.fat * item.portions)}
+                                    {formatCellNumber(ingMacros.fat)}
                                   </TableCell>
                                   <TableCell>
-                                    {formatCellNumber(ingMacros.fiber * item.portions)}
+                                    {formatCellNumber(ingMacros.fiber)}
                                   </TableCell>
                                 </TableRow>
                               );
@@ -1239,13 +1229,6 @@ function Planning() {
                 (ingredient?.units || []).find(
                   (candidate) => normalizePlanUnitId(candidate.id) === normalizedUnitId,
                 )?.name ?? (normalizedUnitId === GRAM_UNIT_SENTINEL ? "g" : "");
-              const itemTotalMacros = {
-                calories: perPortionMacros.calories * item.portions,
-                protein: perPortionMacros.protein * item.portions,
-                carbs: perPortionMacros.carbs * item.portions,
-                fat: perPortionMacros.fat * item.portions,
-                fiber: perPortionMacros.fiber * item.portions,
-              };
               return (
                 <TableRow key={`ingredient-${index}`}>
                   <TableCell />
@@ -1346,11 +1329,11 @@ function Planning() {
                       </Box>
                     </Box>
                   </TableCell>
-                  <TableCell>{formatCellNumber(itemTotalMacros.calories)}</TableCell>
-                  <TableCell>{formatCellNumber(itemTotalMacros.protein)}</TableCell>
-                  <TableCell>{formatCellNumber(itemTotalMacros.carbs)}</TableCell>
-                  <TableCell>{formatCellNumber(itemTotalMacros.fat)}</TableCell>
-                  <TableCell>{formatCellNumber(itemTotalMacros.fiber)}</TableCell>
+                  <TableCell>{formatCellNumber(perPortionMacros.calories)}</TableCell>
+                  <TableCell>{formatCellNumber(perPortionMacros.protein)}</TableCell>
+                  <TableCell>{formatCellNumber(perPortionMacros.carbs)}</TableCell>
+                  <TableCell>{formatCellNumber(perPortionMacros.fat)}</TableCell>
+                  <TableCell>{formatCellNumber(perPortionMacros.fiber)}</TableCell>
                   <TableCell>
                     <Button color="error" onClick={() => handleRemoveItem(index)}>
                       Remove
