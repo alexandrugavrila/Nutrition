@@ -3,11 +3,13 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Collapse,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   IconButton,
   MenuItem,
   Paper,
@@ -26,7 +28,6 @@ import {
   KeyboardArrowDown,
   KeyboardArrowRight,
   Add,
-  Remove,
   Edit as EditIcon,
   Save as SaveIcon,
   RestartAlt as ResetIcon,
@@ -143,7 +144,7 @@ const NameWithEdit: React.FC<NameWithEditProps> = ({ name, onEdit }) => {
 };
 
 function Planning() {
-  const { foods, ingredients } = useData();
+  const { foods, ingredients, fridgeInventory } = useData();
   const navigate = useNavigate();
   const location = useLocation();
   const ingredientLookup = useMemo(() => createIngredientLookup(ingredients), [ingredients]);
@@ -162,6 +163,10 @@ function Planning() {
   );
   const [activeMacro, setActiveMacro] = useState<MacroKey | null>(null);
   const [plan, setPlan] = useSessionStorageState<PlanItem[]>("planning-plan", () => []); // FoodPlanItem or IngredientPlanItem
+  const [includeFridge, setIncludeFridge] = useSessionStorageState<boolean>(
+    "planning-include-fridge",
+    false,
+  );
 
   const [activePlan, setActivePlan] = useSessionStorageState<{
     id: number | null;
@@ -185,6 +190,35 @@ function Planning() {
   const [editorIngredient, setEditorIngredient] = useState<IngredientRead | null>(null);
   const [ingredientPickerOpen, setIngredientPickerOpen] = useState(false);
   const [foodPickerOpen, setFoodPickerOpen] = useState(false);
+
+  useEffect(() => {
+    setPlan((prev) => {
+      let changed = false;
+      const next = prev.map((item) => {
+        if (item.type !== "ingredient") {
+          return item;
+        }
+        const ingredientItem = item as IngredientPlanItem;
+        const normalizedPortions = toFiniteNumber(ingredientItem.portions);
+        if (normalizedPortions > 0 && Number.isFinite(normalizedPortions)) {
+          if (ingredientItem.portions === normalizedPortions) {
+            return ingredientItem;
+          }
+          changed = true;
+          return {
+            ...ingredientItem,
+            portions: normalizedPortions,
+          } as IngredientPlanItem;
+        }
+        changed = true;
+        return {
+          ...ingredientItem,
+          portions: 1,
+        } as IngredientPlanItem;
+      });
+      return changed ? next : prev;
+    });
+  }, [setPlan]);
 
   const hasContent = useMemo(
     () =>
@@ -248,11 +282,14 @@ function Planning() {
           overrides,
         } as FoodPlanItem;
       }
+      const amount = toFiniteNumber((item as IngredientPlanItem).amount);
+      const portions = toFiniteNumber((item as IngredientPlanItem).portions);
       return {
         type: "ingredient",
         ingredientId: item.ingredientId,
         unitId: normalizePlanUnitId(item.unitId),
-        amount: item.amount,
+        amount,
+        portions: portions > 0 ? portions : 1,
       } as IngredientPlanItem;
     });
   }, [plan]);
@@ -299,11 +336,15 @@ function Planning() {
                 } as FoodPlanItem;
               }
               if ((item as PlanItem).type === "ingredient") {
+                const rawIngredient = item as IngredientPlanItem;
+                const amount = toFiniteNumber(rawIngredient.amount);
+                const portions = toFiniteNumber(rawIngredient.portions);
                 return {
                   type: "ingredient" as const,
-                  ingredientId: String((item as IngredientPlanItem).ingredientId ?? ""),
-                  unitId: normalizePlanUnitId((item as IngredientPlanItem).unitId),
-                  amount: Number((item as IngredientPlanItem).amount ?? 0) || 0,
+                  ingredientId: String(rawIngredient.ingredientId ?? ""),
+                  unitId: normalizePlanUnitId(rawIngredient.unitId),
+                  amount,
+                  portions: portions > 0 ? portions : 1,
                 } as IngredientPlanItem;
               }
               return null;
@@ -582,6 +623,7 @@ function Planning() {
           ingredientId,
           unitId: fallbackUnitId,
           amount: 1,
+          portions: 1,
         } as IngredientPlanItem,
       ]);
       setIngredientPickerOpen(false);
@@ -669,6 +711,20 @@ function Planning() {
     setPlan(updated);
   };
 
+  const handleIngredientPortionsChange = (index: number, value: number) => {
+    if (value <= 0) return;
+    const updated = [...plan];
+    const item = updated[index];
+    if (!item || item.type !== "ingredient") {
+      return;
+    }
+    updated[index] = {
+      ...(item as IngredientPlanItem),
+      portions: value,
+    } as IngredientPlanItem;
+    setPlan(updated);
+  };
+
   const handleRemoveItem = (index) => {
     const updated = plan.filter((_, i) => i !== index);
     setPlan(updated);
@@ -715,16 +771,23 @@ function Planning() {
           fiber: macros.fiber * item.portions,
         };
       }
-      return calculateIngredientMacros({
+      const perPortion = calculateIngredientMacros({
         ingredient_id: item.ingredientId,
         unit_id: normalizePlanUnitId(item.unitId),
         unit_quantity: item.amount,
       });
+      return {
+        calories: perPortion.calories * item.portions,
+        protein: perPortion.protein * item.portions,
+        fat: perPortion.fat * item.portions,
+        carbs: perPortion.carbs * item.portions,
+        fiber: perPortion.fiber * item.portions,
+      };
     },
     [foods, calculateFoodMacros, calculateIngredientMacros]
   );
 
-  const totalMacros = useMemo(() => {
+  const planTotalMacros = useMemo(() => {
     return plan.reduce(
       (totals, item) => {
         const macros = calculateItemMacros(item);
@@ -739,18 +802,48 @@ function Planning() {
     );
   }, [plan, calculateItemMacros]);
 
+  const fridgeTotalMacros = useMemo(() => {
+    return fridgeInventory.reduce(
+      (totals, item) => {
+        const remaining = Number.isFinite(item.remaining_portions)
+          ? Math.max(0, item.remaining_portions)
+          : 0;
+        totals.calories += item.per_portion_calories * remaining;
+        totals.protein += item.per_portion_protein * remaining;
+        totals.fat += item.per_portion_fat * remaining;
+        totals.carbs += item.per_portion_carbohydrates * remaining;
+        totals.fiber += item.per_portion_fiber * remaining;
+        return totals;
+      },
+      { ...ZERO_MACROS },
+    );
+  }, [fridgeInventory]);
+
+  const overallTotalMacros = useMemo(() => {
+    if (!includeFridge) {
+      return planTotalMacros;
+    }
+    return {
+      calories: planTotalMacros.calories + fridgeTotalMacros.calories,
+      protein: planTotalMacros.protein + fridgeTotalMacros.protein,
+      fat: planTotalMacros.fat + fridgeTotalMacros.fat,
+      carbs: planTotalMacros.carbs + fridgeTotalMacros.carbs,
+      fiber: planTotalMacros.fiber + fridgeTotalMacros.fiber,
+    };
+  }, [includeFridge, planTotalMacros, fridgeTotalMacros]);
+
   const perDayMacros = useMemo(() => {
     if (days <= 0) {
       return { ...ZERO_MACROS };
     }
     return {
-      calories: totalMacros.calories / days,
-      protein: totalMacros.protein / days,
-      fat: totalMacros.fat / days,
-      carbs: totalMacros.carbs / days,
-      fiber: totalMacros.fiber / days,
+      calories: overallTotalMacros.calories / days,
+      protein: overallTotalMacros.protein / days,
+      fat: overallTotalMacros.fat / days,
+      carbs: overallTotalMacros.carbs / days,
+      fiber: overallTotalMacros.fiber / days,
     };
-  }, [totalMacros, days]);
+  }, [overallTotalMacros, days]);
 
   const handleDaysChange = (e) => {
     const value = parseInt(e.target.value, 10);
@@ -996,15 +1089,6 @@ function Planning() {
                     <TableCell>{food ? food.name : ""}</TableCell>
                     <TableCell>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <IconButton
-                          size="small"
-                          aria-label="decrement portions"
-                          onClick={() =>
-                            handleQuantityChange(index, Math.max(1, item.portions - 1))
-                          }
-                        >
-                          <Remove fontSize="small" />
-                        </IconButton>
                         <TextField
                           type="number"
                           value={item.portions}
@@ -1013,13 +1097,6 @@ function Planning() {
                           }
                           sx={{ width: 80 }}
                         />
-                        <IconButton
-                          size="small"
-                          aria-label="increment portions"
-                          onClick={() => handleQuantityChange(index, item.portions + 1)}
-                        >
-                          <Add fontSize="small" />
-                        </IconButton>
                       </Box>
                     </TableCell>
                     <TableCell>
@@ -1110,19 +1187,6 @@ function Planning() {
                                   </TableCell>
                                   <TableCell>
                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                      <IconButton
-                                        size="small"
-                                        aria-label="decrement quantity"
-                                        onClick={() =>
-                                          handleQuantityChange(
-                                            index,
-                                            Math.max(1, (quantity || 0) - 1),
-                                            { ingredientId: ingredient.ingredient_id }
-                                          )
-                                        }
-                                      >
-                                        <Remove fontSize="small" />
-                                      </IconButton>
                                       <TextField
                                         type="number"
                                         value={quantity}
@@ -1135,19 +1199,6 @@ function Planning() {
                                         }
                                         sx={{ width: 80 }}
                                       />
-                                      <IconButton
-                                        size="small"
-                                        aria-label="increment quantity"
-                                        onClick={() =>
-                                          handleQuantityChange(
-                                            index,
-                                            (quantity || 0) + 1,
-                                            { ingredientId: ingredient.ingredient_id }
-                                          )
-                                        }
-                                      >
-                                        <Add fontSize="small" />
-                                      </IconButton>
                                       <Box component="span">x {item.portions}</Box>
                                     </Box>
                                   </TableCell>
@@ -1179,11 +1230,22 @@ function Planning() {
             } else {
               const ingredient = findIngredientInLookup(ingredientLookup, item.ingredientId);
               const normalizedUnitId = normalizePlanUnitId(item.unitId);
-              const macros = calculateIngredientMacros({
+              const perPortionMacros = calculateIngredientMacros({
                 ingredient_id: item.ingredientId,
                 unit_id: normalizedUnitId,
                 unit_quantity: item.amount,
               });
+              const unitName =
+                (ingredient?.units || []).find(
+                  (candidate) => normalizePlanUnitId(candidate.id) === normalizedUnitId,
+                )?.name ?? (normalizedUnitId === GRAM_UNIT_SENTINEL ? "g" : "");
+              const itemTotalMacros = {
+                calories: perPortionMacros.calories * item.portions,
+                protein: perPortionMacros.protein * item.portions,
+                carbs: perPortionMacros.carbs * item.portions,
+                fat: perPortionMacros.fat * item.portions,
+                fiber: perPortionMacros.fiber * item.portions,
+              };
               return (
                 <TableRow key={`ingredient-${index}`}>
                   <TableCell />
@@ -1194,58 +1256,101 @@ function Planning() {
                     />
                   </TableCell>
                   <TableCell>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <IconButton
-                        size="small"
-                        aria-label="decrement amount"
-                        onClick={() =>
-                          handleQuantityChange(index, Math.max(1, item.amount - 1))
-                        }
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 2,
+                        minWidth: 260,
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          flexWrap: "wrap",
+                        }}
                       >
-                        <Remove fontSize="small" />
-                      </IconButton>
-                      <TextField
-                        type="number"
-                        value={item.amount}
-                        onChange={(e) =>
-                          handleQuantityChange(index, parseFloat(e.target.value) || 0)
-                        }
-                        sx={{ width: 80 }}
-                      />
-                      <IconButton
-                        size="small"
-                        aria-label="increment amount"
-                        onClick={() => handleQuantityChange(index, item.amount + 1)}
+                        <Typography variant="body2" sx={{ minWidth: 90 }}>
+                          Portion size
+                        </Typography>
+                        <TextField
+                          type="number"
+                          value={item.amount}
+                          onChange={(e) =>
+                            handleQuantityChange(index, parseFloat(e.target.value) || 0)
+                          }
+                          sx={{ width: 80 }}
+                          inputProps={{
+                            min: 0,
+                            step: "any",
+                            "aria-label": "portion size quantity",
+                          }}
+                        />
+                        <TextField
+                          select
+                          value={normalizedUnitId}
+                          onChange={(e) =>
+                            handleUnitChange(index, normalizePlanUnitId(e.target.value))
+                          }
+                          sx={{ minWidth: 120 }}
+                          key={`single-item-unit-${item.ingredientId}-${
+                            (ingredient?.units?.length) ?? 0
+                          }`}
+                          aria-label="portion size unit"
+                        >
+                          {(ingredient?.units || []).map((u) => (
+                            <MenuItem
+                              key={u.id ?? `${item.ingredientId}-${u.name}`}
+                              value={normalizePlanUnitId(u.id)}
+                            >
+                              {u.name}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      </Box>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          flexWrap: "wrap",
+                        }}
                       >
-                        <Add fontSize="small" />
-                      </IconButton>
-                      <TextField
-                        select
-                        value={normalizedUnitId}
-                        onChange={(e) =>
-                          handleUnitChange(index, normalizePlanUnitId(e.target.value))
-                        }
-                        sx={{ minWidth: 120 }}
-                        key={`single-item-unit-${item.ingredientId}-${
-                          (ingredient?.units?.length) ?? 0
-                        }`}
-                      >
-                        {(ingredient?.units || []).map((u) => (
-                          <MenuItem
-                            key={u.id ?? `${item.ingredientId}-${u.name}`}
-                            value={normalizePlanUnitId(u.id)}
-                          >
-                            {u.name}
-                          </MenuItem>
-                        ))}
-                      </TextField>
+                        <Typography variant="body2" sx={{ minWidth: 90 }}>
+                          Portions
+                        </Typography>
+                        <TextField
+                          type="number"
+                          value={item.portions}
+                          onChange={(e) =>
+                            handleIngredientPortionsChange(
+                              index,
+                              parseFloat(e.target.value) || 0,
+                            )
+                          }
+                          sx={{ width: 80 }}
+                          inputProps={{
+                            min: 0,
+                            step: "any",
+                            "aria-label": "planned portions",
+                          }}
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          {`Total: ${formatCellNumber(item.amount * item.portions)}${
+                            unitName ? ` ${unitName}` : ""
+                          }`}
+                        </Typography>
+                      </Box>
                     </Box>
                   </TableCell>
-                  <TableCell>{formatCellNumber(macros.calories)}</TableCell>
-                  <TableCell>{formatCellNumber(macros.protein)}</TableCell>
-                  <TableCell>{formatCellNumber(macros.carbs)}</TableCell>
-                  <TableCell>{formatCellNumber(macros.fat)}</TableCell>
-                  <TableCell>{formatCellNumber(macros.fiber)}</TableCell>
+                  <TableCell>{formatCellNumber(itemTotalMacros.calories)}</TableCell>
+                  <TableCell>{formatCellNumber(itemTotalMacros.protein)}</TableCell>
+                  <TableCell>{formatCellNumber(itemTotalMacros.carbs)}</TableCell>
+                  <TableCell>{formatCellNumber(itemTotalMacros.fat)}</TableCell>
+                  <TableCell>{formatCellNumber(itemTotalMacros.fiber)}</TableCell>
                   <TableCell>
                     <Button color="error" onClick={() => handleRemoveItem(index)}>
                       Remove
@@ -1293,7 +1398,26 @@ function Planning() {
       </Dialog>
 
       <Box>
-        <h2>Summary</h2>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          sx={{ mb: 1 }}
+        >
+          <Typography variant="h5" component="h2">
+            Summary
+          </Typography>
+          <FormControlLabel
+            control={(
+              <Checkbox
+                checked={includeFridge}
+                onChange={(event) => setIncludeFridge(event.target.checked)}
+                inputProps={{ "aria-label": "Include fridge inventory" }}
+              />
+            )}
+            label="Include fridge inventory"
+          />
+        </Stack>
         <TableContainer component={Paper}>
           <Table>
           <TableHead>
@@ -1307,13 +1431,33 @@ function Planning() {
             </TableRow>
           </TableHead>
           <TableBody>
+            {includeFridge && (
+              <>
+                <TableRow>
+                  <TableCell>Total in Fridge</TableCell>
+                  <TableCell>{formatCellNumber(fridgeTotalMacros.calories)}</TableCell>
+                  <TableCell>{formatCellNumber(fridgeTotalMacros.protein)}</TableCell>
+                  <TableCell>{formatCellNumber(fridgeTotalMacros.carbs)}</TableCell>
+                  <TableCell>{formatCellNumber(fridgeTotalMacros.fat)}</TableCell>
+                  <TableCell>{formatCellNumber(fridgeTotalMacros.fiber)}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Total in Plan</TableCell>
+                  <TableCell>{formatCellNumber(planTotalMacros.calories)}</TableCell>
+                  <TableCell>{formatCellNumber(planTotalMacros.protein)}</TableCell>
+                  <TableCell>{formatCellNumber(planTotalMacros.carbs)}</TableCell>
+                  <TableCell>{formatCellNumber(planTotalMacros.fat)}</TableCell>
+                  <TableCell>{formatCellNumber(planTotalMacros.fiber)}</TableCell>
+                </TableRow>
+              </>
+            )}
             <TableRow>
-              <TableCell>Total</TableCell>
-              <TableCell>{formatCellNumber(totalMacros.calories)}</TableCell>
-              <TableCell>{formatCellNumber(totalMacros.protein)}</TableCell>
-              <TableCell>{formatCellNumber(totalMacros.carbs)}</TableCell>
-              <TableCell>{formatCellNumber(totalMacros.fat)}</TableCell>
-              <TableCell>{formatCellNumber(totalMacros.fiber)}</TableCell>
+              <TableCell>Total Overall</TableCell>
+              <TableCell>{formatCellNumber(overallTotalMacros.calories)}</TableCell>
+              <TableCell>{formatCellNumber(overallTotalMacros.protein)}</TableCell>
+              <TableCell>{formatCellNumber(overallTotalMacros.carbs)}</TableCell>
+              <TableCell>{formatCellNumber(overallTotalMacros.fat)}</TableCell>
+              <TableCell>{formatCellNumber(overallTotalMacros.fiber)}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell>Per Day</TableCell>

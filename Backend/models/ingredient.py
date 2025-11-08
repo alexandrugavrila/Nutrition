@@ -11,6 +11,7 @@ from .ingredient_tag import IngredientTagLink
 if TYPE_CHECKING:  # pragma: no cover - only for type checking
     from .schemas import IngredientCreate
     from .ingredient_shopping_unit import IngredientShoppingUnit
+    from .stored_food import StoredFood
 
 
 class Ingredient(SQLModel, table=True):
@@ -39,6 +40,7 @@ class Ingredient(SQLModel, table=True):
     tags: List[PossibleIngredientTag] = Relationship(
         back_populates="ingredients", link_model=IngredientTagLink
     )
+    stored_food_items: List["StoredFood"] = Relationship(back_populates="ingredient")
 
     @classmethod
     def from_create(cls, data: "IngredientCreate") -> "Ingredient":

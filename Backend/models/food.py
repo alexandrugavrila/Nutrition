@@ -9,6 +9,7 @@ from .food_tag import FoodTagLink
 
 if TYPE_CHECKING:  # pragma: no cover - only for type checking
     from .schemas import FoodCreate
+    from .stored_food import StoredFood
 
 
 class Food(SQLModel, table=True):
@@ -26,6 +27,7 @@ class Food(SQLModel, table=True):
     tags: List[PossibleFoodTag] = Relationship(
         back_populates="foods", link_model=FoodTagLink
     )
+    stored_food_items: List["StoredFood"] = Relationship(back_populates="food")
 
     @classmethod
     def from_create(cls, data: "FoodCreate") -> "Food":

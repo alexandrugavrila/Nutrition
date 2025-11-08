@@ -45,6 +45,9 @@ const renderWithData = () => {
       { id: 2, name: "Dinner" },
     ],
     foodOtherTags: [],
+    fridgeInventory: [],
+    setFridgeInventory: vi.fn(),
+    setFridgeNeedsRefetch: vi.fn(),
   });
   return render(<FoodTable />);
 };
