@@ -10,7 +10,7 @@ from pathlib import Path
 
 from sqlalchemy import create_engine, text
 import subprocess
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 # Ensure repository root is on sys.path for module imports
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -188,8 +188,8 @@ def main():
     try:
         session = SessionLocal()
 
-        def _apply_migrations():
-            print("No tables found; applying Alembic migrations (upgrade head)...")
+        def _apply_migrations(reason: str) -> Session:
+            print(f"{reason} Applying Alembic migrations (upgrade head)...")
             env_copy = os.environ.copy()
             # Ensure Alembic uses the same DB URL as this script
             dburl = DATABASE_URL
@@ -224,9 +224,12 @@ def main():
                 pass
             return SessionLocal()
 
+        session = _apply_migrations("Ensuring schema is current before import.")
         ordered_tables = get_table_order(session)
         if not ordered_tables:
-            session = _apply_migrations()
+            session = _apply_migrations(
+                "No tables detected after introspection."
+            )
             ordered_tables = get_table_order(session)
 
         # Fallback: if introspection still fails, attempt a conservative static order
