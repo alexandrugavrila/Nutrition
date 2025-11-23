@@ -103,6 +103,11 @@ fi
 
 info "Worktree mapping OK."
 
+# Verify python is available before checking the venv
+if ! command -v python >/dev/null 2>&1; then
+  fail "Python is not installed or not on PATH. Please install Python 3 and ensure the 'python' command is available."
+fi
+
 # Verify Python venv is active and matches this worktree
 expected_venv="$repo_root/.venv"
 actual_venv="${VIRTUAL_ENV:-}"

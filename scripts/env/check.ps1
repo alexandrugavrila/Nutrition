@@ -154,6 +154,12 @@ foreach ($blk in $blocks) {
 if (-not $wtOk) { Fail "Git worktree mapping not found for branch '$branch' at '$repoRoot'" }
 Write-Info "Worktree mapping OK."
 
+# Verify python is available before checking the venv
+$pythonCmd = Get-Command python -ErrorAction SilentlyContinue
+if (-not $pythonCmd) {
+  Fail "Python is not installed or not on PATH. Please install Python 3 and ensure the 'python' command is available."
+}
+
 # Verify Python venv
 $expectedVenv = Join-Path $repoRoot '.venv'
 $actualVenv = $env:VIRTUAL_ENV
