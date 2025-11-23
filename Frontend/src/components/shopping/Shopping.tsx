@@ -1,8 +1,9 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
   IconButton,
   ListItemIcon,
@@ -75,6 +76,24 @@ type ActivePlanState = {
 
 const CLEAR_SELECTION_VALUE = "__CLEAR_SHOPPING_UNIT__";
 const NULL_UNIT_SENTINEL = "__NULL_UNIT__";
+
+const getShoppingItemKey = (item: ShoppingListItem): string => {
+  if (item.ingredientId !== null && item.ingredientId !== undefined) {
+    return `ingredient:${String(item.ingredientId)}`;
+  }
+
+  const normalizedName = item.name?.trim();
+  if (normalizedName) {
+    return `name:${normalizedName}`;
+  }
+
+  const fallbackId = item.ingredient?.id;
+  if (fallbackId !== null && fallbackId !== undefined) {
+    return `ingredient:${String(fallbackId)}`;
+  }
+
+  return `ingredient:${JSON.stringify(item.ingredient)}`;
+};
 
 const toOptionValue = (
   unitId: number | string | null | undefined,
@@ -157,6 +176,45 @@ function Shopping() {
     message: string;
     severity: "success" | "error";
   }>({ open: false, message: "", severity: "success" });
+  const [excludedItems, setExcludedItems] = useSessionStorageState<Record<string, boolean>>(
+    "shopping-excluded-items",
+    () => ({}),
+  );
+
+  useEffect(() => {
+    setExcludedItems((previous) => {
+      const validKeys = new Set(items.map((item) => getShoppingItemKey(item)));
+      let changed = false;
+      const next: Record<string, boolean> = {};
+
+      Object.entries(previous).forEach(([key, value]) => {
+        if (validKeys.has(key) && value) {
+          next[key] = true;
+        } else if (!validKeys.has(key)) {
+          changed = true;
+        }
+      });
+
+      return changed || Object.keys(previous).length !== Object.keys(next).length
+        ? next
+        : previous;
+    });
+  }, [items, setExcludedItems]);
+
+  const toggleItemExclusion = useCallback(
+    (itemKey: string) => {
+      setExcludedItems((previous) => {
+        const next = { ...previous };
+        if (next[itemKey]) {
+          delete next[itemKey];
+        } else {
+          next[itemKey] = true;
+        }
+        return next;
+      });
+    },
+    [setExcludedItems],
+  );
 
   const ingredientLookup = useMemo(() => {
     const map = new Map<string, IngredientWithSelection>();
@@ -357,25 +415,27 @@ function Shopping() {
 
   const exportRows = useMemo(
     () =>
-      items.map((item) => {
-        const { displayUnitTotal } = resolveItemDetails(item);
-        const unitName = displayUnitTotal?.unitName?.trim() ?? "";
-        const quantityValue = displayUnitTotal
-          ? formatCellNumber(displayUnitTotal.quantity)
-          : "";
-        const textParts = [quantityValue, unitName, item.name]
-          .map((part) => (part == null ? "" : String(part).trim()))
-          .filter((part) => part !== "");
-        const textLine = textParts.join(" ") || String(item.name ?? "");
+      items
+        .filter((item) => !excludedItems[getShoppingItemKey(item)])
+        .map((item) => {
+          const { displayUnitTotal } = resolveItemDetails(item);
+          const unitName = displayUnitTotal?.unitName?.trim() ?? "";
+          const quantityValue = displayUnitTotal
+            ? formatCellNumber(displayUnitTotal.quantity)
+            : "";
+          const textParts = [quantityValue, unitName, item.name]
+            .map((part) => (part == null ? "" : String(part).trim()))
+            .filter((part) => part !== "");
+          const textLine = textParts.join(" ") || String(item.name ?? "");
 
-        return {
-          name: item.name,
-          quantityValue,
-          unitName,
-          textLine,
-        };
-      }),
-    [items, resolveItemDetails],
+          return {
+            name: item.name,
+            quantityValue,
+            unitName,
+            textLine,
+          };
+        }),
+    [excludedItems, items, resolveItemDetails],
   );
 
   const handleExportMenuOpen = useCallback(
@@ -520,6 +580,9 @@ function Shopping() {
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell padding="checkbox" align="center">
+                  Status
+                </TableCell>
                 <TableCell>Ingredient</TableCell>
                 <TableCell>Shopping Unit</TableCell>
                 <TableCell align="right">Need to Buy</TableCell>
@@ -529,9 +592,41 @@ function Shopping() {
               {items.map((item) => {
                 const { ingredientId, contextIngredient, selectValue, quantityLabel } =
                   resolveItemDetails(item);
+                const itemKey = getShoppingItemKey(item);
+                const isExcluded = Boolean(excludedItems[itemKey]);
 
                 return (
-                  <TableRow key={item.ingredientId ?? item.name}>
+                  <TableRow
+                    key={itemKey}
+                    sx={
+                      isExcluded
+                        ? {
+                            '& .MuiTableCell-root': { color: "text.disabled" },
+                            '& .MuiTypography-root': { color: "text.disabled" },
+                            '& .MuiSelect-select': { color: "text.disabled !important" },
+                            '& .MuiSvgIcon-root': { color: "text.disabled" },
+                          }
+                        : undefined
+                    }
+                  >
+                    <TableCell padding="checkbox" align="center">
+                      <Tooltip
+                        title={
+                          isExcluded ? "Mark as needed for this trip" : "Mark as already have"
+                        }
+                      >
+                        <Checkbox
+                          color="primary"
+                          checked={!isExcluded}
+                          onChange={() => toggleItemExclusion(itemKey)}
+                          inputProps={{
+                            "aria-label": isExcluded
+                              ? `Mark ${item.name} as needed`
+                              : `Mark ${item.name} as already have`,
+                          }}
+                        />
+                      </Tooltip>
+                    </TableCell>
                     <TableCell>
                       <HoverableEditWrapper
                         onEdit={() => openIngredientModal(contextIngredient)}

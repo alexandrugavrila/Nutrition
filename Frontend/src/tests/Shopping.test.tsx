@@ -67,6 +67,9 @@ describe("Shopping component", () => {
       if (key === "planning-active-plan") {
         return [{ id: null, label: null, updatedAt: null }, vi.fn()];
       }
+      if (key === "shopping-excluded-items") {
+        return [{}, vi.fn()];
+      }
       const value = typeof initial === "function" ? (initial as () => unknown)() : initial;
       return [value, vi.fn()];
     });
@@ -98,7 +101,7 @@ describe("Shopping component", () => {
 
     const row = await screen.findByRole("row", { name: /Oats/i });
     const cells = within(row).getAllByRole("cell");
-    expect(cells[2]).toHaveTextContent(/^1 g$/);
+    expect(cells[3]).toHaveTextContent(/^1 g$/);
 
     const unitSelect = within(row).getByRole("combobox");
     await userEvent.click(unitSelect);
@@ -111,6 +114,43 @@ describe("Shopping component", () => {
       expect(startRequest).toHaveBeenCalled();
       expect(endRequest).toHaveBeenCalled();
       expect(setIngredientsNeedsRefetch).toHaveBeenCalledWith(true);
+    });
+  });
+
+  it("omits excluded items from exports", async () => {
+    const clipboardWrite = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: { writeText: clipboardWrite },
+    });
+
+    mockUseSessionStorageState.mockImplementation((key: string, initial: unknown) => {
+      if (key === "planning-plan") {
+        return [[{ type: "ingredient", ingredientId: "1", unitId: 10, amount: 1, portions: 1 }], vi.fn()];
+      }
+      if (key === "planning-days") {
+        return [1, vi.fn()];
+      }
+      if (key === "planning-active-plan") {
+        return [{ id: null, label: null, updatedAt: null }, vi.fn()];
+      }
+      if (key === "shopping-excluded-items") {
+        return [{ "ingredient:1": true }, vi.fn()];
+      }
+      const value = typeof initial === "function" ? (initial as () => unknown)() : initial;
+      return [value, vi.fn()];
+    });
+
+    render(<Shopping />);
+
+    const checkbox = await screen.findByRole("checkbox", { name: /mark oats as needed/i });
+    expect(checkbox).not.toBeChecked();
+
+    await userEvent.click(await screen.findByRole("button", { name: /export/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /copy as text/i }));
+
+    await waitFor(() => {
+      expect(clipboardWrite).not.toHaveBeenCalled();
+      expect(screen.getByText(/nothing to copy/i)).toBeInTheDocument();
     });
   });
 });

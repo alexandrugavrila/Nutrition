@@ -11,6 +11,11 @@ This guide covers developer setup, branching, Docker workflows, API and migratio
   ```pwsh
   pwsh ./scripts/env/activate-venv.ps1
   ```
+- On Windows, allow the helper scripts to run by unblocking them and loosening the execution policy for the current user:
+  ```pwsh
+  Get-ChildItem -Recurse -Filter *.ps1 | Unblock-File
+  Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+  ```
 - macOS and Linux:
   ```bash
   source ./scripts/env/activate-venv.sh
