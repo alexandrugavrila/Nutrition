@@ -2,7 +2,7 @@ import { useCallback } from "react";
 
 import { useData } from "@/contexts/DataContext";
 import { useSessionStorageReducer } from "@/hooks/useSessionStorageState";
-import { handleFetchRequest } from "@/utils/utils";
+import { generateUUID, handleFetchRequest } from "@/utils/utils";
 import type { components, operations } from "@/api-types";
 
 type IngredientRead = components["schemas"]["IngredientRead"];
@@ -34,11 +34,11 @@ type DeleteOptions = {
 
 const initializeEmptyIngredient = (): IngredientFormState["ingredient"] => ({
   name: "",
-  id: crypto.randomUUID(),
+  id: generateUUID(),
   units: [
     {
       id: "0",
-      ingredient_id: crypto.randomUUID(),
+      ingredient_id: generateUUID(),
       name: "g",
       grams: "1",
     } as IngredientUnitCreate & { id: string },

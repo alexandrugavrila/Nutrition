@@ -4,7 +4,7 @@ import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActi
 import { useSessionStorageReducer } from "@/hooks/useSessionStorageState";
 
 import { useData } from "@/contexts/DataContext";
-import { handleFetchRequest } from "@/utils/utils";
+import { generateUUID, handleFetchRequest } from "@/utils/utils";
 
 import FoodNameForm from "./FoodNameForm";
 import FoodIngredientsForm from "./FoodIngredientsForm";
@@ -16,7 +16,7 @@ import FoodIngredientsForm from "./FoodIngredientsForm";
 
 const createEmptyFood = () => ({
   name: "",
-  id: crypto.randomUUID(),
+  id: generateUUID(),
   ingredients: [],
   tags: [],
 });
