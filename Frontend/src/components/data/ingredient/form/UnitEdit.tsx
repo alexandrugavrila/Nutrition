@@ -14,6 +14,7 @@ import {
 import type { SelectChangeEvent } from "@mui/material/Select";
 
 import type { components } from "@/api-types";
+import { generateUUID } from "@/utils/utils";
 
 type IngredientRead = components["schemas"]["IngredientRead"];
 type IngredientUnit = NonNullable<IngredientRead["units"]>[number];
@@ -174,7 +175,7 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }: UnitEditProps) {
 
   const handleAddUnit = useCallback(
     (name: string, grams: number) => {
-      const tempId = crypto.randomUUID();
+      const tempId = generateUUID();
       const newUnit = {
         id: tempId,
         ingredient_id: ingredient.id,
