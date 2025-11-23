@@ -76,4 +76,3 @@ Desktop.ini
 
 # === Database ===
 Database/*.sql~    # backup files
-*.dump
