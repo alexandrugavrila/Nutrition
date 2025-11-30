@@ -153,7 +153,8 @@ describe("Logging component", () => {
 
     expect(screen.getByText(/Fridge Inventory/i)).toBeInTheDocument();
     expect(screen.getByText(/Quick Log/i)).toBeInTheDocument();
-    expect(screen.getByText(/Prepared Foods/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fridge Items/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Prepared Foods/i)).not.toBeInTheDocument();
     expect(screen.getByLabelText(/Log date/i)).toBeInTheDocument();
     expect(screen.getByText(/Daily Log/i)).toBeInTheDocument();
   });
