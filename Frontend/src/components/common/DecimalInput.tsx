@@ -29,21 +29,18 @@ const DecimalInput: React.FC<DecimalInputProps> = ({
   const [inputValue, setInputValue] = useState<string>(() =>
     formatDecimal(value, decimalPlaces),
   );
-  const [isFocused, setIsFocused] = useState(false);
+  const [lastEmittedValue, setLastEmittedValue] = useState<number>(value);
 
   const decimalPattern = useMemo(() => {
     return allowNegative ? /^-?\d*(\.\d*)?$/ : /^\d*(\.\d*)?$/;
   }, [allowNegative]);
 
   useEffect(() => {
-    if (isFocused) {
-      return;
+    if (!Object.is(value, lastEmittedValue)) {
+      setInputValue(formatDecimal(value, decimalPlaces));
+      setLastEmittedValue(value);
     }
-    const formatted = formatDecimal(value, decimalPlaces);
-    if (formatted !== inputValue) {
-      setInputValue(formatted);
-    }
-  }, [value, decimalPlaces, isFocused, inputValue]);
+  }, [value, decimalPlaces, lastEmittedValue]);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { value: rawValue } = event.target;
@@ -52,6 +49,7 @@ const DecimalInput: React.FC<DecimalInputProps> = ({
       const parsed = Number.parseFloat(rawValue);
       if (Number.isFinite(parsed)) {
         const rounded = Number.parseFloat(parsed.toFixed(decimalPlaces));
+        setLastEmittedValue(rounded);
         onValueChange(rounded);
       }
     }
@@ -73,7 +71,7 @@ const DecimalInput: React.FC<DecimalInputProps> = ({
       }
     }
 
-    setIsFocused(false);
+    setLastEmittedValue(nextValue);
     setInputValue(formatDecimal(nextValue, decimalPlaces));
     if (!Object.is(value, nextValue)) {
       onValueChange(nextValue);
@@ -87,12 +85,11 @@ const DecimalInput: React.FC<DecimalInputProps> = ({
   return (
     <TextField
       {...textFieldProps}
-      type="text"
+      type="number"
       inputMode="decimal"
       value={inputValue}
       onChange={handleChange}
       onFocus={(event) => {
-        setIsFocused(true);
         if (onFocus) {
           onFocus(event);
         }
