@@ -14,7 +14,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
   Typography,
 } from "@mui/material";
 import { Add, Remove } from "@mui/icons-material";
@@ -24,6 +23,7 @@ import type { StoredFoodCreate } from "@/api-extra-types";
 import FeedbackSnackbar, {
   SnackbarMessage,
 } from "@/components/common/FeedbackSnackbar";
+import DecimalInput from "@/components/common/DecimalInput";
 import { useData } from "@/contexts/DataContext";
 import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type {
@@ -910,16 +910,13 @@ function Cooking() {
                                   >
                                     <Remove fontSize="small" />
                                   </IconButton>
-                                  <TextField
-                                    type="number"
+                                  <DecimalInput
                                     value={actualPortions}
-                                    onChange={(event) =>
+                                    onValueChange={(value) =>
                                       updateFoodPortion(
                                         foodItem,
                                         index,
-                                        clampNonNegative(
-                                          Number.parseFloat(event.target.value) || 0,
-                                        ),
+                                        clampNonNegative(value),
                                       )
                                     }
                                     sx={{ width: 100 }}
@@ -1081,22 +1078,18 @@ function Cooking() {
                                         gap: 1,
                                       }}
                                     >
-                                      <TextField
-                                        type="number"
-                                        value={measurement.quantity}
-                                        onChange={(event) => {
-                                          const parsed = Number.parseFloat(event.target.value);
-                                          updateIngredientMeasurement(
-                                            ingredientKey,
-                                            fallbackMeasurement,
-                                            {
-                                              quantity: Number.isFinite(parsed) ? parsed : 0,
-                                            },
-                                          );
-                                        }}
-                                        sx={{ width: 120 }}
-                                        inputProps={{ min: 0, step: "any" }}
-                                      />
+                                        <DecimalInput
+                                          value={measurement.quantity}
+                                          onValueChange={(value) =>
+                                            updateIngredientMeasurement(
+                                              ingredientKey,
+                                              fallbackMeasurement,
+                                              { quantity: value },
+                                            )
+                                          }
+                                          sx={{ width: 120 }}
+                                          inputProps={{ min: 0, step: "any" }}
+                                        />
                                       <Select
                                         size="small"
                                         value={measurement.unitId}
@@ -1258,22 +1251,16 @@ function Cooking() {
                               gap: 1,
                             }}
                         >
-                            <TextField
-                              type="number"
-                              value={measurement.quantity}
-                              onChange={(event) => {
-                                const parsed = Number.parseFloat(event.target.value);
-                                updateIngredientMeasurement(
-                                  ingredientKey,
-                                  fallbackMeasurement,
-                                  {
-                                    quantity: Number.isFinite(parsed) ? parsed : 0,
-                                  },
-                                );
-                              }}
-                              sx={{ width: 120 }}
-                              inputProps={{ min: 0, step: "any" }}
-                            />
+                              <DecimalInput
+                                value={measurement.quantity}
+                                onValueChange={(value) =>
+                                  updateIngredientMeasurement(ingredientKey, fallbackMeasurement, {
+                                    quantity: value,
+                                  })
+                                }
+                                sx={{ width: 120 }}
+                                inputProps={{ min: 0, step: "any" }}
+                              />
                             <Select
                               size="small"
                               value={measurement.unitId}
