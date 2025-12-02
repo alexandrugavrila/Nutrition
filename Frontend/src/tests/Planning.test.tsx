@@ -142,7 +142,7 @@ describe("Planning - ingredient editing updates macros", () => {
     });
   });
 
-  it("ignores invalid amounts (<= 0) when editing an existing ingredient", async () => {
+  it("allows zero amounts but ignores negatives when editing an existing ingredient", async () => {
     render(<MemoryRouter><Planning /></MemoryRouter>);
 
     await userEvent.click(screen.getByRole("button", { name: /Add Ingredient/i }));
@@ -156,20 +156,34 @@ describe("Planning - ingredient editing updates macros", () => {
     await userEvent.clear(amountInput);
     await userEvent.type(amountInput, "100");
 
-    // Attempt to set the existing row amount to 0 -> should be ignored
+    // Setting the existing row amount to 0 is allowed
     const rowAmountInput = amountInput as HTMLInputElement;
     await userEvent.clear(rowAmountInput);
     await userEvent.type(rowAmountInput, "0");
 
-    // Value stays at previous (100) and totals unchanged
     await waitFor(() => {
-      expect(rowAmountInput).toHaveValue(100);
+      expect(rowAmountInput).toHaveValue(0);
       const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total Overall");
-      expect(cal).toBe("200");
-      expect(pro).toBe("10");
-      expect(carb).toBe("50");
-      expect(fat).toBe("5");
-      expect(fib).toBe("2");
+      expect(cal).toBe("0");
+      expect(pro).toBe("0");
+      expect(carb).toBe("0");
+      expect(fat).toBe("0");
+      expect(fib).toBe("0");
+    });
+
+    // Negative values are still ignored
+    await userEvent.clear(rowAmountInput);
+    await userEvent.type(rowAmountInput, "-5");
+    rowAmountInput.blur();
+
+    await waitFor(() => {
+      expect(rowAmountInput).toHaveValue(0);
+      const [cal, pro, carb, fat, fib] = getSummaryNumbers("Total Overall");
+      expect(cal).toBe("0");
+      expect(pro).toBe("0");
+      expect(carb).toBe("0");
+      expect(fat).toBe("0");
+      expect(fib).toBe("0");
     });
   });
 

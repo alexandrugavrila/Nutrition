@@ -653,7 +653,7 @@ function Planning() {
     value: number,
     opts?: { ingredientId?: string }
   ) => {
-    if (value <= 0) return;
+    if (value < 0) return;
     const updated = [...plan];
     const item = updated[index];
     if (!item) return;
@@ -681,7 +681,7 @@ function Planning() {
   };
 
   const handleIngredientPortionsChange = (index: number, value: number) => {
-    if (value <= 0) return;
+    if (value < 0) return;
     const updated = [...plan];
     const item = updated[index];
     if (!item || item.type !== "ingredient") {
