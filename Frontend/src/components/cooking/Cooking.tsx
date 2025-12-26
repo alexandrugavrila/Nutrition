@@ -251,17 +251,19 @@ const arrayValuesEqual = (a: string[], b: string[]): boolean =>
   a.length === b.length && a.every((value, index) => value === b[index]);
 
 const shallowEqualFoodAdjustments = (
-  a: Record<string, FoodIngredientAdjustments>,
-  b: Record<string, FoodIngredientAdjustments>,
+  a: Record<string, FoodIngredientAdjustments> | undefined,
+  b: Record<string, FoodIngredientAdjustments> | undefined,
 ): boolean => {
-  const aKeys = Object.keys(a);
-  const bKeys = Object.keys(b);
+  const normalizedA = a ?? {};
+  const normalizedB = b ?? {};
+  const aKeys = Object.keys(normalizedA);
+  const bKeys = Object.keys(normalizedB);
   if (aKeys.length !== bKeys.length) {
     return false;
   }
   for (const key of aKeys) {
-    const valueA = a[key];
-    const valueB = b[key];
+    const valueA = normalizedA[key];
+    const valueB = normalizedB[key];
     if (!valueB) {
       return false;
     }
@@ -315,7 +317,7 @@ const normalizeIngredientIdList = (
 };
 
 const buildFoodAdjustments = (
-  prev: CookingActualState["foodAdjustments"],
+  prev: CookingActualState["foodAdjustments"] | undefined,
   planKey: string,
   baseIngredientIds: Set<string>,
   ingredientIdSet: Set<string>,
@@ -459,7 +461,7 @@ function Cooking() {
               .filter((id): id is string => Boolean(id)),
           );
           const foodAdjustments = buildFoodAdjustments(
-            prev.foodAdjustments,
+            prev.foodAdjustments ?? {},
             itemKey,
             baseIngredientIds,
             ingredientIdSet,
@@ -554,7 +556,7 @@ function Cooking() {
         return {
           portions: nextPortions,
           ingredientTotals: prev.ingredientTotals,
-          foodAdjustments: prev.foodAdjustments,
+          foodAdjustments: prev.foodAdjustments ?? {},
         };
       });
     },
@@ -595,7 +597,7 @@ function Cooking() {
             ...prev.ingredientTotals,
             [key]: nextMeasurement,
           },
-          foodAdjustments: prev.foodAdjustments,
+          foodAdjustments: prev.foodAdjustments ?? {},
         };
       });
     },
@@ -605,7 +607,8 @@ function Cooking() {
   const toggleFoodIngredientRemoved = useCallback(
     (planKey: string, ingredientId: string, shouldRemove: boolean) => {
       setActualState((prev) => {
-        const current = prev.foodAdjustments[planKey] ?? {
+        const existingAdjustments = prev.foodAdjustments ?? {};
+        const current = existingAdjustments[planKey] ?? {
           removedIngredientIds: [],
           addedIngredientIds: [],
         };
@@ -623,7 +626,7 @@ function Cooking() {
           portions: prev.portions,
           ingredientTotals: prev.ingredientTotals,
           foodAdjustments: {
-            ...prev.foodAdjustments,
+            ...existingAdjustments,
             [planKey]: {
               removedIngredientIds,
               addedIngredientIds: current.addedIngredientIds,
@@ -642,7 +645,8 @@ function Cooking() {
         return;
       }
       setActualState((prev) => {
-        const current = prev.foodAdjustments[planKey] ?? {
+        const existingAdjustments = prev.foodAdjustments ?? {};
+        const current = existingAdjustments[planKey] ?? {
           removedIngredientIds: [],
           addedIngredientIds: [],
         };
@@ -653,7 +657,7 @@ function Cooking() {
           portions: prev.portions,
           ingredientTotals: prev.ingredientTotals,
           foodAdjustments: {
-            ...prev.foodAdjustments,
+            ...existingAdjustments,
             [planKey]: {
               removedIngredientIds: current.removedIngredientIds,
               addedIngredientIds: [...current.addedIngredientIds, normalizedId],
@@ -672,7 +676,8 @@ function Cooking() {
         return;
       }
       setActualState((prev) => {
-        const current = prev.foodAdjustments[planKey];
+        const existingAdjustments = prev.foodAdjustments ?? {};
+        const current = existingAdjustments[planKey];
         if (!current || !current.addedIngredientIds.includes(normalizedId)) {
           return prev;
         }
@@ -685,7 +690,7 @@ function Cooking() {
           portions: prev.portions,
           ingredientTotals: nextTotals,
           foodAdjustments: {
-            ...prev.foodAdjustments,
+            ...existingAdjustments,
             [planKey]: {
               removedIngredientIds: current.removedIngredientIds,
               addedIngredientIds,
@@ -730,7 +735,7 @@ function Cooking() {
       }
 
       const portionKey = planItemKey(item, index);
-      const adjustment = actualState.foodAdjustments[portionKey];
+      const adjustment = actualState.foodAdjustments?.[portionKey];
       const removedIngredientIds = new Set(
         adjustment?.removedIngredientIds ?? [],
       );
@@ -1063,7 +1068,7 @@ function Cooking() {
         setActualState((prev) => {
           const nextPortions = { ...prev.portions };
           const nextTotals = { ...prev.ingredientTotals };
-          const nextAdjustments = { ...prev.foodAdjustments };
+          const nextAdjustments = { ...(prev.foodAdjustments ?? {}) };
           if (item.type === "food") {
             const foodItem = item as FoodPlanItem;
             const portionKey = planItemKey(foodItem, index);
@@ -1173,7 +1178,7 @@ function Cooking() {
                         const food = foodLookup.get(String(foodItem.foodId ?? ""));
                         const portionKey = planItemKey(foodItem, index);
                         const foodAdjustments =
-                          actualState.foodAdjustments[portionKey] ?? {
+                          (actualState.foodAdjustments ?? {})[portionKey] ?? {
                             removedIngredientIds: [],
                             addedIngredientIds: [],
                           };
