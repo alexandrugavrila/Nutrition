@@ -8,6 +8,7 @@ __pycache__/
 *.pyd
 .env
 .env.*
+!.env.template
 *.sqlite3
 instance/
 *.log
