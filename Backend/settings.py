@@ -8,6 +8,7 @@ attributes instead of reading environment variables directly.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from dataclasses import dataclass
 
 
@@ -15,6 +16,28 @@ def _to_bool(value: str | None, default: bool = False) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "t", "yes", "y"}
+
+
+def _load_dotenv() -> None:
+    env_path = Path(__file__).resolve().parents[1] / ".env"
+    if not env_path.exists():
+        return
+
+    for line in env_path.read_text().splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+
+        key, separator, value = stripped.partition("=")
+        if not separator:
+            continue
+
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+
+        value = value.strip().strip('"').strip("'")
+        os.environ[key] = value
 
 
 @dataclass(frozen=True)
@@ -31,8 +54,12 @@ class Settings:
     # CORS configuration (kept permissive for dev by default).
     allow_origins: list[str]
 
+    # USDA FoodData Central API key.
+    usda_api_key: str | None
+
     @staticmethod
     def load() -> "Settings":
+        _load_dotenv()
         db_url = os.getenv("SQLALCHEMY_DATABASE_URI") or os.getenv("DATABASE_URL")
 
         if not db_url:
@@ -58,6 +85,7 @@ class Settings:
             database_url=db_url,
             db_auto_create=auto_create,
             allow_origins=origins,
+            usda_api_key=os.getenv("USDA_API_KEY"),
         )
 
 
@@ -65,4 +93,3 @@ class Settings:
 settings = Settings.load()
 
 __all__ = ["settings", "Settings"]
-
