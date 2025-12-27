@@ -2,6 +2,7 @@ import React, { useEffect, useCallback, useRef, useState } from "react";
 import { Button, Collapse, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Box } from "@mui/material";
 
 import NameEdit from "./NameEdit";
+import SourceEdit from "./SourceEdit";
 import UnitEdit from "./UnitEdit";
 import NutritionEdit from "./NutritionEdit";
 import TagEdit from "./TagEdit";
@@ -33,6 +34,7 @@ function IngredientForm({ ingredientToEditData }: IngredientFormProps) {
     acknowledgeFillFlag,
     save,
     remove,
+    applyUsdaResult,
   } = useIngredientForm();
 
   const handleClearForm = useCallback(() => {
@@ -104,6 +106,7 @@ function IngredientForm({ ingredientToEditData }: IngredientFormProps) {
         <Collapse in={isOpen}>
           <>
             <NameEdit ingredient={ingredient} dispatch={dispatch} needsClearForm={needsClearForm} />
+            <SourceEdit ingredient={ingredient} dispatch={dispatch} applyUsdaResult={applyUsdaResult} />
             <UnitEdit ingredient={ingredient} dispatch={dispatch} needsClearForm={needsClearForm} />
             <NutritionEdit
               ingredient={ingredient}
@@ -140,4 +143,3 @@ function IngredientForm({ ingredientToEditData }: IngredientFormProps) {
   );
 }
 export default IngredientForm;
-

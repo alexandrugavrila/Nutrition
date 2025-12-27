@@ -11,8 +11,29 @@ type IngredientUnitCreate = components["schemas"]["IngredientUnitCreate"];
 type IngredientShoppingUnitSelection = components["schemas"]["IngredientShoppingUnitSelection"];
 type IngredientRequest = operations["add_ingredient_api_ingredients__post"]["requestBody"]["content"]["application/json"];
 
+export type IngredientSource = "manual" | "usda";
+
+export type UsdaIngredientResult = {
+  id: string;
+  name: string;
+  nutrition: {
+    calories: number;
+    protein: number;
+    carbohydrates: number;
+    fat: number;
+    fiber: number;
+  };
+};
+
+type IngredientFormIngredient = IngredientRead & {
+  shoppingUnitId?: number | string | null;
+  source?: IngredientSource;
+  sourceId?: string | null;
+  sourceName?: string | null;
+};
+
 type IngredientFormState = {
-  ingredient: IngredientRead & { shoppingUnitId?: number | string | null };
+  ingredient: IngredientFormIngredient;
   needsClearForm: boolean;
   needsFillForm: boolean;
 };
@@ -52,6 +73,9 @@ const initializeEmptyIngredient = (): IngredientFormState["ingredient"] => ({
   },
   tags: [],
   shoppingUnitId: "0",
+  source: "manual",
+  sourceId: null,
+  sourceName: null,
 });
 
 const createInitialState = (): IngredientFormState => ({
@@ -90,6 +114,9 @@ const buildRequestPayload = (ingredient: IngredientFormState["ingredient"]): Ing
 
   // Remove local-only helper property
   delete (payload as { shoppingUnitId?: unknown }).shoppingUnitId;
+  delete (payload as { source?: unknown }).source;
+  delete (payload as { sourceId?: unknown }).sourceId;
+  delete (payload as { sourceName?: unknown }).sourceName;
 
   const normalizeShoppingUnitId = (value: unknown): number | null => {
     if (value === null || value === undefined) return null;
@@ -151,16 +178,26 @@ export const useIngredientForm = () => {
   const { setIngredientsNeedsRefetch, startRequest, endRequest } = useData();
   const [state, dispatch] = useSessionStorageReducer(reducer, createInitialState, "ingredient-form-state-v1");
 
+  const applyIngredientDefaults = useCallback((ingredient: IngredientRead): IngredientFormState["ingredient"] => {
+    const maybeIngredient = ingredient as IngredientFormState["ingredient"];
+    return {
+      ...ingredient,
+      source: maybeIngredient.source ?? "manual",
+      sourceId: maybeIngredient.sourceId ?? null,
+      sourceName: maybeIngredient.sourceName ?? null,
+    };
+  }, []);
+
   const loadIngredient = useCallback(
     (initial?: IngredientRead | null) => {
       if (initial) {
-        dispatch({ type: "SET_INGREDIENT", payload: { ...initial } });
+        dispatch({ type: "SET_INGREDIENT", payload: applyIngredientDefaults(initial) });
         dispatch({ type: "SET_FILL_FORM", payload: true });
       } else {
         dispatch({ type: "SET_INGREDIENT", payload: initializeEmptyIngredient() });
       }
     },
-    [dispatch],
+    [dispatch, applyIngredientDefaults],
   );
 
   const clearForm = useCallback(() => {
@@ -227,6 +264,31 @@ export const useIngredientForm = () => {
     [state.ingredient.id, startRequest, endRequest, setIngredientsNeedsRefetch],
   );
 
+  const applyUsdaResult = useCallback(
+    (result: UsdaIngredientResult) => {
+      const updatedNutrition = {
+        calories: result.nutrition.calories ?? 0,
+        protein: result.nutrition.protein ?? 0,
+        carbohydrates: result.nutrition.carbohydrates ?? 0,
+        fat: result.nutrition.fat ?? 0,
+        fiber: result.nutrition.fiber ?? 0,
+      };
+
+      dispatch({
+        type: "SET_INGREDIENT",
+        payload: {
+          ...state.ingredient,
+          name: result.name,
+          nutrition: updatedNutrition,
+          source: "usda",
+          sourceId: result.id,
+          sourceName: result.name,
+        },
+      });
+    },
+    [dispatch, state.ingredient],
+  );
+
   return {
     ingredient: state.ingredient,
     needsClearForm: state.needsClearForm,
@@ -238,8 +300,7 @@ export const useIngredientForm = () => {
     acknowledgeFillFlag,
     save,
     remove,
+    applyUsdaResult,
   };
 };
-
-
 
