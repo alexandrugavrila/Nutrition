@@ -214,6 +214,19 @@ Invoke-Git @('fetch',$Remote,'--prune') | Out-Null
 
 $worktreeLines = Invoke-Git @('worktree','list','--porcelain')
 $worktrees = Parse-Worktrees $worktreeLines
+$localBranches = Invoke-Git @('for-each-ref','--format=%(refname:short)','refs/heads')
+$remoteBranchRefs = Invoke-Git @('for-each-ref','--format=%(refname:short)',"refs/remotes/$Remote")
+
+$remoteBranches = @()
+foreach ($ref in $remoteBranchRefs) {
+    if (-not $ref) { continue }
+    if ($ref -eq "$Remote/HEAD") { continue }
+    if ($ref.StartsWith("$Remote/")) {
+        $remoteBranches += $ref.Substring($Remote.Length + 1)
+    }
+}
+$remoteBranches = $remoteBranches | Sort-Object -Unique
+$remoteOnlyBranches = $remoteBranches | Where-Object { $localBranches -notcontains $_ }
 
 $branchMap = @{}
 foreach ($wt in $worktrees) {
@@ -233,12 +246,30 @@ $optionIndex = 1
 foreach ($wt in $worktrees | Sort-Object Branch, Path) {
     $marker = if ($wt.Path -eq $repoRoot) { '>' } else { ' ' }
     $branchLabel = if ($wt.Branch) { $wt.Branch } else { '<detached>' }
-    Write-Host (" $marker $branchLabel -> $($wt.Path)")
+    $indexLabel = ''
+    if ($wt.Branch) {
+        $indexLabel = "[$optionIndex] "
+    }
+    Write-Host (" $marker $indexLabel$branchLabel -> $($wt.Path)")
     if ($wt.Branch) {
         $branchOptions += [pscustomobject]@{
             Index  = $optionIndex
             Branch = $wt.Branch
             Path   = $wt.Path
+        }
+        $optionIndex++
+    }
+}
+
+if ($remoteOnlyBranches.Count -gt 0) {
+    Write-Host ''
+    Write-Host "Remote branches on '$Remote' (not local):"
+    foreach ($remoteBranch in $remoteOnlyBranches) {
+        Write-Host ("  [$optionIndex] $Remote/$remoteBranch")
+        $branchOptions += [pscustomobject]@{
+            Index  = $optionIndex
+            Branch = $remoteBranch
+            Path   = $null
         }
         $optionIndex++
     }
@@ -276,6 +307,9 @@ if (-not $Branch) {
     Write-Error 'No branch supplied.'
     Set-Location $initialLocation
     exit 1
+}
+if ($Branch.StartsWith("$Remote/")) {
+    $Branch = $Branch.Substring($Remote.Length + 1)
 }
 
 $selectedOption = $null
