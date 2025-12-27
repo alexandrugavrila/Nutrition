@@ -71,7 +71,11 @@ try {
     Out-Ok "Saved OpenAPI to Backend/openapi.json"
 
     Out-Step "Generating TypeScript types for frontend..."
-    npx --prefix Frontend openapi-typescript Backend/openapi.json -o Frontend/src/api-types.ts | Out-Null
+    $openapiTypescript = Join-Path -Path $repoRoot -ChildPath "Frontend/node_modules/.bin/openapi-typescript"
+    if (-not (Test-Path $openapiTypescript)) {
+        throw "Missing Frontend/node_modules/.bin/openapi-typescript. Run 'npm install' in Frontend before generating API types."
+    }
+    npx --yes --prefix Frontend openapi-typescript Backend/openapi.json -o Frontend/src/api-types.ts | Out-Null
     Out-Ok "Generated Frontend/src/api-types.ts"
 }
 catch {
