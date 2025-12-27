@@ -12,6 +12,8 @@ import {
   CardHeader,
   CircularProgress,
   Dialog,
+  DialogActions,
+  DialogTitle,
   Grid,
   MenuItem,
   Paper,
@@ -34,6 +36,7 @@ import type { components } from "@/api-types";
 import FeedbackSnackbar, {
   SnackbarMessage,
 } from "@/components/common/FeedbackSnackbar";
+import IngredientModal from "@/components/common/IngredientModal";
 import IngredientTable from "@/components/data/ingredient/IngredientTable";
 import FoodTable from "@/components/data/food/FoodTable";
 import {
@@ -147,6 +150,7 @@ function Logging() {
   });
   const [ingredientPickerOpen, setIngredientPickerOpen] = useState(false);
   const [foodPickerOpen, setFoodPickerOpen] = useState(false);
+  const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
   const [activeLogType, setActiveLogType] = useState<"ingredient" | "food" | null>(
     null,
   );
@@ -154,6 +158,14 @@ function Logging() {
   const [pendingFoodLog, setPendingFoodLog] = useState(false);
   const handleFeedbackClose = useCallback(() => {
     setFeedback(null);
+  }, []);
+
+  const handleOpenIngredientModal = useCallback(() => {
+    setIngredientModalOpen(true);
+  }, []);
+
+  const handleCloseIngredientModal = useCallback(() => {
+    setIngredientModalOpen(false);
   }, []);
 
   const toNumber = useCallback((value: unknown, fallback = 0): number => {
@@ -1347,11 +1359,20 @@ function Logging() {
         maxWidth="lg"
         scroll="paper"
       >
+        <DialogTitle>Select Ingredient</DialogTitle>
         <IngredientTable
           onIngredientDoubleClick={(ingredient) => {
             handleIngredientSelection(ingredient);
           }}
         />
+        <DialogActions>
+          <Button onClick={handleOpenIngredientModal}>
+            New Ingredient
+          </Button>
+          <Button onClick={() => setIngredientPickerOpen(false)}>
+            Close
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <Dialog
@@ -1367,6 +1388,13 @@ function Logging() {
           }}
         />
       </Dialog>
+
+      <IngredientModal
+        open={ingredientModalOpen}
+        mode="add"
+        ingredient={null}
+        onClose={handleCloseIngredientModal}
+      />
 
       <FeedbackSnackbar
         snackbar={feedback}
