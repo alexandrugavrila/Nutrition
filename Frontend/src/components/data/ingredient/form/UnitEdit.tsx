@@ -213,11 +213,14 @@ function UnitDialog({ open, mode, initialUnit = null, units, onClose, onSubmit }
           }
           onChange={(e) => setUnitGrams(e.target.value)}
           InputProps={{ readOnly: unitMode === "unit" }}
+          disabled={unitMode === "unit"}
           error={Boolean(validationError && validationError.includes("grams"))}
           helperText={
             validationError && validationError.includes("grams")
               ? validationError
-              : "Enter a number up to 4 decimal places"
+              : unitMode === "unit"
+                ? "Calculated from the base unit"
+                : "Enter a number up to 4 decimal places"
           }
           fullWidth
           margin="dense"
