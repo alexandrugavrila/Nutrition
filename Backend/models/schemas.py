@@ -62,6 +62,8 @@ class IngredientCreate(SQLModel):
     """Schema for creating an ingredient."""
 
     name: str
+    source: Optional[str] = None
+    source_id: Optional[str] = None
     nutrition: Optional[NutritionCreate] = None
     units: List[IngredientUnitCreate] = Field(default_factory=list)
     tags: List[TagRef] = Field(default_factory=list)
@@ -73,6 +75,8 @@ class IngredientUpdate(SQLModel):
     """Schema for updating an ingredient."""
 
     name: str
+    source: Optional[str] = None
+    source_id: Optional[str] = None
     nutrition: Optional[NutritionCreate] = None
     # Accept units with optional id for proper upsert behavior
     units: List[IngredientUnitUpdate] = Field(default_factory=list)
@@ -88,6 +92,8 @@ class IngredientRead(SQLModel):
 
     id: int
     name: str
+    source: Optional[str] = None
+    source_id: Optional[str] = None
     nutrition: Optional[Nutrition] = None
     units: List[IngredientUnit] = Field(default_factory=list)
     tags: List[PossibleIngredientTag] = Field(default_factory=list)

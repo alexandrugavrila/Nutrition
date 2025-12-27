@@ -100,7 +100,7 @@ function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
       payload: {
         ...ingredient,
         source: value,
-        sourceId: value === "manual" ? null : ingredient.sourceId ?? null,
+        source_id: value === "manual" ? null : ingredient.source_id ?? null,
         sourceName: value === "manual" ? null : ingredient.sourceName ?? null,
       },
     });

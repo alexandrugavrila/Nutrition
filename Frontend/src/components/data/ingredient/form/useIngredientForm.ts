@@ -28,7 +28,7 @@ export type UsdaIngredientResult = {
 type IngredientFormIngredient = IngredientRead & {
   shoppingUnitId?: number | string | null;
   source?: IngredientSource;
-  sourceId?: string | null;
+  source_id?: string | null;
   sourceName?: string | null;
 };
 
@@ -74,7 +74,7 @@ const initializeEmptyIngredient = (): IngredientFormState["ingredient"] => ({
   tags: [],
   shoppingUnitId: "0",
   source: "manual",
-  sourceId: null,
+  source_id: null,
   sourceName: null,
 });
 
@@ -114,8 +114,6 @@ const buildRequestPayload = (ingredient: IngredientFormState["ingredient"]): Ing
 
   // Remove local-only helper property
   delete (payload as { shoppingUnitId?: unknown }).shoppingUnitId;
-  delete (payload as { source?: unknown }).source;
-  delete (payload as { sourceId?: unknown }).sourceId;
   delete (payload as { sourceName?: unknown }).sourceName;
 
   const normalizeShoppingUnitId = (value: unknown): number | null => {
@@ -183,7 +181,7 @@ export const useIngredientForm = () => {
     return {
       ...ingredient,
       source: maybeIngredient.source ?? "manual",
-      sourceId: maybeIngredient.sourceId ?? null,
+      source_id: maybeIngredient.source_id ?? null,
       sourceName: maybeIngredient.sourceName ?? null,
     };
   }, []);
@@ -281,7 +279,7 @@ export const useIngredientForm = () => {
           name: result.name,
           nutrition: updatedNutrition,
           source: "usda",
-          sourceId: result.id,
+          source_id: result.id,
           sourceName: result.name,
         },
       });
@@ -303,4 +301,3 @@ export const useIngredientForm = () => {
     applyUsdaResult,
   };
 };
-

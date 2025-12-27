@@ -329,6 +329,10 @@ export interface components {
     IngredientCreate: {
       /** Name */
       name: string;
+      /** Source */
+      source?: string | null;
+      /** Source Id */
+      source_id?: string | null;
       nutrition?: components["schemas"]["NutritionCreate"] | null;
       /** Units */
       units?: components["schemas"]["IngredientUnitCreate"][];
@@ -347,6 +351,10 @@ export interface components {
       id: number;
       /** Name */
       name: string;
+      /** Source */
+      source?: string | null;
+      /** Source Id */
+      source_id?: string | null;
       nutrition?: components["schemas"]["Nutrition"] | null;
       /** Units */
       units?: components["schemas"]["IngredientUnit"][];
@@ -411,6 +419,10 @@ export interface components {
     IngredientUpdate: {
       /** Name */
       name: string;
+      /** Source */
+      source?: string | null;
+      /** Source Id */
+      source_id?: string | null;
       nutrition?: components["schemas"]["NutritionCreate"] | null;
       /** Units */
       units?: components["schemas"]["IngredientUnitUpdate"][];

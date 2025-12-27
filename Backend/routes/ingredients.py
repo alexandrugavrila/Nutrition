@@ -58,6 +58,8 @@ def ingredient_to_read(ingredient: Ingredient) -> IngredientRead:
     payload = {
         "id": ingredient.id,
         "name": ingredient.name,
+        "source": ingredient.source,
+        "source_id": ingredient.source_id,
         "nutrition": ingredient.nutrition,
         "units": list(ingredient.units or []),
         "tags": list(ingredient.tags or []),
@@ -312,7 +314,13 @@ def update_ingredient(
     if not ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
 
+    payload_fields = ingredient_data.model_dump(exclude_unset=True)
+
     ingredient.name = ingredient_data.name
+    if "source" in payload_fields:
+        ingredient.source = ingredient_data.source
+    if "source_id" in payload_fields:
+        ingredient.source_id = ingredient_data.source_id
 
     # Upsert nutrition
     if ingredient_data.nutrition:
@@ -367,7 +375,6 @@ def update_ingredient(
     try:
         db.add(ingredient)
         db.flush()
-        payload_fields = ingredient_data.model_dump(exclude_unset=True)
         if "shopping_unit_id" in payload_fields or "shopping_unit" in payload_fields:
             apply_shopping_unit_selection(
                 ingredient,

@@ -21,6 +21,12 @@ class Ingredient(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(sa_column=Column(String(100), unique=True, nullable=False))
+    source: Optional[str] = Field(
+        default=None, sa_column=Column(String(50), nullable=True)
+    )
+    source_id: Optional[str] = Field(
+        default=None, sa_column=Column(String(100), nullable=True)
+    )
 
     nutrition: Optional[Nutrition] = Relationship(
         back_populates="ingredient",
@@ -46,7 +52,7 @@ class Ingredient(SQLModel, table=True):
     def from_create(cls, data: "IngredientCreate") -> "Ingredient":
         """Create an :class:`Ingredient` ORM object from an ``IngredientCreate`` schema."""
 
-        ingredient = cls(name=data.name)
+        ingredient = cls(name=data.name, source=data.source, source_id=data.source_id)
 
         if data.nutrition:
             ingredient.nutrition = Nutrition.model_validate(
