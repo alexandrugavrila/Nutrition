@@ -23,6 +23,7 @@ import type { StoredFoodCreate } from "@/api-extra-types";
 import FeedbackSnackbar, {
   SnackbarMessage,
 } from "@/components/common/FeedbackSnackbar";
+import IngredientModal from "@/components/common/IngredientModal";
 import DecimalInput from "@/components/common/DecimalInput";
 import { useData } from "@/contexts/DataContext";
 import { useSessionStorageState } from "@/hooks/useSessionStorageState";
@@ -398,6 +399,7 @@ function Cooking() {
   const [pendingIngredientSelections, setPendingIngredientSelections] = useState<
     Record<string, string>
   >({});
+  const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
   const handleFeedbackClose = useCallback(() => {
     setFeedback(null);
   }, []);
@@ -711,6 +713,14 @@ function Cooking() {
     },
     [],
   );
+
+  const handleOpenIngredientModal = useCallback(() => {
+    setIngredientModalOpen(true);
+  }, []);
+
+  const handleCloseIngredientModal = useCallback(() => {
+    setIngredientModalOpen(false);
+  }, []);
 
   const handleAddIngredient = useCallback(
     (planKey: string) => {
@@ -1733,6 +1743,13 @@ function Cooking() {
                                   >
                                     Add
                                   </Button>
+                                  <Button
+                                    size="small"
+                                    variant="text"
+                                    onClick={handleOpenIngredientModal}
+                                  >
+                                    New Ingredient
+                                  </Button>
                                 </Box>
                               </TableCell>
                               <TableCell></TableCell>
@@ -1985,6 +2002,12 @@ function Cooking() {
           )}
         </>
       )}
+      <IngredientModal
+        open={ingredientModalOpen}
+        mode="add"
+        ingredient={null}
+        onClose={handleCloseIngredientModal}
+      />
       <FeedbackSnackbar snackbar={feedback} onClose={handleFeedbackClose} />
     </Stack>
   );
