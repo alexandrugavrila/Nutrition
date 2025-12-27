@@ -3,1328 +3,1760 @@
  * Do not make direct changes to the file.
  */
 
-
 export interface paths {
-  "/api/ingredients/": {
-    /**
-     * Get All Ingredients
-     * @description Return all ingredients.
-     */
-    get: operations["get_all_ingredients_api_ingredients__get"];
-    /**
-     * Add Ingredient
-     * @description Create a new ingredient.
-     */
-    post: operations["add_ingredient_api_ingredients__post"];
-  };
-  "/api/ingredients/possible_tags": {
-    /**
-     * Get All Possible Tags
-     * @description Return all possible ingredient tags ordered by name.
-     */
-    get: operations["get_all_possible_tags_api_ingredients_possible_tags_get"];
-    /**
-     * Add Possible Tag
-     * @description Create a new possible ingredient tag, or return existing on duplicate name.
-     */
-    post: operations["add_possible_tag_api_ingredients_possible_tags_post"];
-  };
-  "/api/ingredients/{ingredient_id}": {
-    /**
-     * Get Ingredient
-     * @description Retrieve a single ingredient by ID.
-     */
-    get: operations["get_ingredient_api_ingredients__ingredient_id__get"];
-    /**
-     * Update Ingredient
-     * @description Update an existing ingredient.
-     *
-     * Important: Avoid deleting existing units on update to preserve referential
-     * integrity for rows in food_ingredients that reference them. Instead,
-     * upsert provided units (update by id or insert new). Existing units not in
-     * the payload are left unchanged.
-     */
-    put: operations["update_ingredient_api_ingredients__ingredient_id__put"];
-    /**
-     * Delete Ingredient
-     * @description Delete an ingredient.
-     */
-    delete: operations["delete_ingredient_api_ingredients__ingredient_id__delete"];
-  };
-  "/api/foods/": {
-    /**
-     * Get All Foods
-     * @description Return all foods.
-     */
-    get: operations["get_all_foods_api_foods__get"];
-    /**
-     * Add Food
-     * @description Create a new food.
-     */
-    post: operations["add_food_api_foods__post"];
-  };
-  "/api/foods/possible_tags": {
-    /**
-     * Get Possible Food Tags
-     * @description Return all possible food tags ordered by name.
-     */
-    get: operations["get_possible_food_tags_api_foods_possible_tags_get"];
-    /**
-     * Add Possible Food Tag
-     * @description Create a new possible food tag, or return existing on duplicate name.
-     */
-    post: operations["add_possible_food_tag_api_foods_possible_tags_post"];
-  };
-  "/api/foods/{food_id}": {
-    /**
-     * Get Food
-     * @description Retrieve a single food by ID.
-     */
-    get: operations["get_food_api_foods__food_id__get"];
-    /**
-     * Update Food
-     * @description Update an existing food.
-     */
-    put: operations["update_food_api_foods__food_id__put"];
-    /**
-     * Delete Food
-     * @description Delete a food.
-     */
-    delete: operations["delete_food_api_foods__food_id__delete"];
-  };
-  "/api/plans/": {
-    /**
-     * List Plans
-     * @description Return all saved plans ordered by last update descending.
-     */
-    get: operations["list_plans_api_plans__get"];
-    /**
-     * Create Plan
-     * @description Persist a new plan payload.
-     */
-    post: operations["create_plan_api_plans__post"];
-  };
-  "/api/plans/{plan_id}": {
-    /**
-     * Get Plan
-     * @description Retrieve a single plan by ID.
-     */
-    get: operations["get_plan_api_plans__plan_id__get"];
-    /**
-     * Update Plan
-     * @description Update an existing plan.
-     */
-    put: operations["update_plan_api_plans__plan_id__put"];
-    /**
-     * Delete Plan
-     * @description Delete an existing plan.
-     */
-    delete: operations["delete_plan_api_plans__plan_id__delete"];
-  };
-  "/api/stored_food/": {
-    /**
-     * List Stored Food
-     * @description Retrieve stored food entries with optional filters.
-     */
-    get: operations["list_stored_food_api_stored_food__get"];
-    /**
-     * Create Stored Food
-     * @description Persist a new stored food entry.
-     */
-    post: operations["create_stored_food_api_stored_food__post"];
-    /**
-     * Clear Stored Food
-     * @description Remove all stored food entries for a user.
-     */
-    delete: operations["clear_stored_food_api_stored_food__delete"];
-  };
-  "/api/stored_food/{stored_food_id}/consume": {
-    /**
-     * Consume Stored Food
-     * @description Consume portions from a stored food entry.
-     */
-    post: operations["consume_stored_food_api_stored_food__stored_food_id__consume_post"];
-  };
-  "/api/stored_food/{stored_food_id}": {
-    /**
-     * Delete Stored Food
-     * @description Remove a stored food entry.
-     */
-    delete: operations["delete_stored_food_api_stored_food__stored_food_id__delete"];
-  };
-  "/api/logs/{log_date}": {
-    /**
-     * List Daily Logs
-     * @description Return all log entries for a specific day.
-     */
-    get: operations["list_daily_logs_api_logs__log_date__get"];
-  };
-  "/api/logs/": {
-    /**
-     * Create Daily Log
-     * @description Persist a new daily log entry.
-     */
-    post: operations["create_daily_log_api_logs__post"];
-    /**
-     * Clear Daily Logs
-     * @description Remove daily log entries for a user, optionally filtered by day.
-     */
-    delete: operations["clear_daily_logs_api_logs__delete"];
-  };
-  "/api/logs/{entry_id}": {
-    /**
-     * Delete Daily Log
-     * @description Remove a single daily log entry.
-     */
-    delete: operations["delete_daily_log_api_logs__entry_id__delete"];
-  };
+    "/api/ingredients/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get All Ingredients
+         * @description Return all ingredients.
+         */
+        get: operations["get_all_ingredients_api_ingredients__get"];
+        put?: never;
+        /**
+         * Add Ingredient
+         * @description Create a new ingredient.
+         */
+        post: operations["add_ingredient_api_ingredients__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ingredients/possible_tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get All Possible Tags
+         * @description Return all possible ingredient tags ordered by name.
+         */
+        get: operations["get_all_possible_tags_api_ingredients_possible_tags_get"];
+        put?: never;
+        /**
+         * Add Possible Tag
+         * @description Create a new possible ingredient tag, or return existing on duplicate name.
+         */
+        post: operations["add_possible_tag_api_ingredients_possible_tags_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ingredients/{ingredient_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Ingredient
+         * @description Retrieve a single ingredient by ID.
+         */
+        get: operations["get_ingredient_api_ingredients__ingredient_id__get"];
+        /**
+         * Update Ingredient
+         * @description Update an existing ingredient.
+         *
+         *     Important: Avoid deleting existing units on update to preserve referential
+         *     integrity for rows in food_ingredients that reference them. Instead,
+         *     upsert provided units (update by id or insert new). Existing units not in
+         *     the payload are left unchanged.
+         */
+        put: operations["update_ingredient_api_ingredients__ingredient_id__put"];
+        post?: never;
+        /**
+         * Delete Ingredient
+         * @description Delete an ingredient.
+         */
+        delete: operations["delete_ingredient_api_ingredients__ingredient_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/foods/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get All Foods
+         * @description Return all foods.
+         */
+        get: operations["get_all_foods_api_foods__get"];
+        put?: never;
+        /**
+         * Add Food
+         * @description Create a new food.
+         */
+        post: operations["add_food_api_foods__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/foods/possible_tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Possible Food Tags
+         * @description Return all possible food tags ordered by name.
+         */
+        get: operations["get_possible_food_tags_api_foods_possible_tags_get"];
+        put?: never;
+        /**
+         * Add Possible Food Tag
+         * @description Create a new possible food tag, or return existing on duplicate name.
+         */
+        post: operations["add_possible_food_tag_api_foods_possible_tags_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/foods/{food_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Food
+         * @description Retrieve a single food by ID.
+         */
+        get: operations["get_food_api_foods__food_id__get"];
+        /**
+         * Update Food
+         * @description Update an existing food.
+         */
+        put: operations["update_food_api_foods__food_id__put"];
+        post?: never;
+        /**
+         * Delete Food
+         * @description Delete a food.
+         */
+        delete: operations["delete_food_api_foods__food_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Plans
+         * @description Return all saved plans ordered by last update descending.
+         */
+        get: operations["list_plans_api_plans__get"];
+        put?: never;
+        /**
+         * Create Plan
+         * @description Persist a new plan payload.
+         */
+        post: operations["create_plan_api_plans__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{plan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plan
+         * @description Retrieve a single plan by ID.
+         */
+        get: operations["get_plan_api_plans__plan_id__get"];
+        /**
+         * Update Plan
+         * @description Update an existing plan.
+         */
+        put: operations["update_plan_api_plans__plan_id__put"];
+        post?: never;
+        /**
+         * Delete Plan
+         * @description Delete an existing plan.
+         */
+        delete: operations["delete_plan_api_plans__plan_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stored_food/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Stored Food
+         * @description Retrieve stored food entries with optional filters.
+         */
+        get: operations["list_stored_food_api_stored_food__get"];
+        put?: never;
+        /**
+         * Create Stored Food
+         * @description Persist a new stored food entry.
+         */
+        post: operations["create_stored_food_api_stored_food__post"];
+        /**
+         * Clear Stored Food
+         * @description Remove all stored food entries for a user.
+         */
+        delete: operations["clear_stored_food_api_stored_food__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stored_food/{stored_food_id}/consume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Consume Stored Food
+         * @description Consume portions from a stored food entry.
+         */
+        post: operations["consume_stored_food_api_stored_food__stored_food_id__consume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stored_food/{stored_food_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Stored Food
+         * @description Remove a stored food entry.
+         */
+        delete: operations["delete_stored_food_api_stored_food__stored_food_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/logs/{log_date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Daily Logs
+         * @description Return all log entries for a specific day.
+         */
+        get: operations["list_daily_logs_api_logs__log_date__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/logs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Daily Log
+         * @description Persist a new daily log entry.
+         */
+        post: operations["create_daily_log_api_logs__post"];
+        /**
+         * Clear Daily Logs
+         * @description Remove daily log entries for a user, optionally filtered by day.
+         */
+        delete: operations["clear_daily_logs_api_logs__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/logs/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Daily Log
+         * @description Remove a single daily log entry.
+         */
+        delete: operations["delete_daily_log_api_logs__entry_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usda/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Foods */
+        get: operations["search_foods_api_usda_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usda/foods/{fdc_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Food Details */
+        get: operations["get_food_details_api_usda_foods__fdc_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
-
 export type webhooks = Record<string, never>;
-
 export interface components {
-  schemas: {
-    /**
-     * DailyLogEntryCreate
-     * @description Schema for creating a new daily log entry.
-     */
-    DailyLogEntryCreate: {
-      /** User Id */
-      user_id: string;
-      /**
-       * Log Date
-       * Format: date
-       */
-      log_date: string;
-      /** Stored Food Id */
-      stored_food_id?: number | null;
-      /** Ingredient Id */
-      ingredient_id?: number | null;
-      /** Food Id */
-      food_id?: number | null;
-      /** Portions Consumed */
-      portions_consumed: number;
-      /** Calories */
-      calories: number;
-      /** Protein */
-      protein: number;
-      /** Carbohydrates */
-      carbohydrates: number;
-      /** Fat */
-      fat: number;
-      /** Fiber */
-      fiber: number;
+    schemas: {
+        /**
+         * DailyLogEntryCreate
+         * @description Schema for creating a new daily log entry.
+         */
+        DailyLogEntryCreate: {
+            /** User Id */
+            user_id: string;
+            /**
+             * Log Date
+             * Format: date
+             */
+            log_date: string;
+            /** Stored Food Id */
+            stored_food_id?: number | null;
+            /** Ingredient Id */
+            ingredient_id?: number | null;
+            /** Food Id */
+            food_id?: number | null;
+            /** Portions Consumed */
+            portions_consumed: number;
+            /** Calories */
+            calories: number;
+            /** Protein */
+            protein: number;
+            /** Carbohydrates */
+            carbohydrates: number;
+            /** Fat */
+            fat: number;
+            /** Fiber */
+            fiber: number;
+        };
+        /**
+         * DailyLogEntryRead
+         * @description Schema returned when reading daily log entries.
+         */
+        DailyLogEntryRead: {
+            /** User Id */
+            user_id: string;
+            /**
+             * Log Date
+             * Format: date
+             */
+            log_date: string;
+            /** Stored Food Id */
+            stored_food_id?: number | null;
+            /** Ingredient Id */
+            ingredient_id?: number | null;
+            /** Food Id */
+            food_id?: number | null;
+            /** Portions Consumed */
+            portions_consumed: number;
+            /** Calories */
+            calories: number;
+            /** Protein */
+            protein: number;
+            /** Carbohydrates */
+            carbohydrates: number;
+            /** Fat */
+            fat: number;
+            /** Fiber */
+            fiber: number;
+            /** Id */
+            id: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * FoodCreate
+         * @description Schema for creating a food.
+         */
+        FoodCreate: {
+            /** Name */
+            name: string;
+            /** Ingredients */
+            ingredients?: components["schemas"]["FoodIngredientCreate"][];
+            /** Tags */
+            tags?: components["schemas"]["TagRef"][];
+        };
+        /**
+         * FoodIngredient
+         * @description Link between a food and an ingredient with quantity information.
+         */
+        FoodIngredient: {
+            /** Ingredient Id */
+            ingredient_id?: number | null;
+            /** Food Id */
+            food_id?: number | null;
+            /** Unit Id */
+            unit_id?: number | null;
+            /** Unit Quantity */
+            unit_quantity?: number | null;
+        };
+        /**
+         * FoodIngredientCreate
+         * @description Schema for creating food ingredient linkage.
+         */
+        FoodIngredientCreate: {
+            /** Ingredient Id */
+            ingredient_id: number;
+            /** Unit Id */
+            unit_id?: number | null;
+            /** Unit Quantity */
+            unit_quantity?: number | null;
+        };
+        /**
+         * FoodRead
+         * @description Schema for reading food data.
+         */
+        FoodRead: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Ingredients */
+            ingredients?: components["schemas"]["FoodIngredient"][];
+            /** Tags */
+            tags?: components["schemas"]["PossibleFoodTag"][];
+        };
+        /**
+         * FoodUpdate
+         * @description Schema for updating a food.
+         */
+        FoodUpdate: {
+            /** Name */
+            name: string;
+            /** Ingredients */
+            ingredients?: components["schemas"]["FoodIngredientCreate"][];
+            /** Tags */
+            tags?: components["schemas"]["TagRef"][];
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * IngredientCreate
+         * @description Schema for creating an ingredient.
+         */
+        IngredientCreate: {
+            /** Name */
+            name: string;
+            /** Source */
+            source?: string | null;
+            /** Source Id */
+            source_id?: string | null;
+            nutrition?: components["schemas"]["NutritionCreate"] | null;
+            /** Units */
+            units?: components["schemas"]["IngredientUnitCreate"][];
+            /** Tags */
+            tags?: components["schemas"]["TagRef"][];
+            /** Shopping Unit Id */
+            shopping_unit_id?: number | null;
+            shopping_unit?: components["schemas"]["IngredientShoppingUnitSelection"] | null;
+        };
+        /**
+         * IngredientRead
+         * @description Schema for reading ingredient data.
+         */
+        IngredientRead: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Source */
+            source?: string | null;
+            /** Source Id */
+            source_id?: string | null;
+            nutrition?: components["schemas"]["Nutrition"] | null;
+            /** Units */
+            units?: components["schemas"]["IngredientUnit"][];
+            /** Tags */
+            tags?: components["schemas"]["PossibleIngredientTag"][];
+            /** Shopping Unit Id */
+            shopping_unit_id?: number | null;
+            shopping_unit?: components["schemas"]["IngredientUnit"] | null;
+        };
+        /**
+         * IngredientShoppingUnitSelection
+         * @description Payload for selecting a preferred shopping unit.
+         */
+        IngredientShoppingUnitSelection: {
+            /** Unit Id */
+            unit_id?: number | null;
+            /** Name */
+            name?: string | null;
+            /** Grams */
+            grams?: number | null;
+        };
+        /**
+         * IngredientUnit
+         * @description Measurement unit for an ingredient.
+         */
+        IngredientUnit: {
+            /** Id */
+            id?: number | null;
+            /** Ingredient Id */
+            ingredient_id?: number | null;
+            /** Name */
+            name: string;
+            /** Grams */
+            grams: number;
+        };
+        /**
+         * IngredientUnitCreate
+         * @description Schema for creating ingredient unit data.
+         */
+        IngredientUnitCreate: {
+            /** Name */
+            name: string;
+            /** Grams */
+            grams: number;
+        };
+        /**
+         * IngredientUnitUpdate
+         * @description Schema for updating ingredient unit data (allows id for upsert).
+         */
+        IngredientUnitUpdate: {
+            /** Id */
+            id?: number | null;
+            /** Name */
+            name: string;
+            /** Grams */
+            grams: number;
+        };
+        /**
+         * IngredientUpdate
+         * @description Schema for updating an ingredient.
+         */
+        IngredientUpdate: {
+            /** Name */
+            name: string;
+            /** Source */
+            source?: string | null;
+            /** Source Id */
+            source_id?: string | null;
+            nutrition?: components["schemas"]["NutritionCreate"] | null;
+            /** Units */
+            units?: components["schemas"]["IngredientUnitUpdate"][];
+            /** Tags */
+            tags?: components["schemas"]["TagRef"][];
+            /** Shopping Unit Id */
+            shopping_unit_id?: number | null;
+            shopping_unit?: components["schemas"]["IngredientShoppingUnitSelection"] | null;
+        };
+        /**
+         * Nutrition
+         * @description Nutritional information for a single ingredient.
+         */
+        Nutrition: {
+            /** Id */
+            id?: number | null;
+            /** Ingredient Id */
+            ingredient_id?: number | null;
+            /** Calories */
+            calories: number;
+            /** Fat */
+            fat: number;
+            /** Carbohydrates */
+            carbohydrates: number;
+            /** Protein */
+            protein: number;
+            /** Fiber */
+            fiber: number;
+        };
+        /**
+         * NutritionCreate
+         * @description Schema for creating nutrition data.
+         */
+        NutritionCreate: {
+            /** Calories */
+            calories: number;
+            /** Fat */
+            fat: number;
+            /** Carbohydrates */
+            carbohydrates: number;
+            /** Protein */
+            protein: number;
+            /** Fiber */
+            fiber: number;
+        };
+        /**
+         * PlanCreate
+         * @description Payload required to persist a plan.
+         */
+        PlanCreate: {
+            /** Label */
+            label: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * PlanRead
+         * @description Representation of a saved plan returned from the API.
+         */
+        PlanRead: {
+            /** Id */
+            id: number;
+            /** Label */
+            label: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * PlanUpdate
+         * @description Fields allowed when updating a persisted plan.
+         */
+        PlanUpdate: {
+            /** Label */
+            label?: string | null;
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /**
+         * PossibleFoodTag
+         * @description Tag that can be associated with a food.
+         */
+        PossibleFoodTag: {
+            /** Id */
+            id?: number | null;
+            /** Name */
+            name: string;
+        };
+        /**
+         * PossibleIngredientTag
+         * @description Tag that can be associated with an ingredient.
+         */
+        PossibleIngredientTag: {
+            /** Id */
+            id?: number | null;
+            /** Name */
+            name: string;
+        };
+        /**
+         * StoredFoodConsume
+         * @description Payload for consuming stored food portions.
+         */
+        StoredFoodConsume: {
+            /** Portions */
+            portions: number;
+        };
+        /**
+         * StoredFoodCreate
+         * @description Schema for creating stored food entries.
+         */
+        StoredFoodCreate: {
+            /** Label */
+            label?: string | null;
+            /** User Id */
+            user_id: string;
+            /** Food Id */
+            food_id?: number | null;
+            /** Ingredient Id */
+            ingredient_id?: number | null;
+            /** Prepared Portions */
+            prepared_portions: number;
+            /** Per Portion Calories */
+            per_portion_calories: number;
+            /** Per Portion Protein */
+            per_portion_protein: number;
+            /** Per Portion Carbohydrates */
+            per_portion_carbohydrates: number;
+            /** Per Portion Fat */
+            per_portion_fat: number;
+            /** Per Portion Fiber */
+            per_portion_fiber: number;
+            /** Remaining Portions */
+            remaining_portions?: number | null;
+            /** Prepared At */
+            prepared_at?: string | null;
+        };
+        /**
+         * StoredFoodRead
+         * @description Schema returned when reading stored food entries.
+         */
+        StoredFoodRead: {
+            /** Label */
+            label?: string | null;
+            /** User Id */
+            user_id: string;
+            /** Food Id */
+            food_id?: number | null;
+            /** Ingredient Id */
+            ingredient_id?: number | null;
+            /** Prepared Portions */
+            prepared_portions: number;
+            /** Per Portion Calories */
+            per_portion_calories: number;
+            /** Per Portion Protein */
+            per_portion_protein: number;
+            /** Per Portion Carbohydrates */
+            per_portion_carbohydrates: number;
+            /** Per Portion Fat */
+            per_portion_fat: number;
+            /** Per Portion Fiber */
+            per_portion_fiber: number;
+            /** Id */
+            id: number;
+            /** Remaining Portions */
+            remaining_portions: number;
+            /** Is Finished */
+            is_finished: boolean;
+            /**
+             * Prepared At
+             * Format: date-time
+             */
+            prepared_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Completed At */
+            completed_at?: string | null;
+        };
+        /**
+         * TagCreate
+         * @description Schema for creating a new possible tag by name.
+         */
+        TagCreate: {
+            /** Name */
+            name: string;
+        };
+        /**
+         * TagRef
+         * @description Reference to an existing tag by ID.
+         */
+        TagRef: {
+            /** Id */
+            id: number;
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+        };
     };
-    /**
-     * DailyLogEntryRead
-     * @description Schema returned when reading daily log entries.
-     */
-    DailyLogEntryRead: {
-      /** User Id */
-      user_id: string;
-      /**
-       * Log Date
-       * Format: date
-       */
-      log_date: string;
-      /** Stored Food Id */
-      stored_food_id?: number | null;
-      /** Ingredient Id */
-      ingredient_id?: number | null;
-      /** Food Id */
-      food_id?: number | null;
-      /** Portions Consumed */
-      portions_consumed: number;
-      /** Calories */
-      calories: number;
-      /** Protein */
-      protein: number;
-      /** Carbohydrates */
-      carbohydrates: number;
-      /** Fat */
-      fat: number;
-      /** Fiber */
-      fiber: number;
-      /** Id */
-      id: number;
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-    };
-    /**
-     * FoodCreate
-     * @description Schema for creating a food.
-     */
-    FoodCreate: {
-      /** Name */
-      name: string;
-      /** Ingredients */
-      ingredients?: components["schemas"]["FoodIngredientCreate"][];
-      /** Tags */
-      tags?: components["schemas"]["TagRef"][];
-    };
-    /**
-     * FoodIngredient
-     * @description Link between a food and an ingredient with quantity information.
-     */
-    FoodIngredient: {
-      /** Ingredient Id */
-      ingredient_id?: number | null;
-      /** Food Id */
-      food_id?: number | null;
-      /** Unit Id */
-      unit_id?: number | null;
-      /** Unit Quantity */
-      unit_quantity?: number | null;
-    };
-    /**
-     * FoodIngredientCreate
-     * @description Schema for creating food ingredient linkage.
-     */
-    FoodIngredientCreate: {
-      /** Ingredient Id */
-      ingredient_id: number;
-      /** Unit Id */
-      unit_id?: number | null;
-      /** Unit Quantity */
-      unit_quantity?: number | null;
-    };
-    /**
-     * FoodRead
-     * @description Schema for reading food data.
-     */
-    FoodRead: {
-      /** Id */
-      id: number;
-      /** Name */
-      name: string;
-      /** Ingredients */
-      ingredients?: components["schemas"]["FoodIngredient"][];
-      /** Tags */
-      tags?: components["schemas"]["PossibleFoodTag"][];
-    };
-    /**
-     * FoodUpdate
-     * @description Schema for updating a food.
-     */
-    FoodUpdate: {
-      /** Name */
-      name: string;
-      /** Ingredients */
-      ingredients?: components["schemas"]["FoodIngredientCreate"][];
-      /** Tags */
-      tags?: components["schemas"]["TagRef"][];
-    };
-    /** HTTPValidationError */
-    HTTPValidationError: {
-      /** Detail */
-      detail?: components["schemas"]["ValidationError"][];
-    };
-    /**
-     * IngredientCreate
-     * @description Schema for creating an ingredient.
-     */
-    IngredientCreate: {
-      /** Name */
-      name: string;
-      /** Source */
-      source?: string | null;
-      /** Source Id */
-      source_id?: string | null;
-      nutrition?: components["schemas"]["NutritionCreate"] | null;
-      /** Units */
-      units?: components["schemas"]["IngredientUnitCreate"][];
-      /** Tags */
-      tags?: components["schemas"]["TagRef"][];
-      /** Shopping Unit Id */
-      shopping_unit_id?: number | null;
-      shopping_unit?: components["schemas"]["IngredientShoppingUnitSelection"] | null;
-    };
-    /**
-     * IngredientRead
-     * @description Schema for reading ingredient data.
-     */
-    IngredientRead: {
-      /** Id */
-      id: number;
-      /** Name */
-      name: string;
-      /** Source */
-      source?: string | null;
-      /** Source Id */
-      source_id?: string | null;
-      nutrition?: components["schemas"]["Nutrition"] | null;
-      /** Units */
-      units?: components["schemas"]["IngredientUnit"][];
-      /** Tags */
-      tags?: components["schemas"]["PossibleIngredientTag"][];
-      /** Shopping Unit Id */
-      shopping_unit_id?: number | null;
-      shopping_unit?: components["schemas"]["IngredientUnit"] | null;
-    };
-    /**
-     * IngredientShoppingUnitSelection
-     * @description Payload for selecting a preferred shopping unit.
-     */
-    IngredientShoppingUnitSelection: {
-      /** Unit Id */
-      unit_id?: number | null;
-      /** Name */
-      name?: string | null;
-      /** Grams */
-      grams?: number | null;
-    };
-    /**
-     * IngredientUnit
-     * @description Measurement unit for an ingredient.
-     */
-    IngredientUnit: {
-      /** Id */
-      id?: number | null;
-      /** Ingredient Id */
-      ingredient_id?: number | null;
-      /** Name */
-      name: string;
-      /** Grams */
-      grams: number;
-    };
-    /**
-     * IngredientUnitCreate
-     * @description Schema for creating ingredient unit data.
-     */
-    IngredientUnitCreate: {
-      /** Name */
-      name: string;
-      /** Grams */
-      grams: number;
-    };
-    /**
-     * IngredientUnitUpdate
-     * @description Schema for updating ingredient unit data (allows id for upsert).
-     */
-    IngredientUnitUpdate: {
-      /** Id */
-      id?: number | null;
-      /** Name */
-      name: string;
-      /** Grams */
-      grams: number;
-    };
-    /**
-     * IngredientUpdate
-     * @description Schema for updating an ingredient.
-     */
-    IngredientUpdate: {
-      /** Name */
-      name: string;
-      /** Source */
-      source?: string | null;
-      /** Source Id */
-      source_id?: string | null;
-      nutrition?: components["schemas"]["NutritionCreate"] | null;
-      /** Units */
-      units?: components["schemas"]["IngredientUnitUpdate"][];
-      /** Tags */
-      tags?: components["schemas"]["TagRef"][];
-      /** Shopping Unit Id */
-      shopping_unit_id?: number | null;
-      shopping_unit?: components["schemas"]["IngredientShoppingUnitSelection"] | null;
-    };
-    /**
-     * Nutrition
-     * @description Nutritional information for a single ingredient.
-     */
-    Nutrition: {
-      /** Id */
-      id?: number | null;
-      /** Ingredient Id */
-      ingredient_id?: number | null;
-      /** Calories */
-      calories: number;
-      /** Fat */
-      fat: number;
-      /** Carbohydrates */
-      carbohydrates: number;
-      /** Protein */
-      protein: number;
-      /** Fiber */
-      fiber: number;
-    };
-    /**
-     * NutritionCreate
-     * @description Schema for creating nutrition data.
-     */
-    NutritionCreate: {
-      /** Calories */
-      calories: number;
-      /** Fat */
-      fat: number;
-      /** Carbohydrates */
-      carbohydrates: number;
-      /** Protein */
-      protein: number;
-      /** Fiber */
-      fiber: number;
-    };
-    /**
-     * PlanCreate
-     * @description Payload required to persist a plan.
-     */
-    PlanCreate: {
-      /** Label */
-      label: string;
-      /** Payload */
-      payload: {
-        [key: string]: unknown;
-      };
-    };
-    /**
-     * PlanRead
-     * @description Representation of a saved plan returned from the API.
-     */
-    PlanRead: {
-      /** Id */
-      id: number;
-      /** Label */
-      label: string;
-      /** Payload */
-      payload: {
-        [key: string]: unknown;
-      };
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-      /**
-       * Updated At
-       * Format: date-time
-       */
-      updated_at: string;
-    };
-    /**
-     * PlanUpdate
-     * @description Fields allowed when updating a persisted plan.
-     */
-    PlanUpdate: {
-      /** Label */
-      label?: string | null;
-      /** Payload */
-      payload?: {
-        [key: string]: unknown;
-      } | null;
-    };
-    /**
-     * PossibleFoodTag
-     * @description Tag that can be associated with a food.
-     */
-    PossibleFoodTag: {
-      /** Id */
-      id?: number | null;
-      /** Name */
-      name: string;
-    };
-    /**
-     * PossibleIngredientTag
-     * @description Tag that can be associated with an ingredient.
-     */
-    PossibleIngredientTag: {
-      /** Id */
-      id?: number | null;
-      /** Name */
-      name: string;
-    };
-    /**
-     * StoredFoodConsume
-     * @description Payload for consuming stored food portions.
-     */
-    StoredFoodConsume: {
-      /** Portions */
-      portions: number;
-    };
-    /**
-     * StoredFoodCreate
-     * @description Schema for creating stored food entries.
-     */
-    StoredFoodCreate: {
-      /** Label */
-      label?: string | null;
-      /** User Id */
-      user_id: string;
-      /** Food Id */
-      food_id?: number | null;
-      /** Ingredient Id */
-      ingredient_id?: number | null;
-      /** Prepared Portions */
-      prepared_portions: number;
-      /** Per Portion Calories */
-      per_portion_calories: number;
-      /** Per Portion Protein */
-      per_portion_protein: number;
-      /** Per Portion Carbohydrates */
-      per_portion_carbohydrates: number;
-      /** Per Portion Fat */
-      per_portion_fat: number;
-      /** Per Portion Fiber */
-      per_portion_fiber: number;
-      /** Remaining Portions */
-      remaining_portions?: number | null;
-      /** Prepared At */
-      prepared_at?: string | null;
-    };
-    /**
-     * StoredFoodRead
-     * @description Schema returned when reading stored food entries.
-     */
-    StoredFoodRead: {
-      /** Label */
-      label?: string | null;
-      /** User Id */
-      user_id: string;
-      /** Food Id */
-      food_id?: number | null;
-      /** Ingredient Id */
-      ingredient_id?: number | null;
-      /** Prepared Portions */
-      prepared_portions: number;
-      /** Per Portion Calories */
-      per_portion_calories: number;
-      /** Per Portion Protein */
-      per_portion_protein: number;
-      /** Per Portion Carbohydrates */
-      per_portion_carbohydrates: number;
-      /** Per Portion Fat */
-      per_portion_fat: number;
-      /** Per Portion Fiber */
-      per_portion_fiber: number;
-      /** Id */
-      id: number;
-      /** Remaining Portions */
-      remaining_portions: number;
-      /** Is Finished */
-      is_finished: boolean;
-      /**
-       * Prepared At
-       * Format: date-time
-       */
-      prepared_at: string;
-      /**
-       * Updated At
-       * Format: date-time
-       */
-      updated_at: string;
-      /** Completed At */
-      completed_at?: string | null;
-    };
-    /**
-     * TagCreate
-     * @description Schema for creating a new possible tag by name.
-     */
-    TagCreate: {
-      /** Name */
-      name: string;
-    };
-    /**
-     * TagRef
-     * @description Reference to an existing tag by ID.
-     */
-    TagRef: {
-      /** Id */
-      id: number;
-    };
-    /** ValidationError */
-    ValidationError: {
-      /** Location */
-      loc: (string | number)[];
-      /** Message */
-      msg: string;
-      /** Error Type */
-      type: string;
-    };
-  };
-  responses: never;
-  parameters: never;
-  requestBodies: never;
-  headers: never;
-  pathItems: never;
+    responses: never;
+    parameters: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
-
 export type $defs = Record<string, never>;
-
-export type external = Record<string, never>;
-
 export interface operations {
-
-  /**
-   * Get All Ingredients
-   * @description Return all ingredients.
-   */
-  get_all_ingredients_api_ingredients__get: {
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["IngredientRead"][];
+    get_all_ingredients_api_ingredients__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-      };
-    };
-  };
-  /**
-   * Add Ingredient
-   * @description Create a new ingredient.
-   */
-  add_ingredient_api_ingredients__post: {
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["IngredientCreate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      201: {
-        content: {
-          "application/json": components["schemas"]["IngredientRead"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngredientRead"][];
+                };
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+    };
+    add_ingredient_api_ingredients__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-      };
-    };
-  };
-  /**
-   * Get All Possible Tags
-   * @description Return all possible ingredient tags ordered by name.
-   */
-  get_all_possible_tags_api_ingredients_possible_tags_get: {
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["PossibleIngredientTag"][];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngredientCreate"];
+            };
         };
-      };
-    };
-  };
-  /**
-   * Add Possible Tag
-   * @description Create a new possible ingredient tag, or return existing on duplicate name.
-   */
-  add_possible_tag_api_ingredients_possible_tags_post: {
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["TagCreate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      201: {
-        content: {
-          "application/json": components["schemas"]["PossibleIngredientTag"];
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngredientRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+    };
+    get_all_possible_tags_api_ingredients_possible_tags_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-      };
-    };
-  };
-  /**
-   * Get Ingredient
-   * @description Retrieve a single ingredient by ID.
-   */
-  get_ingredient_api_ingredients__ingredient_id__get: {
-    parameters: {
-      path: {
-        ingredient_id: number;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["IngredientRead"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PossibleIngredientTag"][];
+                };
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+    };
+    add_possible_tag_api_ingredients_possible_tags_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-      };
-    };
-  };
-  /**
-   * Update Ingredient
-   * @description Update an existing ingredient.
-   *
-   * Important: Avoid deleting existing units on update to preserve referential
-   * integrity for rows in food_ingredients that reference them. Instead,
-   * upsert provided units (update by id or insert new). Existing units not in
-   * the payload are left unchanged.
-   */
-  update_ingredient_api_ingredients__ingredient_id__put: {
-    parameters: {
-      path: {
-        ingredient_id: number;
-      };
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["IngredientUpdate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["IngredientRead"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagCreate"];
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PossibleIngredientTag"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
     };
-  };
-  /**
-   * Delete Ingredient
-   * @description Delete an ingredient.
-   */
-  delete_ingredient_api_ingredients__ingredient_id__delete: {
-    parameters: {
-      path: {
-        ingredient_id: number;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": {
-            [key: string]: unknown;
-          };
+    get_ingredient_api_ingredients__ingredient_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ingredient_id: number;
+            };
+            cookie?: never;
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngredientRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
     };
-  };
-  /**
-   * Get All Foods
-   * @description Return all foods.
-   */
-  get_all_foods_api_foods__get: {
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["FoodRead"][];
+    update_ingredient_api_ingredients__ingredient_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ingredient_id: number;
+            };
+            cookie?: never;
         };
-      };
-    };
-  };
-  /**
-   * Add Food
-   * @description Create a new food.
-   */
-  add_food_api_foods__post: {
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["FoodCreate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      201: {
-        content: {
-          "application/json": components["schemas"]["FoodRead"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngredientUpdate"];
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngredientRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
     };
-  };
-  /**
-   * Get Possible Food Tags
-   * @description Return all possible food tags ordered by name.
-   */
-  get_possible_food_tags_api_foods_possible_tags_get: {
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["PossibleFoodTag"][];
+    delete_ingredient_api_ingredients__ingredient_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ingredient_id: number;
+            };
+            cookie?: never;
         };
-      };
-    };
-  };
-  /**
-   * Add Possible Food Tag
-   * @description Create a new possible food tag, or return existing on duplicate name.
-   */
-  add_possible_food_tag_api_foods_possible_tags_post: {
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["TagCreate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      201: {
-        content: {
-          "application/json": components["schemas"]["PossibleFoodTag"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+    };
+    get_all_foods_api_foods__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-      };
-    };
-  };
-  /**
-   * Get Food
-   * @description Retrieve a single food by ID.
-   */
-  get_food_api_foods__food_id__get: {
-    parameters: {
-      path: {
-        food_id: number;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["FoodRead"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoodRead"][];
+                };
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+    };
+    add_food_api_foods__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-      };
-    };
-  };
-  /**
-   * Update Food
-   * @description Update an existing food.
-   */
-  update_food_api_foods__food_id__put: {
-    parameters: {
-      path: {
-        food_id: number;
-      };
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["FoodUpdate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["FoodRead"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FoodCreate"];
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoodRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
     };
-  };
-  /**
-   * Delete Food
-   * @description Delete a food.
-   */
-  delete_food_api_foods__food_id__delete: {
-    parameters: {
-      path: {
-        food_id: number;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": {
-            [key: string]: unknown;
-          };
+    get_possible_food_tags_api_foods_possible_tags_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PossibleFoodTag"][];
+                };
+            };
         };
-      };
     };
-  };
-  /**
-   * List Plans
-   * @description Return all saved plans ordered by last update descending.
-   */
-  list_plans_api_plans__get: {
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["PlanRead"][];
+    add_possible_food_tag_api_foods_possible_tags_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-      };
-    };
-  };
-  /**
-   * Create Plan
-   * @description Persist a new plan payload.
-   */
-  create_plan_api_plans__post: {
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["PlanCreate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      201: {
-        content: {
-          "application/json": components["schemas"]["PlanRead"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagCreate"];
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PossibleFoodTag"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
     };
-  };
-  /**
-   * Get Plan
-   * @description Retrieve a single plan by ID.
-   */
-  get_plan_api_plans__plan_id__get: {
-    parameters: {
-      path: {
-        plan_id: number;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["PlanRead"];
+    get_food_api_foods__food_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                food_id: number;
+            };
+            cookie?: never;
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoodRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
     };
-  };
-  /**
-   * Update Plan
-   * @description Update an existing plan.
-   */
-  update_plan_api_plans__plan_id__put: {
-    parameters: {
-      path: {
-        plan_id: number;
-      };
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["PlanUpdate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["PlanRead"];
+    update_food_api_foods__food_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                food_id: number;
+            };
+            cookie?: never;
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FoodUpdate"];
+            };
         };
-      };
-    };
-  };
-  /**
-   * Delete Plan
-   * @description Delete an existing plan.
-   */
-  delete_plan_api_plans__plan_id__delete: {
-    parameters: {
-      path: {
-        plan_id: number;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      204: {
-        content: never;
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoodRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
     };
-  };
-  /**
-   * List Stored Food
-   * @description Retrieve stored food entries with optional filters.
-   */
-  list_stored_food_api_stored_food__get: {
-    parameters: {
-      query?: {
-        user_id?: string | null;
-        only_available?: boolean;
-        day?: string | null;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["StoredFoodRead"][];
+    delete_food_api_foods__food_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                food_id: number;
+            };
+            cookie?: never;
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
     };
-  };
-  /**
-   * Create Stored Food
-   * @description Persist a new stored food entry.
-   */
-  create_stored_food_api_stored_food__post: {
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["StoredFoodCreate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      201: {
-        content: {
-          "application/json": components["schemas"]["StoredFoodRead"];
+    list_plans_api_plans__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanRead"][];
+                };
+            };
         };
-      };
     };
-  };
-  /**
-   * Clear Stored Food
-   * @description Remove all stored food entries for a user.
-   */
-  clear_stored_food_api_stored_food__delete: {
-    parameters: {
-      query: {
-        user_id: string;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      204: {
-        content: never;
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+    create_plan_api_plans__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-      };
-    };
-  };
-  /**
-   * Consume Stored Food
-   * @description Consume portions from a stored food entry.
-   */
-  consume_stored_food_api_stored_food__stored_food_id__consume_post: {
-    parameters: {
-      path: {
-        stored_food_id: number;
-      };
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["StoredFoodConsume"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["StoredFoodRead"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanCreate"];
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
     };
-  };
-  /**
-   * Delete Stored Food
-   * @description Remove a stored food entry.
-   */
-  delete_stored_food_api_stored_food__stored_food_id__delete: {
-    parameters: {
-      path: {
-        stored_food_id: number;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      204: {
-        content: never;
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+    get_plan_api_plans__plan_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: number;
+            };
+            cookie?: never;
         };
-      };
-    };
-  };
-  /**
-   * List Daily Logs
-   * @description Return all log entries for a specific day.
-   */
-  list_daily_logs_api_logs__log_date__get: {
-    parameters: {
-      query?: {
-        user_id?: string | null;
-      };
-      path: {
-        log_date: string;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": components["schemas"]["DailyLogEntryRead"][];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+    };
+    update_plan_api_plans__plan_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: number;
+            };
+            cookie?: never;
         };
-      };
-    };
-  };
-  /**
-   * Create Daily Log
-   * @description Persist a new daily log entry.
-   */
-  create_daily_log_api_logs__post: {
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["DailyLogEntryCreate"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      201: {
-        content: {
-          "application/json": components["schemas"]["DailyLogEntryRead"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanUpdate"];
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
     };
-  };
-  /**
-   * Clear Daily Logs
-   * @description Remove daily log entries for a user, optionally filtered by day.
-   */
-  clear_daily_logs_api_logs__delete: {
-    parameters: {
-      query: {
-        user_id: string;
-        log_date?: string | null;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      204: {
-        content: never;
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+    delete_plan_api_plans__plan_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: number;
+            };
+            cookie?: never;
         };
-      };
-    };
-  };
-  /**
-   * Delete Daily Log
-   * @description Remove a single daily log entry.
-   */
-  delete_daily_log_api_logs__entry_id__delete: {
-    parameters: {
-      path: {
-        entry_id: number;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      204: {
-        content: never;
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
     };
-  };
+    list_stored_food_api_stored_food__get: {
+        parameters: {
+            query?: {
+                user_id?: string | null;
+                only_available?: boolean;
+                day?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoredFoodRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_stored_food_api_stored_food__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoredFoodCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoredFoodRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_stored_food_api_stored_food__delete: {
+        parameters: {
+            query: {
+                user_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    consume_stored_food_api_stored_food__stored_food_id__consume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stored_food_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoredFoodConsume"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoredFoodRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_stored_food_api_stored_food__stored_food_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stored_food_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_daily_logs_api_logs__log_date__get: {
+        parameters: {
+            query?: {
+                user_id?: string | null;
+            };
+            header?: never;
+            path: {
+                log_date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyLogEntryRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_daily_log_api_logs__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DailyLogEntryCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyLogEntryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_daily_logs_api_logs__delete: {
+        parameters: {
+            query: {
+                user_id: string;
+                log_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_daily_log_api_logs__entry_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_foods_api_usda_search_get: {
+        parameters: {
+            query: {
+                query: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_food_details_api_usda_foods__fdc_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fdc_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
 }
