@@ -3,6 +3,9 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogTitle,
   IconButton,
   MenuItem,
   Paper,
@@ -25,6 +28,7 @@ import FeedbackSnackbar, {
 } from "@/components/common/FeedbackSnackbar";
 import IngredientModal from "@/components/common/IngredientModal";
 import DecimalInput from "@/components/common/DecimalInput";
+import IngredientTable from "@/components/data/ingredient/IngredientTable";
 import { useData } from "@/contexts/DataContext";
 import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type {
@@ -396,10 +400,11 @@ function Cooking() {
   const [pendingCompletionKeys, setPendingCompletionKeys] =
     useState<Set<string>>(() => new Set());
   const [feedback, setFeedback] = useState<SnackbarMessage | null>(null);
-  const [pendingIngredientSelections, setPendingIngredientSelections] = useState<
-    Record<string, string>
-  >({});
   const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
+  const [ingredientPickerOpen, setIngredientPickerOpen] = useState(false);
+  const [ingredientPickerPlanKey, setIngredientPickerPlanKey] = useState<
+    string | null
+  >(null);
   const handleFeedbackClose = useCallback(() => {
     setFeedback(null);
   }, []);
@@ -704,16 +709,6 @@ function Cooking() {
     [setActualState],
   );
 
-  const updatePendingIngredientSelection = useCallback(
-    (planKey: string, value: string) => {
-      setPendingIngredientSelections((prev) => ({
-        ...prev,
-        [planKey]: value,
-      }));
-    },
-    [],
-  );
-
   const handleOpenIngredientModal = useCallback(() => {
     setIngredientModalOpen(true);
   }, []);
@@ -722,19 +717,29 @@ function Cooking() {
     setIngredientModalOpen(false);
   }, []);
 
+  const handleOpenIngredientPicker = useCallback((planKey: string) => {
+    setIngredientPickerPlanKey(planKey);
+    setIngredientPickerOpen(true);
+  }, []);
+
+  const handleCloseIngredientPicker = useCallback(() => {
+    setIngredientPickerPlanKey(null);
+    setIngredientPickerOpen(false);
+  }, []);
+
   const handleAddIngredient = useCallback(
-    (planKey: string) => {
-      const selection = pendingIngredientSelections[planKey];
-      if (!selection) {
+    (ingredient: IngredientRead) => {
+      if (
+        !ingredientPickerPlanKey ||
+        ingredient.id === null ||
+        ingredient.id === undefined
+      ) {
         return;
       }
-      addFoodIngredient(planKey, selection);
-      setPendingIngredientSelections((prev) => ({
-        ...prev,
-        [planKey]: "",
-      }));
+      addFoodIngredient(ingredientPickerPlanKey, String(ingredient.id));
+      handleCloseIngredientPicker();
     },
-    [addFoodIngredient, pendingIngredientSelections],
+    [addFoodIngredient, handleCloseIngredientPicker, ingredientPickerPlanKey],
   );
 
   const computeFoodActualMacros = useCallback(
@@ -1195,8 +1200,6 @@ function Cooking() {
                         const removedIngredientIds = new Set(
                           foodAdjustments.removedIngredientIds,
                         );
-                        const addSelection =
-                          pendingIngredientSelections[portionKey] ?? "";
                         const actualPortions = roundDisplayValue(
                           clampNonNegative(
                             toFiniteNumber(
@@ -1706,49 +1709,12 @@ function Cooking() {
                                     gap: 1,
                                   }}
                                 >
-                                  <Select
-                                    size="small"
-                                    value={addSelection}
-                                    displayEmpty
-                                    onChange={(event) =>
-                                      updatePendingIngredientSelection(
-                                        portionKey,
-                                        String(event.target.value ?? ""),
-                                      )
-                                    }
-                                    sx={{ minWidth: 220 }}
-                                  >
-                                    <MenuItem value="">
-                                      <em>Select ingredient</em>
-                                    </MenuItem>
-                                    {ingredients.map((ingredient) => {
-                                      const id = normalizeIngredientId(
-                                        ingredient?.id,
-                                      );
-                                      if (!id) {
-                                        return null;
-                                      }
-                                      return (
-                                        <MenuItem key={id} value={id}>
-                                          {ingredient?.name ?? "Ingredient"}
-                                        </MenuItem>
-                                      );
-                                    })}
-                                  </Select>
                                   <Button
                                     size="small"
                                     variant="outlined"
-                                    onClick={() => handleAddIngredient(portionKey)}
-                                    disabled={!addSelection}
+                                    onClick={() => handleOpenIngredientPicker(portionKey)}
                                   >
-                                    Add
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    variant="text"
-                                    onClick={handleOpenIngredientModal}
-                                  >
-                                    New Ingredient
+                                    Select ingredient
                                   </Button>
                                 </Box>
                               </TableCell>
@@ -2002,6 +1968,20 @@ function Cooking() {
           )}
         </>
       )}
+      <Dialog
+        open={ingredientPickerOpen}
+        onClose={handleCloseIngredientPicker}
+        fullWidth
+        maxWidth="lg"
+        scroll="paper"
+      >
+        <DialogTitle>Select Ingredient</DialogTitle>
+        <IngredientTable onIngredientDoubleClick={handleAddIngredient} />
+        <DialogActions>
+          <Button onClick={handleOpenIngredientModal}>New Ingredient</Button>
+          <Button onClick={handleCloseIngredientPicker}>Close</Button>
+        </DialogActions>
+      </Dialog>
       <IngredientModal
         open={ingredientModalOpen}
         mode="add"
