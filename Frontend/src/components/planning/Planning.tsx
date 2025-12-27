@@ -48,6 +48,7 @@ import type { FoodRead, IngredientRead } from "@/utils/nutrition";
 import IngredientModal from "@/components/common/IngredientModal";
 import IngredientTable from "@/components/data/ingredient/IngredientTable";
 import FoodTable from "@/components/data/food/FoodTable";
+import DecimalInput from "@/components/common/DecimalInput";
 import useHoverable from "@/hooks/useHoverable";
 import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type { PlanRead } from "@/utils/planApi";
@@ -155,13 +156,6 @@ function Planning() {
     ...ZERO_MACROS,
   }));
   const macroKeys = useMemo(() => Object.keys(targetMacros) as MacroKey[], [targetMacros]);
-  const [macroInputs, setMacroInputs] = useState<Record<MacroKey, string>>(() =>
-    macroKeys.reduce((acc, macro) => {
-      acc[macro] = targetMacros[macro].toString();
-      return acc;
-    }, {} as Record<MacroKey, string>),
-  );
-  const [activeMacro, setActiveMacro] = useState<MacroKey | null>(null);
   const [plan, setPlan] = useSessionStorageState<PlanItem[]>("planning-plan", () => []); // FoodPlanItem or IngredientPlanItem
   const [includeFridge, setIncludeFridge] = useSessionStorageState<boolean>(
     "planning-include-fridge",
@@ -228,31 +222,6 @@ function Planning() {
     [plan, days, targetMacros]
   );
   const canResetPlan = hasContent || activePlan.id !== null;
-
-  useEffect(() => {
-    setMacroInputs((prev) => {
-      let changed = false;
-      const next = { ...prev } as Record<MacroKey, string>;
-
-      macroKeys.forEach((macro) => {
-        if (activeMacro === macro) {
-          if (!(macro in next)) {
-            next[macro] = targetMacros[macro].toString();
-            changed = true;
-          }
-          return;
-        }
-
-        const newValue = targetMacros[macro].toString();
-        if (next[macro] !== newValue) {
-          next[macro] = newValue;
-          changed = true;
-        }
-      });
-
-      return changed ? next : prev;
-    });
-  }, [targetMacros, macroKeys, activeMacro]);
 
 
   const handleOpenIngredientEditor = (ingredientId: string) => {
@@ -684,7 +653,7 @@ function Planning() {
     value: number,
     opts?: { ingredientId?: string }
   ) => {
-    if (value <= 0) return;
+    if (value < 0) return;
     const updated = [...plan];
     const item = updated[index];
     if (!item) return;
@@ -712,7 +681,7 @@ function Planning() {
   };
 
   const handleIngredientPortionsChange = (index: number, value: number) => {
-    if (value <= 0) return;
+    if (value < 0) return;
     const updated = [...plan];
     const item = updated[index];
     if (!item || item.type !== "ingredient") {
@@ -845,15 +814,16 @@ function Planning() {
     };
   }, [overallTotalMacros, days]);
 
-  const handleDaysChange = (e) => {
-    const value = parseInt(e.target.value, 10);
+  const handleDaysChange = (value: number) => {
     if (!value || value < 1) {
       setDays(1);
       setDaysError(true);
-    } else {
-      setDays(value);
-      setDaysError(false);
+      return;
     }
+
+    const roundedValue = Math.round(value);
+    setDays(roundedValue);
+    setDaysError(false);
   };
 
   const handleOpenSaveDialog = () => {
@@ -987,56 +957,26 @@ function Planning() {
       {statusMessage && <Alert severity="success">{statusMessage}</Alert>}
 
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 3 }}>
-        <TextField
-          type="number"
+        <DecimalInput
           label="Days"
           value={days}
-          onChange={handleDaysChange}
+          decimalPlaces={0}
+          onValueChange={handleDaysChange}
           sx={{ width: 100 }}
           error={daysError}
           helperText={daysError ? "Days must be at least 1" : ""}
         />
         {macroKeys.map((macro) => (
-          <TextField
+          <DecimalInput
             key={macro}
-            type="number"
             label={`Target ${macro}`}
-            value={macroInputs[macro] ?? "0"}
-            onFocus={() => {
-              setActiveMacro(macro);
-              setMacroInputs((prev) => {
-                const current = prev[macro];
-                if (current === "0") {
-                  return { ...prev, [macro]: "" };
-                }
-                return prev;
-              });
-            }}
-            onChange={(e) => {
-              const { value } = e.target;
-              setMacroInputs((prev) => ({
-                ...prev,
-                [macro]: value,
-              }));
+            value={targetMacros[macro]}
+            onValueChange={(value) =>
               setTargetMacros((prev) => ({
                 ...prev,
-                [macro]: value === "" ? 0 : Number.parseFloat(value) || 0,
-              }));
-            }}
-            onBlur={() => {
-              setActiveMacro(null);
-              const currentValue = macroInputs[macro]?.trim() ?? "";
-              if (currentValue === "" || Number.isNaN(Number.parseFloat(currentValue))) {
-                setMacroInputs((prev) => ({
-                  ...prev,
-                  [macro]: "0",
-                }));
-                setTargetMacros((prev) => ({
-                  ...prev,
-                  [macro]: 0,
-                }));
-              }
-            }}
+                [macro]: value,
+              }))
+            }
           />
         ))}
       </Box>
@@ -1089,12 +1029,9 @@ function Planning() {
                     <TableCell>{food ? food.name : ""}</TableCell>
                     <TableCell>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <TextField
-                          type="number"
+                        <DecimalInput
                           value={item.portions}
-                          onChange={(e) =>
-                            handleQuantityChange(index, parseFloat(e.target.value) || 0)
-                          }
+                          onValueChange={(value) => handleQuantityChange(index, value)}
                           sx={{ width: 80 }}
                         />
                       </Box>
@@ -1177,15 +1114,12 @@ function Planning() {
                                   </TableCell>
                                   <TableCell>
                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                      <TextField
-                                        type="number"
+                                      <DecimalInput
                                         value={quantity}
-                                        onChange={(e) =>
-                                          handleQuantityChange(
-                                            index,
-                                            parseFloat(e.target.value) || 0,
-                                            { ingredientId: ingredient.ingredient_id }
-                                          )
+                                        onValueChange={(value) =>
+                                          handleQuantityChange(index, value, {
+                                            ingredientId: ingredient.ingredient_id,
+                                          })
                                         }
                                         sx={{ width: 80 }}
                                       />
@@ -1259,12 +1193,9 @@ function Planning() {
                         <Typography variant="body2" sx={{ minWidth: 90 }}>
                           Portion size
                         </Typography>
-                        <TextField
-                          type="number"
+                        <DecimalInput
                           value={item.amount}
-                          onChange={(e) =>
-                            handleQuantityChange(index, parseFloat(e.target.value) || 0)
-                          }
+                          onValueChange={(value) => handleQuantityChange(index, value)}
                           sx={{ width: 80 }}
                           inputProps={{
                             min: 0,
@@ -1305,14 +1236,10 @@ function Planning() {
                         <Typography variant="body2" sx={{ minWidth: 90 }}>
                           Portions
                         </Typography>
-                        <TextField
-                          type="number"
+                        <DecimalInput
                           value={item.portions}
-                          onChange={(e) =>
-                            handleIngredientPortionsChange(
-                              index,
-                              parseFloat(e.target.value) || 0,
-                            )
+                          onValueChange={(value) =>
+                            handleIngredientPortionsChange(index, value)
                           }
                           sx={{ width: 80 }}
                           inputProps={{
