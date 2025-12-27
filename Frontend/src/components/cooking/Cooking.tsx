@@ -112,9 +112,15 @@ const foodIngredientKey = (
   ingredientId: unknown,
 ): string => `foodIngredient:${planIndex}:${String(ingredientId ?? "")}`;
 
+const addedFoodIngredientKey = (
+  planIndex: number,
+  ingredientId: unknown,
+): string => `foodIngredientAdded:${planIndex}:${String(ingredientId ?? "")}`;
+
 type CookingActualState = {
   portions: Record<string, number>;
   ingredientTotals: Record<string, IngredientMeasurement>;
+  foodAdjustments: Record<string, FoodIngredientAdjustments>;
 };
 
 type ActivePlanState = {
@@ -128,9 +134,15 @@ type IngredientMeasurement = {
   unitId: number;
 };
 
+type FoodIngredientAdjustments = {
+  removedIngredientIds: string[];
+  addedIngredientIds: string[];
+};
+
 const initialActualState: CookingActualState = {
   portions: {},
   ingredientTotals: {},
+  foodAdjustments: {},
 };
 
 const measurementsEqual = (
@@ -235,12 +247,98 @@ const shallowEqualMeasurementRecords = (
   return true;
 };
 
+const arrayValuesEqual = (a: string[], b: string[]): boolean =>
+  a.length === b.length && a.every((value, index) => value === b[index]);
+
+const shallowEqualFoodAdjustments = (
+  a: Record<string, FoodIngredientAdjustments> | undefined,
+  b: Record<string, FoodIngredientAdjustments> | undefined,
+): boolean => {
+  const normalizedA = a ?? {};
+  const normalizedB = b ?? {};
+  const aKeys = Object.keys(normalizedA);
+  const bKeys = Object.keys(normalizedB);
+  if (aKeys.length !== bKeys.length) {
+    return false;
+  }
+  for (const key of aKeys) {
+    const valueA = normalizedA[key];
+    const valueB = normalizedB[key];
+    if (!valueB) {
+      return false;
+    }
+    if (
+      !arrayValuesEqual(valueA.removedIngredientIds, valueB.removedIngredientIds) ||
+      !arrayValuesEqual(valueA.addedIngredientIds, valueB.addedIngredientIds)
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+
 const cookingStatesEqual = (
   a: CookingActualState,
   b: CookingActualState,
 ): boolean =>
   shallowEqualNumberRecords(a.portions, b.portions) &&
-  shallowEqualMeasurementRecords(a.ingredientTotals, b.ingredientTotals);
+  shallowEqualMeasurementRecords(a.ingredientTotals, b.ingredientTotals) &&
+  shallowEqualFoodAdjustments(a.foodAdjustments, b.foodAdjustments);
+
+const normalizeIngredientId = (value: unknown): string | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const normalized = String(value).trim();
+  return normalized === "" ? null : normalized;
+};
+
+const normalizeIngredientIdList = (
+  values: unknown,
+  validIds?: Set<string>,
+): string[] => {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+  const result: string[] = [];
+  const seen = new Set<string>();
+  values.forEach((value) => {
+    const normalized = normalizeIngredientId(value);
+    if (!normalized || seen.has(normalized)) {
+      return;
+    }
+    if (validIds && !validIds.has(normalized)) {
+      return;
+    }
+    seen.add(normalized);
+    result.push(normalized);
+  });
+  return result;
+};
+
+const buildFoodAdjustments = (
+  prev: CookingActualState["foodAdjustments"] | undefined,
+  planKey: string,
+  baseIngredientIds: Set<string>,
+  ingredientIdSet: Set<string>,
+): FoodIngredientAdjustments => {
+  const previous = prev[planKey];
+  const removedIngredientIds = normalizeIngredientIdList(
+    previous?.removedIngredientIds,
+    baseIngredientIds,
+  );
+  const addedIngredientIds = normalizeIngredientIdList(
+    previous?.addedIngredientIds,
+    ingredientIdSet,
+  );
+
+  return { removedIngredientIds, addedIngredientIds };
+};
+
+const resolveDefaultIngredientUnitId = (
+  ingredient: IngredientRead | undefined,
+): number =>
+  normalizePlanUnitId(ingredient?.units?.[0]?.id ?? GRAM_UNIT_SENTINEL);
 
 const pluralize = (value: number, noun: string): string => {
   const rounded = Math.abs(value - 1) < 1e-6 ? 1 : value;
@@ -265,6 +363,16 @@ function Cooking() {
     () => createIngredientLookup(ingredients),
     [ingredients],
   );
+  const ingredientIdSet = useMemo(() => {
+    const set = new Set<string>();
+    ingredients.forEach((ingredient) => {
+      const id = normalizeIngredientId(ingredient?.id);
+      if (id) {
+        set.add(id);
+      }
+    });
+    return set;
+  }, [ingredients]);
 
   const [plan] = useSessionStorageState<PlanItem[]>("planning-plan", () => []);
   const [days] = useSessionStorageState<number>("planning-days", 1);
@@ -287,6 +395,9 @@ function Cooking() {
   const [pendingCompletionKeys, setPendingCompletionKeys] =
     useState<Set<string>>(() => new Set());
   const [feedback, setFeedback] = useState<SnackbarMessage | null>(null);
+  const [pendingIngredientSelections, setPendingIngredientSelections] = useState<
+    Record<string, string>
+  >({});
   const handleFeedbackClose = useCallback(() => {
     setFeedback(null);
   }, []);
@@ -327,6 +438,7 @@ function Cooking() {
     (prev: CookingActualState): CookingActualState => {
       const nextPortions: Record<string, number> = {};
       const nextIngredientTotals: Record<string, IngredientMeasurement> = {};
+      const nextFoodAdjustments: Record<string, FoodIngredientAdjustments> = {};
 
       plan.forEach((item, index) => {
         const itemKey = planItemKey(item, index);
@@ -343,6 +455,18 @@ function Cooking() {
           nextPortions[itemKey] = normalizedPortion;
 
           const food = foodLookup.get(String(item.foodId ?? ""));
+          const baseIngredientIds = new Set<string>(
+            (food?.ingredients ?? [])
+              .map((ingredient) => normalizeIngredientId(ingredient.ingredient_id))
+              .filter((id): id is string => Boolean(id)),
+          );
+          const foodAdjustments = buildFoodAdjustments(
+            prev.foodAdjustments ?? {},
+            itemKey,
+            baseIngredientIds,
+            ingredientIdSet,
+          );
+          nextFoodAdjustments[itemKey] = foodAdjustments;
           if (food && Array.isArray(food.ingredients)) {
             food.ingredients.forEach((ingredient) => {
               const override = item.overrides[String(ingredient.ingredient_id)];
@@ -363,6 +487,19 @@ function Cooking() {
               );
             });
           }
+          foodAdjustments.addedIngredientIds.forEach((ingredientId) => {
+            const dataIngredient = findIngredientInLookup(
+              ingredientLookup,
+              ingredientId,
+            );
+            const addedKey = addedFoodIngredientKey(index, ingredientId);
+            const defaultUnitId = resolveDefaultIngredientUnitId(dataIngredient);
+            nextIngredientTotals[addedKey] = normalizeMeasurement(
+              prev.ingredientTotals[addedKey],
+              0,
+              defaultUnitId,
+            );
+          });
         } else {
           const amountPerPortion = roundDisplayValue(
             clampNonNegative(toFiniteNumber(item.amount)),
@@ -381,9 +518,13 @@ function Cooking() {
         }
       });
 
-      return { portions: nextPortions, ingredientTotals: nextIngredientTotals };
+      return {
+        portions: nextPortions,
+        ingredientTotals: nextIngredientTotals,
+        foodAdjustments: nextFoodAdjustments,
+      };
     },
-    [plan, foodLookup],
+    [plan, foodLookup, ingredientIdSet, ingredientLookup],
   );
 
   useEffect(() => {
@@ -415,6 +556,7 @@ function Cooking() {
         return {
           portions: nextPortions,
           ingredientTotals: prev.ingredientTotals,
+          foodAdjustments: prev.foodAdjustments ?? {},
         };
       });
     },
@@ -455,10 +597,134 @@ function Cooking() {
             ...prev.ingredientTotals,
             [key]: nextMeasurement,
           },
+          foodAdjustments: prev.foodAdjustments ?? {},
         };
       });
     },
     [setActualState],
+  );
+
+  const toggleFoodIngredientRemoved = useCallback(
+    (planKey: string, ingredientId: string, shouldRemove: boolean) => {
+      setActualState((prev) => {
+        const existingAdjustments = prev.foodAdjustments ?? {};
+        const current = existingAdjustments[planKey] ?? {
+          removedIngredientIds: [],
+          addedIngredientIds: [],
+        };
+        const normalizedId = normalizeIngredientId(ingredientId);
+        if (!normalizedId) {
+          return prev;
+        }
+        const removedIngredientIds = shouldRemove
+          ? Array.from(new Set([...current.removedIngredientIds, normalizedId]))
+          : current.removedIngredientIds.filter((id) => id !== normalizedId);
+        if (arrayValuesEqual(removedIngredientIds, current.removedIngredientIds)) {
+          return prev;
+        }
+        return {
+          portions: prev.portions,
+          ingredientTotals: prev.ingredientTotals,
+          foodAdjustments: {
+            ...existingAdjustments,
+            [planKey]: {
+              removedIngredientIds,
+              addedIngredientIds: current.addedIngredientIds,
+            },
+          },
+        };
+      });
+    },
+    [setActualState],
+  );
+
+  const addFoodIngredient = useCallback(
+    (planKey: string, ingredientId: string) => {
+      const normalizedId = normalizeIngredientId(ingredientId);
+      if (!normalizedId) {
+        return;
+      }
+      setActualState((prev) => {
+        const existingAdjustments = prev.foodAdjustments ?? {};
+        const current = existingAdjustments[planKey] ?? {
+          removedIngredientIds: [],
+          addedIngredientIds: [],
+        };
+        if (current.addedIngredientIds.includes(normalizedId)) {
+          return prev;
+        }
+        return {
+          portions: prev.portions,
+          ingredientTotals: prev.ingredientTotals,
+          foodAdjustments: {
+            ...existingAdjustments,
+            [planKey]: {
+              removedIngredientIds: current.removedIngredientIds,
+              addedIngredientIds: [...current.addedIngredientIds, normalizedId],
+            },
+          },
+        };
+      });
+    },
+    [setActualState],
+  );
+
+  const removeAddedFoodIngredient = useCallback(
+    (planKey: string, ingredientId: string, planIndex: number) => {
+      const normalizedId = normalizeIngredientId(ingredientId);
+      if (!normalizedId) {
+        return;
+      }
+      setActualState((prev) => {
+        const existingAdjustments = prev.foodAdjustments ?? {};
+        const current = existingAdjustments[planKey];
+        if (!current || !current.addedIngredientIds.includes(normalizedId)) {
+          return prev;
+        }
+        const addedIngredientIds = current.addedIngredientIds.filter(
+          (id) => id !== normalizedId,
+        );
+        const nextTotals = { ...prev.ingredientTotals };
+        delete nextTotals[addedFoodIngredientKey(planIndex, normalizedId)];
+        return {
+          portions: prev.portions,
+          ingredientTotals: nextTotals,
+          foodAdjustments: {
+            ...existingAdjustments,
+            [planKey]: {
+              removedIngredientIds: current.removedIngredientIds,
+              addedIngredientIds,
+            },
+          },
+        };
+      });
+    },
+    [setActualState],
+  );
+
+  const updatePendingIngredientSelection = useCallback(
+    (planKey: string, value: string) => {
+      setPendingIngredientSelections((prev) => ({
+        ...prev,
+        [planKey]: value,
+      }));
+    },
+    [],
+  );
+
+  const handleAddIngredient = useCallback(
+    (planKey: string) => {
+      const selection = pendingIngredientSelections[planKey];
+      if (!selection) {
+        return;
+      }
+      addFoodIngredient(planKey, selection);
+      setPendingIngredientSelections((prev) => ({
+        ...prev,
+        [planKey]: "",
+      }));
+    },
+    [addFoodIngredient, pendingIngredientSelections],
   );
 
   const computeFoodActualMacros = useCallback(
@@ -469,13 +735,21 @@ function Cooking() {
       }
 
       const portionKey = planItemKey(item, index);
+      const adjustment = actualState.foodAdjustments?.[portionKey];
+      const removedIngredientIds = new Set(
+        adjustment?.removedIngredientIds ?? [],
+      );
       const actualPortions = roundDisplayValue(
         clampNonNegative(
           toFiniteNumber(actualState.portions[portionKey] ?? item.portions),
         ),
       );
 
-      return food.ingredients.reduce((totals, ingredient) => {
+      const baseTotals = food.ingredients.reduce((totals, ingredient) => {
+        const ingredientId = normalizeIngredientId(ingredient.ingredient_id);
+        if (ingredientId && removedIngredientIds.has(ingredientId)) {
+          return totals;
+        }
         const dataIngredient = findIngredientInLookup(
           ingredientLookup,
           ingredient.ingredient_id,
@@ -509,9 +783,39 @@ function Cooking() {
         });
         return addMacroTotals(totals, ingredientMacros);
       }, { ...ZERO_MACROS });
+
+      const addedTotals = (adjustment?.addedIngredientIds ?? []).reduce(
+        (totals, ingredientId) => {
+          const dataIngredient = findIngredientInLookup(
+            ingredientLookup,
+            ingredientId,
+          );
+          if (!dataIngredient) {
+            return totals;
+          }
+          const addedKey = addedFoodIngredientKey(index, ingredientId);
+          const defaultUnitId = resolveDefaultIngredientUnitId(dataIngredient);
+          const measurement = readMeasurementWithFallback(
+            actualState.ingredientTotals,
+            addedKey,
+            0,
+            defaultUnitId,
+          );
+          const ingredientMacros = macrosForIngredientPortion({
+            ingredient: dataIngredient,
+            unitId: measurement.unitId,
+            quantity: measurement.quantity,
+          });
+          return addMacroTotals(totals, ingredientMacros);
+        },
+        { ...ZERO_MACROS },
+      );
+
+      return addMacroTotals(baseTotals, addedTotals);
     },
     [
       actualState.ingredientTotals,
+      actualState.foodAdjustments,
       actualState.portions,
       foodLookup,
       ingredientLookup,
@@ -764,6 +1068,7 @@ function Cooking() {
         setActualState((prev) => {
           const nextPortions = { ...prev.portions };
           const nextTotals = { ...prev.ingredientTotals };
+          const nextAdjustments = { ...(prev.foodAdjustments ?? {}) };
           if (item.type === "food") {
             const foodItem = item as FoodPlanItem;
             const portionKey = planItemKey(foodItem, index);
@@ -778,11 +1083,22 @@ function Cooking() {
                 delete nextTotals[ingredientKey];
               });
             }
+            const adjustments = nextAdjustments[portionKey];
+            if (adjustments) {
+              adjustments.addedIngredientIds.forEach((ingredientId) => {
+                delete nextTotals[addedFoodIngredientKey(index, ingredientId)];
+              });
+              delete nextAdjustments[portionKey];
+            }
           } else {
             const ingredientKey = planKey;
             delete nextTotals[ingredientKey];
           }
-          return { portions: nextPortions, ingredientTotals: nextTotals };
+          return {
+            portions: nextPortions,
+            ingredientTotals: nextTotals,
+            foodAdjustments: nextAdjustments,
+          };
         });
       } catch (error) {
         setCompletedPlanKeyList((prev) => {
@@ -861,6 +1177,16 @@ function Cooking() {
                         const foodItem = item as FoodPlanItem;
                         const food = foodLookup.get(String(foodItem.foodId ?? ""));
                         const portionKey = planItemKey(foodItem, index);
+                        const foodAdjustments =
+                          (actualState.foodAdjustments ?? {})[portionKey] ?? {
+                            removedIngredientIds: [],
+                            addedIngredientIds: [],
+                          };
+                        const removedIngredientIds = new Set(
+                          foodAdjustments.removedIngredientIds,
+                        );
+                        const addSelection =
+                          pendingIngredientSelections[portionKey] ?? "";
                         const actualPortions = roundDisplayValue(
                           clampNonNegative(
                             toFiniteNumber(
@@ -965,6 +1291,12 @@ function Cooking() {
                                 ingredientLookup,
                                 ingredient.ingredient_id,
                               );
+                              const ingredientId = normalizeIngredientId(
+                                ingredient.ingredient_id,
+                              );
+                              const isRemoved =
+                                ingredientId !== null &&
+                                removedIngredientIds.has(ingredientId);
                               const override =
                                 foodItem.overrides[String(ingredient.ingredient_id)];
                               const defaultUnitId = normalizePlanUnitId(
@@ -1004,16 +1336,20 @@ function Cooking() {
                                 fallbackMeasurement.quantity,
                                 fallbackMeasurement.unitId,
                               );
-                              const ingredientMacros = macrosForIngredientPortion({
-                                ingredient: dataIngredient,
-                                unitId: measurement.unitId,
-                                quantity: measurement.quantity,
-                              });
-                              const actualGrams = gramsForIngredientPortion({
-                                ingredient: dataIngredient,
-                                unitId: measurement.unitId,
-                                quantity: measurement.quantity,
-                              });
+                              const ingredientMacros = isRemoved
+                                ? { ...ZERO_MACROS }
+                                : macrosForIngredientPortion({
+                                    ingredient: dataIngredient,
+                                    unitId: measurement.unitId,
+                                    quantity: measurement.quantity,
+                                  });
+                              const actualGrams = isRemoved
+                                ? 0
+                                : gramsForIngredientPortion({
+                                    ingredient: dataIngredient,
+                                    unitId: measurement.unitId,
+                                    quantity: measurement.quantity,
+                                  });
                               const rawUnitOptions = (dataIngredient?.units ?? []).map(
                                 (unit) => ({
                                   id: normalizePlanUnitId(unit.id),
@@ -1050,7 +1386,12 @@ function Cooking() {
                                 <TableRow
                                   key={`food-${index}-ingredient-${ingredient.ingredient_id}`}
                                 >
-                                  <TableCell sx={{ pl: 4 }}>
+                                  <TableCell
+                                    sx={{
+                                      pl: 4,
+                                      color: isRemoved ? "text.secondary" : undefined,
+                                    }}
+                                  >
                                     {dataIngredient?.name ?? "Ingredient"}
                                   </TableCell>
                                   <TableCell>
@@ -1078,21 +1419,23 @@ function Cooking() {
                                         gap: 1,
                                       }}
                                     >
-                                        <DecimalInput
-                                          value={measurement.quantity}
-                                          onValueChange={(value) =>
-                                            updateIngredientMeasurement(
-                                              ingredientKey,
-                                              fallbackMeasurement,
-                                              { quantity: value },
-                                            )
-                                          }
-                                          sx={{ width: 120 }}
-                                          inputProps={{ min: 0, step: "any" }}
-                                        />
+                                      <DecimalInput
+                                        value={measurement.quantity}
+                                        onValueChange={(value) =>
+                                          updateIngredientMeasurement(
+                                            ingredientKey,
+                                            fallbackMeasurement,
+                                            { quantity: value },
+                                          )
+                                        }
+                                        sx={{ width: 120 }}
+                                        inputProps={{ min: 0, step: "any" }}
+                                        disabled={isRemoved}
+                                      />
                                       <Select
                                         size="small"
                                         value={measurement.unitId}
+                                        disabled={isRemoved}
                                         onChange={(event) => {
                                           const selectedUnit = normalizePlanUnitId(
                                             event.target.value,
@@ -1121,6 +1464,15 @@ function Cooking() {
                                       >
                                         {`${formatCellNumber(actualGrams)} g`}
                                       </Typography>
+                                      {isRemoved && (
+                                        <Typography
+                                          component="span"
+                                          variant="body2"
+                                          color="text.secondary"
+                                        >
+                                          Removed
+                                        </Typography>
+                                      )}
                                     </Box>
                                   </TableCell>
                                   <TableCell>
@@ -1138,10 +1490,253 @@ function Cooking() {
                                   <TableCell>
                                     {formatCellNumber(ingredientMacros.fiber)}
                                   </TableCell>
-                                  <TableCell></TableCell>
+                                  <TableCell>
+                                    <Button
+                                      size="small"
+                                      onClick={() =>
+                                        toggleFoodIngredientRemoved(
+                                          portionKey,
+                                          String(ingredient.ingredient_id),
+                                          !isRemoved,
+                                        )
+                                      }
+                                    >
+                                      {isRemoved ? "Restore" : "Remove"}
+                                    </Button>
+                                  </TableCell>
                                 </TableRow>
                               );
                             })}
+                            {foodAdjustments.addedIngredientIds.map(
+                              (ingredientId) => {
+                                const addedIngredient = findIngredientInLookup(
+                                  ingredientLookup,
+                                  ingredientId,
+                                );
+                                const addedKey = addedFoodIngredientKey(
+                                  index,
+                                  ingredientId,
+                                );
+                                const defaultUnitId =
+                                  resolveDefaultIngredientUnitId(addedIngredient);
+                                const fallbackMeasurement: IngredientMeasurement = {
+                                  quantity: 0,
+                                  unitId: defaultUnitId,
+                                };
+                                const measurement = readMeasurementWithFallback(
+                                  actualState.ingredientTotals,
+                                  addedKey,
+                                  fallbackMeasurement.quantity,
+                                  fallbackMeasurement.unitId,
+                                );
+                                const ingredientMacros = macrosForIngredientPortion({
+                                  ingredient: addedIngredient,
+                                  unitId: measurement.unitId,
+                                  quantity: measurement.quantity,
+                                });
+                                const actualGrams = gramsForIngredientPortion({
+                                  ingredient: addedIngredient,
+                                  unitId: measurement.unitId,
+                                  quantity: measurement.quantity,
+                                });
+                                const rawUnitOptions = (
+                                  addedIngredient?.units ?? []
+                                ).map((unit) => ({
+                                  id: normalizePlanUnitId(unit.id),
+                                  name: unit.name ?? "",
+                                }));
+                                const seenUnitIds = new Set<number>();
+                                const unitOptions = rawUnitOptions.filter((option) => {
+                                  if (seenUnitIds.has(option.id)) {
+                                    return false;
+                                  }
+                                  seenUnitIds.add(option.id);
+                                  return true;
+                                });
+                                if (unitOptions.length === 0) {
+                                  unitOptions.push({
+                                    id: GRAM_UNIT_SENTINEL,
+                                    name: "g",
+                                  });
+                                }
+                                if (
+                                  !unitOptions.some(
+                                    (option) => option.id === measurement.unitId,
+                                  )
+                                ) {
+                                  unitOptions.push({
+                                    id: measurement.unitId,
+                                    name:
+                                      resolveIngredientUnitName(
+                                        addedIngredient,
+                                        measurement.unitId,
+                                      ) || "g",
+                                  });
+                                }
+
+                                return (
+                                  <TableRow
+                                    key={`food-${index}-added-${ingredientId}`}
+                                  >
+                                    <TableCell sx={{ pl: 4 }}>
+                                      {addedIngredient?.name ?? "Ingredient"}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Typography
+                                        component="span"
+                                        variant="body2"
+                                        color="text.secondary"
+                                      >
+                                        Added during cooking
+                                      </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Box
+                                        sx={{
+                                          display: "flex",
+                                          flexWrap: "wrap",
+                                          alignItems: "center",
+                                          gap: 1,
+                                        }}
+                                      >
+                                        <DecimalInput
+                                          value={measurement.quantity}
+                                          onValueChange={(value) =>
+                                            updateIngredientMeasurement(
+                                              addedKey,
+                                              fallbackMeasurement,
+                                              { quantity: value },
+                                            )
+                                          }
+                                          sx={{ width: 120 }}
+                                          inputProps={{ min: 0, step: "any" }}
+                                        />
+                                        <Select
+                                          size="small"
+                                          value={measurement.unitId}
+                                          onChange={(event) => {
+                                            const selectedUnit = normalizePlanUnitId(
+                                              event.target.value,
+                                            );
+                                            updateIngredientMeasurement(
+                                              addedKey,
+                                              fallbackMeasurement,
+                                              { unitId: selectedUnit },
+                                            );
+                                          }}
+                                        >
+                                          {unitOptions.map((option) => (
+                                            <MenuItem
+                                              key={`${addedKey}-${option.id}`}
+                                              value={option.id}
+                                            >
+                                              {option.name}
+                                            </MenuItem>
+                                          ))}
+                                        </Select>
+                                        <Typography
+                                          component="span"
+                                          variant="body2"
+                                          color="text.secondary"
+                                          sx={{ whiteSpace: "nowrap" }}
+                                        >
+                                          {`${formatCellNumber(actualGrams)} g`}
+                                        </Typography>
+                                      </Box>
+                                    </TableCell>
+                                    <TableCell>
+                                      {formatCellNumber(ingredientMacros.calories)}
+                                    </TableCell>
+                                    <TableCell>
+                                      {formatCellNumber(ingredientMacros.protein)}
+                                    </TableCell>
+                                    <TableCell>
+                                      {formatCellNumber(ingredientMacros.carbs)}
+                                    </TableCell>
+                                    <TableCell>
+                                      {formatCellNumber(ingredientMacros.fat)}
+                                    </TableCell>
+                                    <TableCell>
+                                      {formatCellNumber(ingredientMacros.fiber)}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Button
+                                        size="small"
+                                        onClick={() =>
+                                          removeAddedFoodIngredient(
+                                            portionKey,
+                                            ingredientId,
+                                            index,
+                                          )
+                                        }
+                                      >
+                                        Remove
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              },
+                            )}
+                            <TableRow key={`food-${index}-add-row`}>
+                              <TableCell sx={{ pl: 4 }}>
+                                <Typography
+                                  component="span"
+                                  variant="body2"
+                                  color="text.secondary"
+                                >
+                                  Add ingredient
+                                </Typography>
+                              </TableCell>
+                              <TableCell colSpan={7}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    flexWrap: "wrap",
+                                    alignItems: "center",
+                                    gap: 1,
+                                  }}
+                                >
+                                  <Select
+                                    size="small"
+                                    value={addSelection}
+                                    displayEmpty
+                                    onChange={(event) =>
+                                      updatePendingIngredientSelection(
+                                        portionKey,
+                                        String(event.target.value ?? ""),
+                                      )
+                                    }
+                                    sx={{ minWidth: 220 }}
+                                  >
+                                    <MenuItem value="">
+                                      <em>Select ingredient</em>
+                                    </MenuItem>
+                                    {ingredients.map((ingredient) => {
+                                      const id = normalizeIngredientId(
+                                        ingredient?.id,
+                                      );
+                                      if (!id) {
+                                        return null;
+                                      }
+                                      return (
+                                        <MenuItem key={id} value={id}>
+                                          {ingredient?.name ?? "Ingredient"}
+                                        </MenuItem>
+                                      );
+                                    })}
+                                  </Select>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => handleAddIngredient(portionKey)}
+                                    disabled={!addSelection}
+                                  >
+                                    Add
+                                  </Button>
+                                </Box>
+                              </TableCell>
+                              <TableCell></TableCell>
+                            </TableRow>
                           </React.Fragment>
                         );
                       }
