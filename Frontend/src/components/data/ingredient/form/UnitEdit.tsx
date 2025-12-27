@@ -25,6 +25,7 @@ type UnitDialogProps = {
   open: boolean;
   mode: "add" | "edit";
   initialUnit?: IngredientUnit | null;
+  units: IngredientUnit[];
   onClose: () => void;
   onSubmit: (name: string, grams: number) => void;
 };
@@ -36,25 +37,76 @@ const formatUnitGrams = (value: IngredientUnit["grams"] | undefined): string => 
   return typeof value === "number" ? value.toString() : String(value);
 };
 
-function UnitDialog({ open, mode, initialUnit = null, onClose, onSubmit }: UnitDialogProps) {
+function UnitDialog({ open, mode, initialUnit = null, units, onClose, onSubmit }: UnitDialogProps) {
+  const [unitMode, setUnitMode] = useState<"grams" | "unit">("grams");
   const [unitName, setUnitName] = useState("");
   const [unitGrams, setUnitGrams] = useState("");
+  const [baseUnitId, setBaseUnitId] = useState<string>("");
+  const [baseQuantity, setBaseQuantity] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
+      setUnitMode("grams");
       setUnitName(initialUnit?.name ?? "");
       setUnitGrams(formatUnitGrams(initialUnit?.grams));
+      setBaseUnitId(units[0]?.id != null ? String(units[0].id) : "");
+      setBaseQuantity("1");
       setValidationError(null);
     }
-  }, [initialUnit, open]);
+  }, [initialUnit, open, units]);
+
+  const resolvedBaseUnit = useMemo(
+    () => units.find((unit) => String(unit.id) === baseUnitId) ?? null,
+    [baseUnitId, units]
+  );
+
+  const resolvedBaseGrams = useMemo(() => {
+    if (!resolvedBaseUnit) return null;
+    const parsedQuantity = Number.parseFloat(baseQuantity.trim());
+    if (!Number.isFinite(parsedQuantity)) return null;
+    if (parsedQuantity <= 0) return null;
+    const baseGrams = typeof resolvedBaseUnit.grams === "number"
+      ? resolvedBaseUnit.grams
+      : Number.parseFloat(String(resolvedBaseUnit.grams));
+    if (!Number.isFinite(baseGrams) || baseGrams <= 0) return null;
+    return parsedQuantity * baseGrams;
+  }, [baseQuantity, resolvedBaseUnit]);
 
   const handleSubmit = () => {
     const trimmedName = unitName.trim();
-    const trimmedGrams = unitGrams.trim();
+    const trimmedGrams = unitMode === "unit" ? "" : unitGrams.trim();
 
     if (!trimmedName) {
       setValidationError("Unit name cannot be empty");
+      return;
+    }
+
+    if (unitMode === "unit") {
+      if (!resolvedBaseUnit) {
+        setValidationError("Please select a base unit");
+        return;
+      }
+
+      if (!baseQuantity.trim() || Number.isNaN(Number.parseFloat(baseQuantity.trim()))) {
+        setValidationError("Please enter a valid unit quantity up to 4 decimal places");
+        return;
+      }
+
+      if (!/^(\d*\.?\d{0,4})$/.test(baseQuantity.trim())) {
+        setValidationError("Please enter a valid unit quantity up to 4 decimal places");
+        return;
+      }
+
+      const gramsValue = resolvedBaseGrams;
+      if (!gramsValue || gramsValue <= 0) {
+        setValidationError("Please enter a valid unit quantity up to 4 decimal places");
+        return;
+      }
+
+      const normalizedGrams = Number.parseFloat(gramsValue.toFixed(4));
+      onSubmit(trimmedName, normalizedGrams);
+      onClose();
       return;
     }
 
@@ -94,15 +146,81 @@ function UnitDialog({ open, mode, initialUnit = null, onClose, onSubmit }: UnitD
           margin="dense"
         />
         <TextField
+          label="Definition method"
+          variant="outlined"
+          select
+          value={unitMode}
+          onChange={(event) => {
+            setUnitMode(event.target.value as "grams" | "unit");
+            setValidationError(null);
+          }}
+          fullWidth
+          margin="dense"
+        >
+          <MenuItem value="grams">Direct grams</MenuItem>
+          <MenuItem value="unit" disabled={units.length === 0}>
+            Based on existing unit
+          </MenuItem>
+        </TextField>
+        {unitMode === "unit" ? (
+          <>
+            <TextField
+              label="Base unit"
+              variant="outlined"
+              select
+              value={baseUnitId}
+              onChange={(event) => setBaseUnitId(event.target.value)}
+              error={Boolean(validationError && validationError.includes("base unit"))}
+              helperText={
+                validationError && validationError.includes("base unit")
+                  ? validationError
+                  : ""
+              }
+              fullWidth
+              margin="dense"
+            >
+              {units.map((unit) => (
+                <MenuItem key={unit.id ?? `unit-${unit.name}`} value={String(unit.id)}>
+                  {unit.name} ({formatUnitGrams(unit.grams)} g)
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="Base quantity"
+              variant="outlined"
+              value={baseQuantity}
+              onChange={(e) => setBaseQuantity(e.target.value)}
+              error={Boolean(validationError && validationError.includes("unit quantity"))}
+              helperText={
+                validationError && validationError.includes("unit quantity")
+                  ? validationError
+                  : "Enter a number up to 4 decimal places"
+              }
+              fullWidth
+              margin="dense"
+            />
+          </>
+        ) : null}
+        <TextField
           label="Unit grams"
           variant="outlined"
-          value={unitGrams}
+          value={
+            unitMode === "unit"
+              ? formatUnitGrams(
+                  resolvedBaseGrams == null ? undefined : resolvedBaseGrams
+                )
+              : unitGrams
+          }
           onChange={(e) => setUnitGrams(e.target.value)}
+          InputProps={{ readOnly: unitMode === "unit" }}
+          disabled={unitMode === "unit"}
           error={Boolean(validationError && validationError.includes("grams"))}
           helperText={
             validationError && validationError.includes("grams")
               ? validationError
-              : "Enter a number up to 4 decimal places"
+              : unitMode === "unit"
+                ? "Calculated from the base unit"
+                : "Enter a number up to 4 decimal places"
           }
           fullWidth
           margin="dense"
@@ -327,6 +445,7 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }: UnitEditProps) {
         open={showDialog}
         mode={dialogMode}
         initialUnit={dialogMode === "edit" ? selectedUnit : null}
+        units={units}
         onClose={() => setShowDialog(false)}
         onSubmit={handleDialogSubmit}
       />

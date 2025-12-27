@@ -95,7 +95,7 @@ Options:
 
 - Add `type -test` to run on the dedicated test ports (`TEST_*`). Useful for end-to-end runs that should not collide with your dev stack.
 - Append service names (e.g. `frontend backend`) to limit which containers start.
-- The script waits for PostgreSQL, ensures the backend dependencies are present, runs Alembic migrations inside the container, and seeds data based on the `data` flag.
+- The script waits for PostgreSQL, ensures the backend dependencies are present, runs Alembic migrations inside the container, then seeds data: `data -test` loads test CSV fixtures; `data -prod` restores the latest branch dump in PowerShell and seeds production CSV fixtures in Bash.
 
 Stop services:
 
