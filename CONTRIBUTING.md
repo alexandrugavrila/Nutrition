@@ -53,7 +53,7 @@ Recommended flow when starting or updating a branch:
    pwsh ./scripts/switch-worktree-branch.ps1 feature/my-feature
    ```
 
-   The script creates `../nutrition-feature-my-feature` if needed, checks out the branch there, and optionally opens VS Code. Pass `-SkipVSCode` to stay in the terminal or `-NewVSCodeWindow` for a new window.
+   The script fetches remote refs, creates local tracking branches for any remote-only branches, then creates `../nutrition-feature-my-feature` if needed, checks out the branch there, and optionally opens VS Code. Pass `-SkipVSCode` to stay in the terminal or `-NewVSCodeWindow` for a new window.
 
 4. Verify the environment:
 
@@ -204,8 +204,8 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
   - Call graph: relies on `scripts/lib/branch-env.*` and `scripts/lib/worktree.sh`; PowerShell version can invoke `scripts/env/activate-venv.ps1` during fixes.
 
 - `scripts/switch-worktree-branch.ps1`
-  - Purpose: interactively pick a local or remote branch, jump to its dedicated worktree (creating it if needed), optionally open VS Code, optionally start Docker Compose, and always activate the virtualenv.
-  - Flags/parameters: `-Branch`, `-Remote`, `-SkipVSCode`, `-NewVSCodeWindow`, `-StartWorkspaceStack`, and `-Data <test|prod>` (required with `-StartWorkspaceStack`).
+  - Purpose: fetch remote refs, create local tracking branches for remote-only branches, then interactively pick a local branch, jump to its dedicated worktree (creating it if needed), optionally open VS Code, optionally start Docker Compose, and always activate the virtualenv.
+  - Flags/parameters: `-Branch`, `-SkipVSCode`, `-NewVSCodeWindow`, `-StartWorkspaceStack`, and `-Data <test|prod>` (required with `-StartWorkspaceStack`).
   - Call graph: invokes `scripts/env/activate-venv.ps1` and `scripts/docker/compose.ps1` when the corresponding switches are selected.
 
 ### Repository maintenance
