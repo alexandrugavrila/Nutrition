@@ -57,9 +57,13 @@ const normalizeResults = (data: unknown): UsdaIngredientResult[] => {
   }
 
   if (data && typeof data === "object") {
-    const possibleResults = (data as { results?: unknown }).results;
+    const possibleResults = (data as { results?: unknown; foods?: unknown }).results;
+    const foodsResults = (data as { foods?: unknown }).foods;
     if (possibleResults) {
       return normalizeResults(possibleResults);
+    }
+    if (foodsResults) {
+      return normalizeResults(foodsResults);
     }
   }
 
@@ -69,8 +73,10 @@ const normalizeResults = (data: unknown): UsdaIngredientResult[] => {
 function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UsdaIngredientResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   const selectedSource: IngredientSource = ingredient.source ?? "manual";
   const disabledSearch = selectedSource !== "usda";
@@ -78,7 +84,7 @@ function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
   const hasResults = results.length > 0;
 
   const statusMessage = useMemo(() => {
-    if (isLoading) {
+    if (isSearching) {
       return "Searching USDA database...";
     }
     if (error) {
@@ -91,7 +97,7 @@ function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
       return "No USDA matches yet. Try a different search.";
     }
     return null;
-  }, [error, isLoading, query, hasResults]);
+  }, [error, isSearching, query, hasResults]);
 
   const handleSourceChange = (event) => {
     const value = event.target.value as IngredientSource;
@@ -113,8 +119,9 @@ function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
       return;
     }
 
-    setIsLoading(true);
+    setIsSearching(true);
     setError(null);
+    setDetailError(null);
 
     try {
       const response = await fetch(`/api/usda/search?query=${encodeURIComponent(trimmed)}`);
@@ -129,12 +136,33 @@ function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
       // eslint-disable-next-line no-console
       console.error(searchError);
     } finally {
-      setIsLoading(false);
+      setIsSearching(false);
     }
   };
 
-  const handleSelectResult = (result: UsdaIngredientResult) => {
-    applyUsdaResult(result);
+  const handleSelectResult = async (result: UsdaIngredientResult) => {
+    setIsLoadingDetail(true);
+    setDetailError(null);
+
+    try {
+      const response = await fetch(`/api/usda/foods/${result.id}`);
+      if (!response.ok) {
+        throw new Error("USDA detail fetch failed.");
+      }
+      const data = await response.json();
+      const mapped = mapUsdaResult(data);
+      if (!mapped) {
+        throw new Error("USDA detail mapping failed.");
+      }
+      applyUsdaResult(mapped);
+    } catch (detailFetchError) {
+      setDetailError("Unable to load USDA details. Using search results instead.");
+      applyUsdaResult(result);
+      // eslint-disable-next-line no-console
+      console.error(detailFetchError);
+    } finally {
+      setIsLoadingDetail(false);
+    }
   };
 
   return (
@@ -160,14 +188,22 @@ function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
               onChange={(event) => setQuery(event.target.value)}
               fullWidth
             />
-            <Button variant="outlined" onClick={handleSearch} disabled={disabledSearch || isLoading}>
+            <Button
+              variant="outlined"
+              onClick={handleSearch}
+              disabled={disabledSearch || isSearching || isLoadingDetail}>
               Search
             </Button>
           </Box>
-          {isLoading && <CircularProgress size={20} />}
+          {(isSearching || isLoadingDetail) && <CircularProgress size={20} />}
           {statusMessage && (
             <Typography variant="body2" color={error ? "error" : "text.secondary"}>
               {statusMessage}
+            </Typography>
+          )}
+          {detailError && (
+            <Typography variant="body2" color="warning.main">
+              {detailError}
             </Typography>
           )}
           {hasResults && (
