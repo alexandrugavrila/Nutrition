@@ -12,9 +12,10 @@ router = APIRouter(prefix="/usda", tags=["usda"])
 _BASE_URL = "https://api.nal.usda.gov/fdc/v1"
 _MACRO_NAMES = {
     "energy": "calories",
-    "protein": "protein_g",
-    "total lipid (fat)": "fat_g",
-    "carbohydrate, by difference": "carbs_g",
+    "protein": "protein",
+    "total lipid (fat)": "fat",
+    "carbohydrate, by difference": "carbohydrates",
+    "fiber, total dietary": "fiber",
 }
 
 
@@ -64,7 +65,7 @@ def _trim_nutrients(food_nutrients: Iterable[dict[str, Any]]) -> dict[str, float
 def _trim_food_payload(food: dict[str, Any]) -> dict[str, Any]:
     nutrients = _trim_nutrients(food.get("foodNutrients", []))
     return {
-        "fdc_id": food.get("fdcId"),
+        "id": food.get("fdcId"),
         "name": food.get("description"),
         "nutrients": nutrients,
     }
