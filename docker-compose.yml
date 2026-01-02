@@ -25,6 +25,7 @@ services:
       DATABASE_URL: postgresql://nutrition_user:nutrition_pass@db:5432/nutrition
       WATCHFILES_FORCE_POLLING: "true"
       ALEMBIC_CONFIG: /app/Backend/alembic.ini
+      USDA_API_KEY: "${USDA_API_KEY}"
     depends_on:
       db:
         condition: service_healthy
@@ -52,6 +53,7 @@ services:
     environment:
       CHOKIDAR_USEPOLLING: "true"
       BACKEND_URL: "http://backend:8000"
+      VITE_API_BASE_URL: "${VITE_API_BASE_URL}"
     ports:
         - "${DEV_FRONTEND_PORT:-3000}:3000"
     networks:

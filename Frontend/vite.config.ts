@@ -7,6 +7,7 @@ const backendUrl = process.env.BACKEND_URL || `http://localhost:${backendPort}`;
 
 export default defineConfig({
   plugins: [react()],
+  envDir: path.resolve(__dirname, ".."),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
