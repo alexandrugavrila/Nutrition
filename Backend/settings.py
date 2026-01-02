@@ -8,6 +8,7 @@ attributes instead of reading environment variables directly.
 from __future__ import annotations
 
 import os
+import warnings
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -21,6 +22,10 @@ def _to_bool(value: str | None, default: bool = False) -> bool:
 def _load_dotenv() -> None:
     env_path = Path(__file__).resolve().parents[1] / ".env"
     if not env_path.exists():
+        warnings.warn(
+            ".env file not found. Copy .env.template to .env and set required keys.",
+            RuntimeWarning,
+        )
         return
 
     for line in env_path.read_text().splitlines():
@@ -81,11 +86,18 @@ class Settings:
         else:
             origins = [o.strip() for o in origins_raw.split(",") if o.strip()]
 
+        usda_api_key = os.getenv("USDA_API_KEY")
+        if not usda_api_key:
+            warnings.warn(
+                "USDA_API_KEY is not set. USDA endpoints will not be available.",
+                RuntimeWarning,
+            )
+
         return Settings(
             database_url=db_url,
             db_auto_create=auto_create,
             allow_origins=origins,
-            usda_api_key=os.getenv("USDA_API_KEY"),
+            usda_api_key=usda_api_key,
         )
 
 

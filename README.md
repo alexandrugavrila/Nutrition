@@ -28,7 +28,15 @@ A full-stack nutrition planning and tracking app built with:
 
    Bash users can run the script through `pwsh` (PowerShell 7+ is cross-platform).
 
-3. Activate the developer environment (installs backend dependencies and keeps the virtualenv up to date).
+3. Create your local environment file.
+
+   ```pwsh
+   Copy-Item .env.template .env
+   ```
+
+   Then fill in `USDA_API_KEY` and confirm `VITE_API_BASE_URL` in `.env`.
+
+4. Activate the developer environment (installs backend dependencies and keeps the virtualenv up to date).
 
    ```pwsh
    pwsh ./scripts/env/activate-venv.ps1
@@ -38,7 +46,7 @@ A full-stack nutrition planning and tracking app built with:
 
    To verify the current shell is in the right worktree with an active venv, run `pwsh ./scripts/env/check.ps1 -Fix` (or `./scripts/env/check.sh --fix`).
 
-4. Start the branch-local Docker stack.
+5. Start the branch-local Docker stack.
 
    ```pwsh
    pwsh ./scripts/docker/compose.ps1 up data -test
@@ -55,7 +63,7 @@ A full-stack nutrition planning and tracking app built with:
    - Backend API: `http://localhost:<DEV_BACKEND_PORT>/docs`
    - PostgreSQL: `localhost:<DEV_DB_PORT>`
 
-5. Visit the printed URLs or connect a SQL client (default credentials: `nutrition_user` / `nutrition_pass`).
+6. Visit the printed URLs or connect a SQL client (default credentials: `nutrition_user` / `nutrition_pass`).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
 
