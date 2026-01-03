@@ -225,6 +225,10 @@ if (-not $repoRootRaw) {
 }
 Set-Location $repoRootRaw
 $repoRoot = Normalize-Path $repoRootRaw
+$branchEnvLib = Join-Path $repoRoot 'scripts' 'lib' 'branch-env.ps1'
+if (Test-Path -LiteralPath $branchEnvLib) {
+    . $branchEnvLib
+}
 
 $remoteName = 'origin'
 Write-Host "Fetching latest refs from '$remoteName'..."
@@ -379,10 +383,14 @@ if ($targetPath) {
     return
 }
 
-$sanitizedName = Sanitize-WorktreeName $Branch
+$sanitizedName = if (Get-Command -Name Get-SanitizedBranch -ErrorAction SilentlyContinue) {
+    Get-SanitizedBranch $Branch
+} else {
+    Sanitize-WorktreeName $Branch
+}
 $parentDir = Split-Path -Parent $repoRoot
 if (-not $parentDir) { $parentDir = $repoRoot }
-$defaultPath = Normalize-Path (Join-Path $parentDir $sanitizedName)
+$defaultPath = Normalize-Path (Join-Path $parentDir ("nutrition-$sanitizedName"))
 if ($defaultPath -eq $repoRoot) {
     $defaultPath = Normalize-Path (Join-Path $parentDir ($sanitizedName + '-worktree'))
 }
