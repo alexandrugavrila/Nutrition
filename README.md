@@ -21,9 +21,10 @@ A full-stack nutrition planning and tracking app built with:
 2. (Optional) Create or jump to a dedicated worktree when you want hot reload and database state isolated per branch.
 
    ```pwsh
-   pwsh ./scripts/switch-worktree-branch.ps1 feature/my-feature
+   pwsh ./scripts/switch-worktree-branch.ps1 feature/my-feature -CopyEnv
    ```
    - The script fetches remote refs, creates local tracking branches for remote-only branches, then creates `../nutrition-feature-my-feature` if needed and reopens the folder in VS Code (use `-SkipVSCode` to opt out).
+   - Pass `-CopyEnv` to copy the current worktree `.env` into the target worktree if it does not already exist.
    - Worktrees let every branch mount its own code directory and Postgres volume, so multiple stacks can run in parallel.
 
    Bash users can run the script through `pwsh` (PowerShell 7+ is cross-platform).
@@ -72,7 +73,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
 ## Key Helper Scripts
 
 - `pwsh ./scripts/repo/check.ps1`: fetch latest refs, audit worktrees, flag stale container stacks, and suggest fixes. Bash: `./scripts/repo/check.sh`.
-- `pwsh ./scripts/switch-worktree-branch.ps1`: fetch remote refs, sync local tracking branches, and create or hop between branch-dedicated worktrees.
+- `pwsh ./scripts/switch-worktree-branch.ps1`: fetch remote refs, sync local tracking branches, and create or hop between branch-dedicated worktrees (`-CopyEnv` can copy the current `.env` into the target).
 - `pwsh ./scripts/env/check.ps1 -Fix`: ensure you are inside the correct worktree with an activated virtualenv (Bash variant available).
 - `pwsh ./scripts/docker/compose.ps1 <up|down|restart>`: manage the per-branch Docker stack.
 - `pwsh ./scripts/run-tests.ps1 [-sync] [-e2e]`: run backend + frontend tests with optional API/migration sync. Bash variant: `./scripts/run-tests.sh`.
