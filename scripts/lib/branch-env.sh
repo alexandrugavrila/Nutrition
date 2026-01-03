@@ -7,6 +7,33 @@ branch_env_repo_root() {
   git rev-parse --show-toplevel
 }
 
+# Resolve the parent directory that should contain branch worktrees.
+branch_env_worktree_parent() {
+  local repo_root="${1:-$(branch_env_repo_root)}"
+  local override="${NUTRITION_WORKTREE_PARENT:-}"
+
+  if [[ -n "$override" ]]; then
+    if [[ "$override" != /* && ! "$override" =~ ^[A-Za-z]:/ ]]; then
+      override="$repo_root/$override"
+    fi
+    if cd "$override" 2>/dev/null; then
+      pwd -P
+      return 0
+    fi
+    printf '%s\n' "$override"
+    return 0
+  fi
+
+  local common_git_dir primary_root parent_dir
+  common_git_dir="$(git -C "$repo_root" rev-parse --git-common-dir)"
+  if [[ "$common_git_dir" != /* && ! "$common_git_dir" =~ ^[A-Za-z]:/ ]]; then
+    common_git_dir="$repo_root/$common_git_dir"
+  fi
+  primary_root="$(cd "$common_git_dir/.." && pwd -P)"
+  parent_dir="$(dirname "$primary_root")"
+  printf '%s\n' "$parent_dir"
+}
+
 # Sanitize a Git branch name to be Docker/filename friendly.
 # Usage: branch_env_sanitize_branch "feature/My Branch" -> "feature-my-branch"
 branch_env_sanitize_branch() {

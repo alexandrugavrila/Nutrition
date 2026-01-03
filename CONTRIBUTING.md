@@ -53,7 +53,7 @@ Recommended flow when starting or updating a branch:
    pwsh ./scripts/switch-worktree-branch.ps1 feature/my-feature
    ```
 
-   The script fetches remote refs, creates local tracking branches for any remote-only branches, then creates `../nutrition-feature-my-feature` if needed, checks out the branch there, and optionally opens VS Code. Pass `-SkipVSCode` to stay in the terminal or `-NewVSCodeWindow` for a new window.
+   The script fetches remote refs, creates local tracking branches for any remote-only branches, then creates `nutrition-feature-my-feature` under the worktree parent (default: parent of the primary clone; override with `NUTRITION_WORKTREE_PARENT`) if needed, checks out the branch there, and optionally opens VS Code. Pass `-SkipVSCode` to stay in the terminal or `-NewVSCodeWindow` for a new window.
 
 4. Verify the environment:
 
@@ -68,7 +68,7 @@ Recommended flow when starting or updating a branch:
 Worktree conventions:
 
 - `main` (or the repository's default branch) remains in the original clone (the "primary root").
-- Every other branch should live in a sibling directory named `nutrition-<sanitized-branch>`; all helper scripts rely on this layout to compute per-branch ports, compose project names, and database volumes.
+- Every other branch should live in a dedicated directory named `nutrition-<sanitized-branch>` under the worktree parent (defaults to the parent of the primary clone). You can override the parent directory by setting `NUTRITION_WORKTREE_PARENT` before running the helpers.
 - The helpers error out on detached HEADs or mismatched worktree locations to avoid running the wrong stack.
 
 Other repo utilities:
@@ -332,7 +332,7 @@ Additional tooling:
 ## Troubleshooting
 
 - **"Branch should be in its dedicated worktree"**  
-  Run `pwsh ./scripts/env/check.ps1 -Fix` or manually create the worktree: `git worktree add ../nutrition-<sanitized> <branch>`.
+  Run `pwsh ./scripts/env/check.ps1 -Fix` or manually create the worktree: `git worktree add "<worktree-parent>/nutrition-<sanitized>" <branch>`.
 - **Detached HEAD**  
   Switch to a named branch before running the helpers.
 - **Compose script exits early**  
