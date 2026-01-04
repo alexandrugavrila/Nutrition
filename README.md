@@ -148,17 +148,20 @@ Detailed endpoint documentation is available at `http://localhost:<DEV_BACKEND_P
 
 ```mermaid
 erDiagram
-  INGREDIENT ||--o{ INGREDIENT_UNIT : defines
-  INGREDIENT ||--|| NUTRITION : has
-  INGREDIENT ||--o{ INGREDIENT_TAG : tagged_with
-  INGREDIENT_TAG }o--|| POSSIBLE_INGREDIENT_TAG : references
-  INGREDIENT ||--o| INGREDIENT_SHOPPING_UNIT : shopping_pref
-  INGREDIENT_SHOPPING_UNIT ||--|| INGREDIENT_UNIT : selects_optional
+  INGREDIENT ||--|| NUTRITION : has_nutrition
+  INGREDIENT ||--o{ INGREDIENT_TAG : tagged
+  INGREDIENT ||--o| INGREDIENT_SHOPPING_UNIT : shopping_unit
+  INGREDIENT ||--o{ INGREDIENT_UNIT : has_units
+
+  INGREDIENT_TAG }o--|| POSSIBLE_INGREDIENT_TAG : tag
+  INGREDIENT_SHOPPING_UNIT ||--|| INGREDIENT_UNIT : unit
+
   FOOD ||--o{ FOOD_INGREDIENT : includes
-  FOOD_INGREDIENT }o--|| INGREDIENT : uses
-  FOOD_INGREDIENT }o--|| INGREDIENT_UNIT : portioned_with
-  FOOD ||--o{ FOOD_TAG : tagged_with
-  FOOD_TAG }o--|| POSSIBLE_FOOD_TAG : references
+  FOOD_INGREDIENT }o--|| INGREDIENT : ingredient
+  FOOD_INGREDIENT }o--|| INGREDIENT_UNIT : unit
+
+  FOOD ||--o{ FOOD_TAG : tagged
+  FOOD_TAG }o--|| POSSIBLE_FOOD_TAG : tag
   PLAN {
     id integer
     label varchar
@@ -171,6 +174,179 @@ erDiagram
 </details>
 
 The ingredient shopping unit is optional per ingredient, but when present it must reference one of the ingredient's units; food ingredient quantities can also reference those shared units to keep serving sizes consistent across foods.
+
+<details>
+<summary>Database Schema (Mermaid)</summary>
+
+```mermaid
+erDiagram
+  ingredients {
+    int id PK
+    string name
+    string source "nullable"
+    string source_id "nullable"
+  }
+  nutrition {
+    int id PK
+    int ingredient_id FK
+    numeric calories
+    numeric fat
+    numeric carbohydrates
+    numeric protein
+    numeric fiber
+  }
+  ingredient_units {
+    int id PK
+    int ingredient_id FK
+    string name
+    numeric grams
+  }
+  ingredient_shopping_units {
+    int ingredient_id PK
+    int unit_id FK "nullable"
+  }
+  possible_ingredient_tags {
+    int id PK
+    string name
+  }
+  ingredient_tags {
+    int ingredient_id PK
+    int tag_id PK
+  }
+
+  foods {
+    int id PK
+    string name
+  }
+  food_ingredients {
+    int food_id PK
+    int ingredient_id PK
+    int unit_id FK "nullable"
+    numeric unit_quantity "nullable"
+  }
+  possible_food_tags {
+    int id PK
+    string name
+  }
+  food_tags {
+    int food_id PK
+    int tag_id PK
+  }
+
+  stored_food {
+    int id PK
+    string user_id
+    string label "nullable"
+    int food_id FK "nullable"
+    int ingredient_id FK "nullable"
+    float prepared_portions
+    float remaining_portions
+    float per_portion_calories
+    float per_portion_protein
+    float per_portion_carbohydrates
+    float per_portion_fat
+    float per_portion_fiber
+    boolean is_finished
+    datetime prepared_at
+    datetime updated_at
+    datetime completed_at "nullable"
+  }
+  daily_log_entries {
+    int id PK
+    string user_id
+    date log_date
+    int stored_food_id FK "nullable"
+    int ingredient_id FK "nullable"
+    int food_id FK "nullable"
+    float portions_consumed
+    float calories
+    float protein
+    float carbohydrates
+    float fat
+    float fiber
+    datetime created_at
+  }
+
+  plans {
+    int id PK
+    string label
+    json payload
+    datetime created_at
+    datetime updated_at
+  }
+
+  ingredients ||--o{ nutrition : nutrition
+  ingredients ||--o{ ingredient_units : units
+  ingredients ||--o| ingredient_shopping_units : shopping_unit
+  ingredient_units ||--o| ingredient_shopping_units : unit
+  ingredients ||--o{ ingredient_tags : tagged
+  possible_ingredient_tags ||--o{ ingredient_tags : tag
+
+  foods ||--o{ food_ingredients : includes
+  ingredients ||--o{ food_ingredients : ingredient
+  ingredient_units ||--o{ food_ingredients : unit
+  foods ||--o{ food_tags : tagged
+  possible_food_tags ||--o{ food_tags : tag
+
+  foods ||--o{ stored_food : stored_food
+  ingredients ||--o{ stored_food : stored_ingredient
+  stored_food ||--o{ daily_log_entries : logged
+  foods ||--o{ daily_log_entries : logged_food
+  ingredients ||--o{ daily_log_entries : logged_ingredient
+```
+
+</details>
+
+The database schema adds operational tables (such as `stored_food` and `daily_log_entries`) and uses the physical table names for the same core entities shown in the backend overview above. The `plans.payload` column stores JSON that references foods and ingredients rather than foreign keys.
+
+<details>
+<summary>Plan Payload (Mermaid)</summary>
+
+```mermaid
+classDiagram
+  class PlanPayload {
+    days
+    targetMacros
+    plan
+  }
+
+  class PlanItem {
+    <<union>>
+  }
+
+  class FoodPlanItem {
+    type = "food"
+    foodId
+    portions
+    overrides
+  }
+
+  class IngredientPlanItem {
+    type = "ingredient"
+    ingredientId
+    unitId
+    amount
+    portions
+  }
+
+  class Food {
+    id
+    name
+  }
+
+  class Ingredient {
+    id
+    name
+  }
+
+  PlanPayload "1" --> "*" PlanItem : plan
+  PlanItem <|-- FoodPlanItem
+  PlanItem <|-- IngredientPlanItem
+  FoodPlanItem ..> Food : foodId (JSON)
+  IngredientPlanItem ..> Ingredient : ingredientId (JSON)
+```
+
+</details>
 
 Frontend state mirrors the API schema, so food tags reference the shared `PossibleFoodTag` definitions surfaced by `/api/foods/possible_tags` and plan records reuse the persisted JSON payloads exposed by `/api/plans`.
 
