@@ -22,6 +22,16 @@ export type UsdaIngredientResult = {
     carbohydrates: number;
     fat: number;
     fiber: number;
+  } | null;
+  normalization: {
+    source_basis: string;
+    normalized_basis: string | null;
+    can_normalize: boolean;
+    reason: string | null;
+    data_type: string | null;
+    serving_size: number | null;
+    serving_size_unit: string | null;
+    household_serving_full_text: string | null;
   };
 };
 
@@ -264,6 +274,10 @@ export const useIngredientForm = () => {
 
   const applyUsdaResult = useCallback(
     (result: UsdaIngredientResult) => {
+      if (!result.normalization.can_normalize || !result.nutrition) {
+        return;
+      }
+
       const updatedNutrition = {
         calories: result.nutrition.calories ?? 0,
         protein: result.nutrition.protein ?? 0,

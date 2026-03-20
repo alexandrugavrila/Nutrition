@@ -642,6 +642,55 @@ export interface components {
       /** Id */
       id: number;
     };
+    /** UsdaFoodSummary */
+    UsdaFoodSummary: {
+      /** Id */
+      id?: number | null;
+      /** Name */
+      name?: string | null;
+      nutrition?: components["schemas"]["UsdaNutrition"] | null;
+      normalization: components["schemas"]["UsdaNormalizationMetadata"];
+    };
+    /** UsdaNormalizationMetadata */
+    UsdaNormalizationMetadata: {
+      /** Data Type */
+      data_type?: string | null;
+      /**
+       * Source Basis
+       * @enum {string}
+       */
+      source_basis: "per_100g" | "per_100ml" | "per_serving" | "unknown";
+      /** Normalized Basis */
+      normalized_basis?: "per_g" | null;
+      /** Can Normalize */
+      can_normalize: boolean;
+      /** Reason */
+      reason?: string | null;
+      /** Serving Size */
+      serving_size?: number | null;
+      /** Serving Size Unit */
+      serving_size_unit?: string | null;
+      /** Household Serving Full Text */
+      household_serving_full_text?: string | null;
+    };
+    /** UsdaNutrition */
+    UsdaNutrition: {
+      /** Calories */
+      calories?: number | null;
+      /** Protein */
+      protein?: number | null;
+      /** Fat */
+      fat?: number | null;
+      /** Carbohydrates */
+      carbohydrates?: number | null;
+      /** Fiber */
+      fiber?: number | null;
+    };
+    /** UsdaSearchResponse */
+    UsdaSearchResponse: {
+      /** Foods */
+      foods: components["schemas"]["UsdaFoodSummary"][];
+    };
     /** ValidationError */
     ValidationError: {
       /** Location */
@@ -1346,9 +1395,7 @@ export interface operations {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": {
-            [key: string]: unknown;
-          };
+          "application/json": components["schemas"]["UsdaSearchResponse"];
         };
       };
       /** @description Validation Error */
@@ -1370,9 +1417,7 @@ export interface operations {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": {
-            [key: string]: unknown;
-          };
+          "application/json": components["schemas"]["UsdaFoodSummary"];
         };
       };
       /** @description Validation Error */

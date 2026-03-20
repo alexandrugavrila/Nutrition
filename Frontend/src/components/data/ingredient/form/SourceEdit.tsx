@@ -22,6 +22,11 @@ const normalizeNutritionValue = (value: unknown): number => {
   return Number.isFinite(numeric) ? numeric : 0;
 };
 
+const normalizeMetadataNumber = (value: unknown): number | null => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
 const mapUsdaResult = (item: Record<string, unknown>): UsdaIngredientResult | null => {
   const name = String(item.name ?? item.description ?? item.label ?? "").trim();
   if (!name) {
@@ -29,17 +34,46 @@ const mapUsdaResult = (item: Record<string, unknown>): UsdaIngredientResult | nu
   }
 
   const idValue = item.id ?? item.fdcId ?? item.foodId ?? item.food_id ?? name;
-  const nutritionSource = (item.nutrition ?? item.nutrients ?? {}) as Record<string, unknown>;
+  const nutritionSource = (item.nutrition ?? item.nutrients ?? null) as Record<string, unknown> | null;
+  const normalizationSource = (item.normalization ?? {}) as Record<string, unknown>;
+  const canNormalize = Boolean(normalizationSource.can_normalize);
 
   return {
     id: String(idValue),
     name,
-    nutrition: {
-      calories: normalizeNutritionValue(nutritionSource.calories ?? nutritionSource.energy),
-      protein: normalizeNutritionValue(nutritionSource.protein),
-      carbohydrates: normalizeNutritionValue(nutritionSource.carbohydrates ?? nutritionSource.carbs),
-      fat: normalizeNutritionValue(nutritionSource.fat),
-      fiber: normalizeNutritionValue(nutritionSource.fiber),
+    nutrition: nutritionSource
+      ? {
+          calories: normalizeNutritionValue(nutritionSource.calories ?? nutritionSource.energy),
+          protein: normalizeNutritionValue(nutritionSource.protein),
+          carbohydrates: normalizeNutritionValue(nutritionSource.carbohydrates ?? nutritionSource.carbs),
+          fat: normalizeNutritionValue(nutritionSource.fat),
+          fiber: normalizeNutritionValue(nutritionSource.fiber),
+        }
+      : null,
+    normalization: {
+      source_basis: String(normalizationSource.source_basis ?? "unknown"),
+      normalized_basis:
+        normalizationSource.normalized_basis === null || normalizationSource.normalized_basis === undefined
+          ? null
+          : String(normalizationSource.normalized_basis),
+      can_normalize: canNormalize,
+      reason:
+        normalizationSource.reason === null || normalizationSource.reason === undefined
+          ? null
+          : String(normalizationSource.reason),
+      data_type:
+        normalizationSource.data_type === null || normalizationSource.data_type === undefined
+          ? null
+          : String(normalizationSource.data_type),
+      serving_size: normalizeMetadataNumber(normalizationSource.serving_size),
+      serving_size_unit:
+        normalizationSource.serving_size_unit === null || normalizationSource.serving_size_unit === undefined
+          ? null
+          : String(normalizationSource.serving_size_unit),
+      household_serving_full_text:
+        normalizationSource.household_serving_full_text === null || normalizationSource.household_serving_full_text === undefined
+          ? null
+          : String(normalizationSource.household_serving_full_text),
     },
   };
 };
@@ -68,6 +102,15 @@ const normalizeResults = (data: unknown): UsdaIngredientResult[] => {
   }
 
   return [];
+};
+
+const formatNutritionSummary = (result: UsdaIngredientResult): string => {
+  if (!result.normalization.can_normalize || !result.nutrition) {
+    const reason = result.normalization.reason ?? "USDA basis is not safe to convert to per-gram nutrition.";
+    return `${reason} Basis: ${result.normalization.source_basis}.`;
+  }
+
+  return `Per gram · Calories ${result.nutrition.calories} · Protein ${result.nutrition.protein} · Carbs ${result.nutrition.carbohydrates} · Fat ${result.nutrition.fat}`;
 };
 
 function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
@@ -141,6 +184,11 @@ function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
   };
 
   const handleSelectResult = async (result: UsdaIngredientResult) => {
+    if (!result.normalization.can_normalize || !result.nutrition) {
+      setDetailError(result.normalization.reason ?? "This USDA item cannot be imported as per-gram nutrition.");
+      return;
+    }
+
     setIsLoadingDetail(true);
     setDetailError(null);
 
@@ -154,9 +202,16 @@ function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
       if (!mapped) {
         throw new Error("USDA detail mapping failed.");
       }
+      if (!mapped.normalization.can_normalize || !mapped.nutrition) {
+        throw new Error(mapped.normalization.reason ?? "USDA detail did not return per-gram nutrition.");
+      }
       applyUsdaResult(mapped);
     } catch (detailFetchError) {
-      setDetailError("Unable to load USDA details. Using search results instead.");
+      setDetailError(
+        detailFetchError instanceof Error
+          ? detailFetchError.message
+          : "Unable to load USDA details. Using search results instead.",
+      );
       applyUsdaResult(result);
       // eslint-disable-next-line no-console
       console.error(detailFetchError);
@@ -208,16 +263,19 @@ function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
           )}
           {hasResults && (
             <List dense>
-              {results.map((result) => (
-                <ListItem key={result.id} disablePadding>
-                  <ListItemButton onClick={() => handleSelectResult(result)}>
-                    <ListItemText
-                      primary={result.name}
-                      secondary={`Calories ${result.nutrition.calories} · Protein ${result.nutrition.protein} · Carbs ${result.nutrition.carbohydrates} · Fat ${result.nutrition.fat}`}
-                    />
-                  </ListItemButton>
-                </ListItem>
-              ))}
+              {results.map((result) => {
+                const isSupported = result.normalization.can_normalize && Boolean(result.nutrition);
+                return (
+                  <ListItem key={result.id} disablePadding>
+                    <ListItemButton onClick={() => handleSelectResult(result)} disabled={!isSupported}>
+                      <ListItemText
+                        primary={result.name}
+                        secondary={formatNutritionSummary(result)}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                );
+              })}
             </List>
           )}
         </Box>
