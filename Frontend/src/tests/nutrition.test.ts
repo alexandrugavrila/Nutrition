@@ -115,6 +115,38 @@ describe("macrosForIngredientPortion", () => {
 
     expect(result).toEqual(ZERO_MACROS);
   });
+
+  it("applies USDA per-gram nutrition correctly for a 100 gram portion", () => {
+    const ingredient = makeIngredient({
+      id: 303,
+      name: "Banana USDA",
+      nutrition: {
+        calories: 0.89,
+        protein: 0.0109,
+        fat: 0.0033,
+        carbohydrates: 0.2284,
+        fiber: 0.026,
+      } as unknown as IngredientRead["nutrition"],
+      units: [
+        { id: 31, name: "gram", grams: 1 },
+      ] as unknown as IngredientRead["units"],
+    });
+
+    const result = macrosForIngredientPortion({
+      ingredient,
+      unitId: 31,
+      quantity: 100,
+    });
+
+    expect(result).toEqual({
+      calories: 89,
+      protein: 1.09,
+      fat: 0.33,
+      carbs: 22.84,
+      fiber: 2.6,
+    });
+  });
+
 });
 
 describe("createIngredientLookup and findIngredientInLookup", () => {
