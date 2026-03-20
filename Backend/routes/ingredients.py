@@ -10,6 +10,7 @@ from ..models import (
     Ingredient,
     IngredientShoppingUnit,
     IngredientUnit,
+    IngredientSource,
     Nutrition,
     PossibleIngredientTag,
 )
@@ -32,14 +33,66 @@ router = APIRouter(prefix="/ingredients", tags=["ingredients"])
 INGREDIENT_LOAD_OPTIONS = [
     selectinload(Ingredient.nutrition),
     selectinload(Ingredient.units),
+    selectinload(Ingredient.sources),
     selectinload(Ingredient.tags),
     selectinload(Ingredient.shopping_unit).selectinload(IngredientShoppingUnit.unit),
 ]
 
 
+def _normalize_source_value(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        cleaned = value.strip()
+        return cleaned if cleaned else None
+    cleaned = str(value).strip()
+    return cleaned if cleaned else None
+
+
+def _normalize_source_fields(
+    source: Optional[str], source_id: Optional[str]
+) -> tuple[Optional[str], Optional[str]]:
+    normalized_source = _normalize_source_value(source)
+    normalized_source_id = _normalize_source_value(source_id)
+    if normalized_source == "manual":
+        return None, None
+    if not normalized_source or not normalized_source_id:
+        return None, None
+    return normalized_source, normalized_source_id
+
+
+def _resolve_primary_source(ingredient: Ingredient) -> tuple[Optional[str], Optional[str]]:
+    sources = list(ingredient.sources or [])
+    if not sources:
+        return None, None
+    usda = next((source for source in sources if source.source == "usda"), None)
+    if usda:
+        return usda.source, usda.source_id
+    sources.sort(
+        key=lambda source: (
+            source.source or "",
+            source.source_id or "",
+            source.id or 0,
+        )
+    )
+    primary = sources[0]
+    return primary.source, primary.source_id
+
+
+def _find_source_mapping(
+    db: Session, source: str, source_id: str
+) -> Optional[IngredientSource]:
+    statement = select(IngredientSource).where(
+        IngredientSource.source == source,
+        IngredientSource.source_id == source_id,
+    )
+    return db.exec(statement).one_or_none()
+
+
 def ingredient_to_read(ingredient: Ingredient) -> IngredientRead:
     """Convert an Ingredient to IngredientRead and ensure base 'g' unit is visible."""
 
+    source, source_id = _resolve_primary_source(ingredient)
     resolved_unit = None
     resolved_unit_id = None
     if ingredient.shopping_unit:
@@ -58,8 +111,8 @@ def ingredient_to_read(ingredient: Ingredient) -> IngredientRead:
     payload = {
         "id": ingredient.id,
         "name": ingredient.name,
-        "source": ingredient.source,
-        "source_id": ingredient.source_id,
+        "source": source,
+        "source_id": source_id,
         "nutrition": ingredient.nutrition,
         "units": list(ingredient.units or []),
         "tags": list(ingredient.tags or []),
@@ -256,6 +309,21 @@ def add_ingredient(
     ingredient: IngredientCreate, db: Session = Depends(get_db)
 ) -> IngredientRead:
     """Create a new ingredient."""
+    source, source_id = _normalize_source_fields(
+        ingredient.source, ingredient.source_id
+    )
+    if source and source_id:
+        existing_source = _find_source_mapping(db, source, source_id)
+        if existing_source:
+            statement = (
+                select(Ingredient)
+                .options(*INGREDIENT_LOAD_OPTIONS)
+                .where(Ingredient.id == existing_source.ingredient_id)
+            )
+            existing = db.exec(statement).one_or_none()
+            if existing:
+                return ingredient_to_read(existing)
+
     ingredient_obj = Ingredient.from_create(ingredient)
     # Force inclusion of base unit 'g' with grams == 1
     ensure_g_unit_present(ingredient_obj)
@@ -263,6 +331,10 @@ def add_ingredient(
         ingredient_obj.tags = [
             db.get(PossibleIngredientTag, t.id) for t in ingredient.tags if t.id
         ]
+    if source and source_id:
+        ingredient_obj.sources.append(
+            IngredientSource(source=source, source_id=source_id)
+        )
     db.add(ingredient_obj)
 
     try:
@@ -282,6 +354,23 @@ def add_ingredient(
             .where(Ingredient.name == ingredient_obj.name)
         )
         existing = db.exec(statement).one()
+        if source and source_id:
+            existing_source = _find_source_mapping(db, source, source_id)
+            if existing_source and existing_source.ingredient_id != existing.id:
+                statement = (
+                    select(Ingredient)
+                    .options(*INGREDIENT_LOAD_OPTIONS)
+                    .where(Ingredient.id == existing_source.ingredient_id)
+                )
+                existing = db.exec(statement).one()
+                return ingredient_to_read(existing)
+            if not existing_source:
+                existing.sources.append(
+                    IngredientSource(source=source, source_id=source_id)
+                )
+                db.add(existing)
+                db.commit()
+                db.refresh(existing)
         return ingredient_to_read(existing)
 
     statement = (
@@ -317,10 +406,45 @@ def update_ingredient(
     payload_fields = ingredient_data.model_dump(exclude_unset=True)
 
     ingredient.name = ingredient_data.name
-    if "source" in payload_fields:
-        ingredient.source = ingredient_data.source
-    if "source_id" in payload_fields:
-        ingredient.source_id = ingredient_data.source_id
+    source_provided = "source" in payload_fields
+    source_id_provided = "source_id" in payload_fields
+    if source_provided or source_id_provided:
+        current_source, current_source_id = _resolve_primary_source(ingredient)
+        desired_source = (
+            ingredient_data.source if source_provided else current_source
+        )
+        desired_source_id = (
+            ingredient_data.source_id if source_id_provided else current_source_id
+        )
+        desired_source, desired_source_id = _normalize_source_fields(
+            desired_source, desired_source_id
+        )
+        if desired_source and desired_source_id:
+            conflict = _find_source_mapping(db, desired_source, desired_source_id)
+            if conflict and conflict.ingredient_id != ingredient.id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Source mapping already belongs to another ingredient.",
+                )
+            existing_match = next(
+                (
+                    source
+                    for source in (ingredient.sources or [])
+                    if source.source == desired_source
+                ),
+                None,
+            )
+            ingredient.sources = [existing_match] if existing_match else []
+            if existing_match:
+                existing_match.source_id = desired_source_id
+            else:
+                ingredient.sources.append(
+                    IngredientSource(
+                        source=desired_source, source_id=desired_source_id
+                    )
+                )
+        else:
+            ingredient.sources = []
 
     # Upsert nutrition
     if ingredient_data.nutrition:
