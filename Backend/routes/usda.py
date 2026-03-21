@@ -18,6 +18,16 @@ _MACRO_NAMES = {
     "carbohydrate, by difference": "carbohydrates",
     "fiber, total dietary": "fiber",
 }
+_MACRO_NUTRIENT_IDS = {
+    1008: "calories",
+    1003: "protein",
+    1004: "fat",
+    1005: "carbohydrates",
+    1079: "fiber",
+    2047: "calories",
+    2048: "calories",
+}
+_KILOCALORIE_UNITS = {"kcal", "kilocalorie", "kilocalories"}
 _GRAM_UNITS = {"g", "gram", "grams"}
 _MILLILITER_UNITS = {"ml", "milliliter", "milliliters", "mL"}
 _DEFAULT_USDA_DATA_TYPES = ["Foundation"]
@@ -104,12 +114,63 @@ def _extract_nutrient_value(entry: dict[str, Any]) -> float | None:
     return _coerce_float(entry.get("value", entry.get("amount")))
 
 
+def _extract_nutrient_id(entry: dict[str, Any]) -> int | None:
+    nutrient = entry.get("nutrient") or {}
+    for candidate in (entry.get("nutrientId"), nutrient.get("id"), nutrient.get("number")):
+        numeric = _coerce_float(candidate)
+        if numeric is not None:
+            return int(numeric)
+    return None
+
+
+def _extract_nutrient_unit(entry: dict[str, Any]) -> str | None:
+    unit_name = entry.get("unitName")
+    if unit_name:
+        return str(unit_name)
+
+    nutrient = entry.get("nutrient") or {}
+    nutrient_unit = nutrient.get("unitName")
+    if nutrient_unit:
+        return str(nutrient_unit)
+
+    return None
+
+
+def _resolve_macro_name(entry: dict[str, Any]) -> str | None:
+    nutrient_id = _extract_nutrient_id(entry)
+    if nutrient_id in _MACRO_NUTRIENT_IDS:
+        macro_name = _MACRO_NUTRIENT_IDS[nutrient_id]
+        if macro_name != "calories":
+            return macro_name
+
+        unit = _normalize_name(_extract_nutrient_unit(entry))
+        if not unit or unit in _KILOCALORIE_UNITS:
+            return macro_name
+
+    name = _normalize_name(_extract_nutrient_name(entry))
+    if name in _MACRO_NAMES:
+        if name != "energy":
+            return _MACRO_NAMES[name]
+
+        unit = _normalize_name(_extract_nutrient_unit(entry))
+        if not unit or unit in _KILOCALORIE_UNITS:
+            return "calories"
+        return None
+
+    if name.startswith("energy"):
+        unit = _normalize_name(_extract_nutrient_unit(entry))
+        if not unit or unit in _KILOCALORIE_UNITS:
+            return "calories"
+
+    return None
+
+
 def _trim_nutrients(food_nutrients: Iterable[dict[str, Any]]) -> dict[str, float | None]:
     macros: dict[str, float | None] = {value: None for value in _MACRO_NAMES.values()}
     for nutrient in food_nutrients:
-        name = _normalize_name(_extract_nutrient_name(nutrient))
-        if name in _MACRO_NAMES:
-            macros[_MACRO_NAMES[name]] = _extract_nutrient_value(nutrient)
+        macro_name = _resolve_macro_name(nutrient)
+        if macro_name is not None:
+            macros[macro_name] = _extract_nutrient_value(nutrient)
     return macros
 
 
