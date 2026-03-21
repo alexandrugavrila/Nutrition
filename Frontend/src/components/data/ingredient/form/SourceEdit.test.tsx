@@ -133,7 +133,9 @@ describe("SourceEdit", () => {
 
     const bananaRow = await screen.findByRole("button", { name: /banana/i });
     expect(bananaRow).toBeEnabled();
-    expect(await screen.findByText(/1 medium · Calories 0\.89/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/1 medium · Calories 0\.89 · Protein 0\.01 · Carbs 0\.23 · Fat 0/i),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Per gram/i)).not.toBeInTheDocument();
 
     await userEvent.click(bananaRow);
@@ -207,7 +209,7 @@ describe("SourceEdit", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("retains the USDA default unit in form state and imports gram plus USDA units", () => {
+  it("retains the USDA default unit in form state and imports rounded per-gram USDA nutrition", () => {
     const { result } = renderHook(() => useIngredientForm());
 
     act(() => {
@@ -243,6 +245,13 @@ describe("SourceEdit", () => {
     expect(result.current.ingredient.source).toBe("usda");
     expect(result.current.ingredient.source_id).toBe("333");
     expect(result.current.ingredient.sourceName).toBe("Apple slices");
+    expect(result.current.ingredient.nutrition).toEqual({
+      calories: 0.52,
+      protein: 0,
+      carbohydrates: 0.14,
+      fat: 0,
+      fiber: 0.02,
+    });
     expect(result.current.ingredient.units).toEqual([
       expect.objectContaining({ name: "g", grams: 1 }),
       expect.objectContaining({ name: "1 cup sliced", grams: 109 }),

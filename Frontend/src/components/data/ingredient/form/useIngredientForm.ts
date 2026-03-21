@@ -2,6 +2,7 @@ import { useCallback } from "react";
 
 import { useData } from "@/contexts/DataContext";
 import { useSessionStorageReducer } from "@/hooks/useSessionStorageState";
+import { roundNutritionValue } from "@/utils/nutritionPrecision";
 import { generateUUID, handleFetchRequest } from "@/utils/utils";
 import type { components, operations } from "@/api-types";
 
@@ -334,11 +335,11 @@ export const useIngredientForm = () => {
       }
 
       const updatedNutrition = {
-        calories: result.nutrition.calories ?? 0,
-        protein: result.nutrition.protein ?? 0,
-        carbohydrates: result.nutrition.carbohydrates ?? 0,
-        fat: result.nutrition.fat ?? 0,
-        fiber: result.nutrition.fiber ?? 0,
+        calories: roundNutritionValue(result.nutrition.calories ?? 0),
+        protein: roundNutritionValue(result.nutrition.protein ?? 0),
+        carbohydrates: roundNutritionValue(result.nutrition.carbohydrates ?? 0),
+        fat: roundNutritionValue(result.nutrition.fat ?? 0),
+        fiber: roundNutritionValue(result.nutrition.fiber ?? 0),
       };
 
       const normalizedUsdaUnits = normalizeUsdaUnits(result.units);
