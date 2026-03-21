@@ -12,6 +12,9 @@ Runs sync-branches followed by audit-worktrees and container-set auditing. Non-c
 to sync-branches. Use --skip-sync, --skip-audit, or --skip-containers to bypass individual steps.
 
 Options:
+  --skip-sync      Skip the sync-branches step.
+  --skip-audit     Skip the audit-worktrees step.
+  --skip-containers Skip the audit-container-sets step.
   --yes            Answer "yes" to all confirmations in downstream scripts.
 USAGE
 }

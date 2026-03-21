@@ -234,10 +234,10 @@ load_worktrees() {
       continue
     fi
     case "$line" in
-      worktree[BRANCH SYNC]*)
+      worktree\ *)
         current_wt="${line#worktree }"
         ;;
-      branch[BRANCH SYNC]*)
+      branch\ *)
         current_branch="${line#branch }"
         ;;
       detached)
@@ -246,7 +246,7 @@ load_worktrees() {
       *)
         ;;
     esac
-  done < <(git -C "$repo_root" worktree list --porcelain | tr -d '[BRANCH SYNC]')
+  done < <(git -C "$repo_root" worktree list --porcelain)
   if [[ -n "$current_wt" ]]; then
     WT_PATHS+=("$current_wt")
     WT_BRANCH_REFS+=("$current_branch")
