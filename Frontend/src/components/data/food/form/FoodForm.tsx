@@ -231,9 +231,9 @@ function FoodForm({ foodToEditData }) {
             />
           </>
 
-          <Button onClick={handleClearForm}>Clear</Button>
-          <Button onClick={handleFoodAction}>{isEditMode ? "Update" : "Add"}</Button>
-          {isEditMode && <Button onClick={() => dispatch({ type: "SET_CONFIRMATION_DIALOG", payload: true })}>Delete</Button>}
+          <Button aria-label="clear food form" onClick={handleClearForm}>Clear</Button>
+          <Button aria-label={isEditMode ? "update food" : "add food"} onClick={handleFoodAction}>{isEditMode ? "Update" : "Add"}</Button>
+          {isEditMode && <Button aria-label="delete food" onClick={() => dispatch({ type: "SET_CONFIRMATION_DIALOG", payload: true })}>Delete</Button>}
         </Collapse>
       </Paper>
 
@@ -254,4 +254,3 @@ function FoodForm({ foodToEditData }) {
 }
 
 export default FoodForm;
-
