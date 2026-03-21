@@ -1403,6 +1403,7 @@ export interface operations {
     parameters: {
       query: {
         query: string;
+        data_types?: (("Foundation" | "SR Legacy" | "Survey (FNDDS)" | "Branded" | "Experimental")[]) | null;
       };
     };
     responses: {

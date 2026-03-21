@@ -1,6 +1,10 @@
+from types import SimpleNamespace
+
 import pytest
 
+from Backend.routes import usda as usda_routes
 from Backend.routes.usda import _trim_food_payload
+
 
 @pytest.mark.parametrize(
     ("data_type", "serving_size", "serving_size_unit", "expected_calories", "expected_protein"),
@@ -55,6 +59,7 @@ def test_trim_food_payload_normalizes_supported_usda_foods_to_per_gram(
         }
     )
 
+
 def test_trim_food_payload_includes_only_base_gram_unit_when_no_usda_measures_exist() -> None:
     payload = _trim_food_payload(
         {
@@ -66,6 +71,7 @@ def test_trim_food_payload_includes_only_base_gram_unit_when_no_usda_measures_ex
     )
 
     assert payload["units"] == [{"name": "1 g", "grams": 1.0, "is_default": True}]
+
 
 def test_trim_food_payload_marks_branded_gram_serving_as_default_unit() -> None:
     payload = _trim_food_payload(
@@ -84,6 +90,7 @@ def test_trim_food_payload_marks_branded_gram_serving_as_default_unit() -> None:
         {"name": "1 g", "grams": 1.0, "is_default": False},
         {"name": "1 bar", "grams": 55.0, "is_default": True},
     ]
+
 
 def test_trim_food_payload_includes_multiple_gram_backed_usda_units() -> None:
     payload = _trim_food_payload(
@@ -122,6 +129,7 @@ def test_trim_food_payload_includes_multiple_gram_backed_usda_units() -> None:
         {"name": "2 piece rings", "grams": 35.0, "is_default": False},
     ]
 
+
 def test_trim_food_payload_deduplicates_units_and_omits_entries_without_grams() -> None:
     payload = _trim_food_payload(
         {
@@ -152,6 +160,7 @@ def test_trim_food_payload_deduplicates_units_and_omits_entries_without_grams() 
         {"name": "1 packet", "grams": 30.0, "is_default": False},
     ]
 
+
 def test_trim_food_payload_marks_branded_liquids_as_not_normalizable() -> None:
     payload = _trim_food_payload(
         {
@@ -180,3 +189,90 @@ def test_trim_food_payload_marks_branded_liquids_as_not_normalizable() -> None:
         "serving_size_unit": "ml",
         "household_serving_full_text": "8 fl oz",
     }
+
+
+class _MockUsdaResponse:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self):
+        return self._payload
+
+
+class _MockAsyncClient:
+    def __init__(self, *args, **kwargs) -> None:
+        self.calls = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        return None
+
+    async def get(self, url: str, params):
+        self.calls.append((url, params))
+        return _MockUsdaResponse({"foods": []})
+
+
+def test_search_foods_defaults_to_foundation_data_type(client, monkeypatch) -> None:
+    mock_client = _MockAsyncClient()
+
+    monkeypatch.setattr(usda_routes, "settings", SimpleNamespace(usda_api_key="test-key"))
+    monkeypatch.setattr(usda_routes.httpx, "AsyncClient", lambda *args, **kwargs: mock_client)
+
+    response = client.get("/api/usda/search", params={"query": "banana"})
+
+    assert response.status_code == 200
+    assert mock_client.calls == [
+        (
+            "https://api.nal.usda.gov/fdc/v1/foods/search",
+            {
+                "query": "banana",
+                "pageSize": 25,
+                "dataType": ["Foundation"],
+                "api_key": "test-key",
+            },
+        )
+    ]
+
+
+def test_search_foods_forwards_selected_data_types(client, monkeypatch) -> None:
+    mock_client = _MockAsyncClient()
+
+    monkeypatch.setattr(usda_routes, "settings", SimpleNamespace(usda_api_key="test-key"))
+    monkeypatch.setattr(usda_routes.httpx, "AsyncClient", lambda *args, **kwargs: mock_client)
+
+    response = client.get(
+        "/api/usda/search",
+        params=[
+            ("query", "banana"),
+            ("data_types", "Foundation"),
+            ("data_types", "Branded"),
+            ("data_types", "Experimental"),
+        ],
+    )
+
+    assert response.status_code == 200
+    assert mock_client.calls == [
+        (
+            "https://api.nal.usda.gov/fdc/v1/foods/search",
+            {
+                "query": "banana",
+                "pageSize": 25,
+                "dataType": ["Foundation", "Branded", "Experimental"],
+                "api_key": "test-key",
+            },
+        )
+    ]
+
+
+def test_search_foods_rejects_unknown_data_types(client) -> None:
+    response = client.get(
+        "/api/usda/search",
+        params=[("query", "banana"), ("data_types", "Totally Unknown")],
+    )
+
+    assert response.status_code == 422

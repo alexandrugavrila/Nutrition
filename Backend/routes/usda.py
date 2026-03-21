@@ -20,9 +20,17 @@ _MACRO_NAMES = {
 }
 _GRAM_UNITS = {"g", "gram", "grams"}
 _MILLILITER_UNITS = {"ml", "milliliter", "milliliters", "mL"}
+_DEFAULT_USDA_DATA_TYPES = ["Foundation"]
 
 BasisType = Literal["per_100g", "per_100ml", "per_serving", "unknown"]
 NormalizedBasisType = Literal["per_g"]
+USDADataType = Literal[
+    "Foundation",
+    "SR Legacy",
+    "Survey (FNDDS)",
+    "Branded",
+    "Experimental",
+]
 
 
 class UsdaNutrition(BaseModel):
@@ -257,8 +265,7 @@ def _resolve_source_basis(food: dict[str, Any]) -> UsdaNormalizationMetadata:
     )
 
     if any(
-        marker in normalized_data_type
-        for marker in ("foundation", "sr legacy", "survey", "fndds")
+        marker in normalized_data_type for marker in ("foundation", "sr legacy", "survey", "fndds")
     ):
         metadata.source_basis = "per_100g"
         metadata.normalized_basis = "per_g"
@@ -286,7 +293,9 @@ def _resolve_source_basis(food: dict[str, Any]) -> UsdaNormalizationMetadata:
             )
             return metadata
 
-        metadata.reason = "USDA branded item did not include enough serving metadata to determine a gram basis."
+        metadata.reason = (
+            "USDA branded item did not include enough serving metadata to determine a gram basis."
+        )
         return metadata
 
     if "experimental" in normalized_data_type:
@@ -296,7 +305,9 @@ def _resolve_source_basis(food: dict[str, Any]) -> UsdaNormalizationMetadata:
         )
         return metadata
 
-    metadata.reason = "USDA payload did not include a supported basis for safe per-gram normalization."
+    metadata.reason = (
+        "USDA payload did not include a supported basis for safe per-gram normalization."
+    )
     return metadata
 
 
@@ -307,10 +318,7 @@ def _normalize_nutrients_per_gram(
         return None
 
     return UsdaNutrition(
-        **{
-            key: (value / 100.0 if value is not None else None)
-            for key, value in nutrients.items()
-        }
+        **{key: (value / 100.0 if value is not None else None) for key, value in nutrients.items()}
     )
 
 
@@ -328,18 +336,25 @@ def _trim_food_payload(food: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.get("/search", response_model=UsdaSearchResponse)
-async def search_foods(query: str = Query(..., min_length=1)) -> dict[str, Any]:
+async def search_foods(
+    query: str = Query(..., min_length=1),
+    data_types: list[USDADataType] | None = Query(default=None),
+) -> dict[str, Any]:
     api_key = _require_api_key()
-    params = {"query": query, "pageSize": 25, "api_key": api_key}
+    selected_data_types = data_types or _DEFAULT_USDA_DATA_TYPES
+    params = {
+        "query": query,
+        "pageSize": 25,
+        "dataType": selected_data_types,
+        "api_key": api_key,
+    }
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
             response = await client.get(f"{_BASE_URL}/foods/search", params=params)
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            raise HTTPException(
-                status_code=502, detail=f"USDA API request failed: {exc}"
-            ) from exc
+            raise HTTPException(status_code=502, detail=f"USDA API request failed: {exc}") from exc
 
     payload = response.json()
     foods = [_trim_food_payload(food) for food in payload.get("foods", [])]
@@ -356,8 +371,6 @@ async def get_food_details(fdc_id: int) -> dict[str, Any]:
             response = await client.get(f"{_BASE_URL}/food/{fdc_id}", params=params)
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            raise HTTPException(
-                status_code=502, detail=f"USDA API request failed: {exc}"
-            ) from exc
+            raise HTTPException(status_code=502, detail=f"USDA API request failed: {exc}") from exc
 
     return _trim_food_payload(response.json())
