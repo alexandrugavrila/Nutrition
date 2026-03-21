@@ -191,6 +191,63 @@ def test_trim_food_payload_marks_branded_liquids_as_not_normalizable() -> None:
     }
 
 
+def test_trim_food_payload_uses_usda_energy_variants_for_calories() -> None:
+    payload = _trim_food_payload(
+        {
+            "fdcId": 555,
+            "description": "Apple sample",
+            "dataType": "Foundation",
+            "foodNutrients": [
+                {
+                    "nutrientName": "Energy (Atwater General Factors)",
+                    "value": 52,
+                    "nutrient": {"id": 2047, "number": "2047", "unitName": "kcal"},
+                },
+                {
+                    "nutrientName": "Protein",
+                    "value": 0.26,
+                    "nutrient": {"id": 1003, "number": "1003", "unitName": "g"},
+                },
+            ],
+        }
+    )
+
+    assert payload["nutrition"] == pytest.approx(
+        {
+            "calories": 0.52,
+            "protein": 0.0026,
+            "fat": None,
+            "carbohydrates": None,
+            "fiber": None,
+        }
+    )
+
+
+def test_trim_food_payload_ignores_non_kilocalorie_energy_variants() -> None:
+    payload = _trim_food_payload(
+        {
+            "fdcId": 556,
+            "description": "Energy in kilojoules only",
+            "dataType": "Foundation",
+            "foodNutrients": [
+                {
+                    "nutrientName": "Energy",
+                    "value": 210,
+                    "nutrient": {"id": 1062, "number": "1062", "unitName": "kJ"},
+                }
+            ],
+        }
+    )
+
+    assert payload["nutrition"] == {
+        "calories": None,
+        "protein": None,
+        "fat": None,
+        "carbohydrates": None,
+        "fiber": None,
+    }
+
+
 class _MockUsdaResponse:
     def __init__(self, payload):
         self._payload = payload
