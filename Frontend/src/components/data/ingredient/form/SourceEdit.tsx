@@ -15,7 +15,68 @@ import {
   Typography,
 } from "@mui/material";
 
-import type { IngredientSource, UsdaIngredientResult } from "./useIngredientForm";
+import type { IngredientSource, UsdaIngredientResult, UsdaIngredientUnit } from "./useIngredientForm";
+
+
+const createUsdaUnitKey = (unit: Pick<UsdaIngredientUnit, "id" | "name" | "grams">): string => {
+  if (unit.id !== null && unit.id !== undefined && String(unit.id).trim() !== "") {
+    return `id:${String(unit.id)}`;
+  }
+
+  return `name:${unit.name.trim().toLowerCase()}|grams:${Number(unit.grams)}`;
+};
+
+const mapUsdaUnits = (value: unknown): UsdaIngredientUnit[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+
+  return value.reduce<UsdaIngredientUnit[]>((acc, unit) => {
+    if (!unit || typeof unit !== "object") {
+      return acc;
+    }
+
+    const rawUnit = unit as Record<string, unknown>;
+    const name = String(rawUnit.name ?? "").trim();
+    const grams = Number(rawUnit.grams);
+
+    if (!name || !Number.isFinite(grams) || grams <= 0) {
+      return acc;
+    }
+
+    const mappedUnit: UsdaIngredientUnit = {
+      id: rawUnit.id as string | number | null | undefined,
+      name,
+      grams,
+      is_default: Boolean(rawUnit.is_default ?? rawUnit.isDefault),
+    };
+    const key = createUsdaUnitKey(mappedUnit);
+    if (seen.has(key)) {
+      return acc;
+    }
+
+    seen.add(key);
+    acc.push(mappedUnit);
+    return acc;
+  }, []);
+};
+
+const getDefaultUnitKey = (units: UsdaIngredientUnit[]): string | null => {
+  const defaultUnit = units.find((unit) => unit.is_default) ?? units[0] ?? null;
+  return defaultUnit ? createUsdaUnitKey(defaultUnit) : null;
+};
+
+const getDefaultUnitLabel = (result: UsdaIngredientResult): string => {
+  const defaultUnit =
+    result.units.find((unit) => createUsdaUnitKey(unit) === result.defaultUnitKey) ??
+    result.units.find((unit) => unit.is_default) ??
+    result.units[0] ??
+    null;
+
+  return defaultUnit?.name ?? "1 g";
+};
 
 const normalizeNutritionValue = (value: unknown): number => {
   const numeric = Number(value);
@@ -37,6 +98,7 @@ const mapUsdaResult = (item: Record<string, unknown>): UsdaIngredientResult | nu
   const nutritionSource = (item.nutrition ?? item.nutrients ?? null) as Record<string, unknown> | null;
   const normalizationSource = (item.normalization ?? {}) as Record<string, unknown>;
   const canNormalize = Boolean(normalizationSource.can_normalize);
+  const units = mapUsdaUnits(item.units);
 
   return {
     id: String(idValue),
@@ -75,6 +137,8 @@ const mapUsdaResult = (item: Record<string, unknown>): UsdaIngredientResult | nu
           ? null
           : String(normalizationSource.household_serving_full_text),
     },
+    units,
+    defaultUnitKey: getDefaultUnitKey(units),
   };
 };
 
@@ -110,7 +174,7 @@ const formatNutritionSummary = (result: UsdaIngredientResult): string => {
     return `${reason} Basis: ${result.normalization.source_basis}.`;
   }
 
-  return `Per gram · Calories ${result.nutrition.calories} · Protein ${result.nutrition.protein} · Carbs ${result.nutrition.carbohydrates} · Fat ${result.nutrition.fat}`;
+  return `${getDefaultUnitLabel(result)} · Calories ${result.nutrition.calories} · Protein ${result.nutrition.protein} · Carbs ${result.nutrition.carbohydrates} · Fat ${result.nutrition.fat}`;
 };
 
 function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
@@ -202,10 +266,20 @@ function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
       if (!mapped) {
         throw new Error("USDA detail mapping failed.");
       }
-      if (!mapped.normalization.can_normalize || !mapped.nutrition) {
-        throw new Error(mapped.normalization.reason ?? "USDA detail did not return per-gram nutrition.");
+
+      const preferredMapped =
+        mapped.units.length > 0
+          ? mapped
+          : {
+              ...mapped,
+              units: result.units,
+              defaultUnitKey: result.defaultUnitKey,
+            };
+
+      if (!preferredMapped.normalization.can_normalize || !preferredMapped.nutrition) {
+        throw new Error(preferredMapped.normalization.reason ?? "USDA detail did not return per-gram nutrition.");
       }
-      applyUsdaResult(mapped);
+      applyUsdaResult(preferredMapped);
     } catch (detailFetchError) {
       setDetailError(
         detailFetchError instanceof Error
