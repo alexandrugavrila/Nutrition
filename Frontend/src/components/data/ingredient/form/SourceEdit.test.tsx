@@ -229,6 +229,55 @@ describe('SourceEdit', () => {
     });
   });
 
+  it('falls back to 100 g in USDA search results when the only available default is 1 g', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        foods: [
+          {
+            id: 789,
+            name: 'Apple',
+            nutrition: {
+              calories: 0.52,
+              protein: 0.0003,
+              carbohydrates: 0.14,
+              fat: 0.0002,
+              fiber: 0.024,
+            },
+            normalization: {
+              can_normalize: true,
+              source_basis: 'per_100g',
+              normalized_basis: 'per_g',
+              reason: null,
+              data_type: 'Foundation',
+              serving_size: null,
+              serving_size_unit: null,
+              household_serving_full_text: null,
+            },
+            units: [{ name: '1 g', grams: 1, is_default: true }],
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <SourceEdit
+        ingredient={baseIngredient as never}
+        dispatch={vi.fn()}
+        applyUsdaResult={vi.fn()}
+      />,
+    );
+
+    await userEvent.type(screen.getByLabelText(/search usda/i), 'apple');
+    await userEvent.click(screen.getByRole('button', { name: /search/i }));
+
+    expect(
+      await screen.findByText(/100 g · Calories 52 · Protein 0\.03 · Carbs 14 · Fat 0\.02/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/1 g · Calories 0\.52/i)).not.toBeInTheDocument();
+  });
+
 
   it('renders dataset labels from normalization.data_type for mixed USDA result rows', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({
