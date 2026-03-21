@@ -126,8 +126,8 @@ Nutrition/
   the backend stores a fridge entry and the UI now confirms the save with a toast.
 - Stored items validate their macro data server-side: calories, protein, carbs, fat, and fiber must all be zero or positive values,
   and the API refuses to consume more portions than remain in the fridge.
-- Switch to the Food Logging tab to record consumption against a chosen day. Logging actions emit success or error toasts, and the
-  backend enforces the same non-negative macro rules so contributor tests cover the end-to-end fridge workflow.
+- Switch to the Food Logging tab to record consumption against a chosen day. Logging actions emit success or error toasts, while the
+  backend enforces the same non-negative macro rules. Contributor tests cover this end-to-end fridge workflow.
 
 ---
 
