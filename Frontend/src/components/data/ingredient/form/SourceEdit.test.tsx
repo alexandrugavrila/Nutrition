@@ -197,7 +197,9 @@ describe('SourceEdit', () => {
     expect(bananaRow).toBeEnabled();
     expect(await screen.findByText(/Foundation \(primary\)/i)).toBeInTheDocument();
     expect(
-      await screen.findByText(/1 medium · Calories 0\.89 · Protein 0\.01 · Carbs 0\.23 · Fat 0/i),
+      await screen.findByText(
+        /1 medium · Calories 105\.02 · Protein 1\.29 · Carbs 26\.95 · Fat 0\.39/i,
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Per gram/i)).not.toBeInTheDocument();
 
