@@ -4,7 +4,7 @@ from typing import Any, Iterable, Literal
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from Backend.settings import settings
 
@@ -33,6 +33,12 @@ class UsdaNutrition(BaseModel):
     fiber: float | None = None
 
 
+class UsdaFoodUnit(BaseModel):
+    name: str
+    grams: float
+    is_default: bool = False
+
+
 class UsdaNormalizationMetadata(BaseModel):
     data_type: str | None = None
     source_basis: BasisType
@@ -49,6 +55,7 @@ class UsdaFoodSummary(BaseModel):
     name: str | None = None
     nutrition: UsdaNutrition | None = None
     normalization: UsdaNormalizationMetadata
+    units: list[UsdaFoodUnit] = Field(default_factory=list)
 
 
 class UsdaSearchResponse(BaseModel):
@@ -101,6 +108,128 @@ def _trim_nutrients(food_nutrients: Iterable[dict[str, Any]]) -> dict[str, float
 def _normalize_serving_unit(unit: str | None) -> str | None:
     normalized = (unit or "").strip().lower()
     return normalized or None
+
+
+def _normalize_unit_label(unit: str | None) -> str:
+    return " ".join((unit or "").strip().lower().split())
+
+
+def _is_gram_unit(unit: str | None) -> bool:
+    return _normalize_serving_unit(unit) in _GRAM_UNITS
+
+
+def _format_quantity(value: float) -> str:
+    return str(int(value)) if float(value).is_integer() else f"{value:g}"
+
+
+def _build_portion_unit_name(portion: dict[str, Any]) -> str | None:
+    portion_description = str(portion.get("portionDescription") or "").strip()
+    if portion_description:
+        return portion_description
+
+    amount = _coerce_float(portion.get("amount"))
+    measure_unit = portion.get("measureUnit") or {}
+    measure_name = str(
+        measure_unit.get("name")
+        or portion.get("measureUnitName")
+        or portion.get("measureUnitAbbreviation")
+        or portion.get("disseminationText")
+        or portion.get("description")
+        or portion.get("name")
+        or ""
+    ).strip()
+    modifier = str(portion.get("modifier") or "").strip()
+
+    if amount is not None and measure_name:
+        amount_and_measure = f"{_format_quantity(amount)} {measure_name}".strip()
+        if modifier and _normalize_name(modifier) not in _normalize_name(amount_and_measure):
+            return f"{amount_and_measure} {modifier}".strip()
+        return amount_and_measure
+
+    if modifier and measure_name:
+        if _normalize_name(modifier) in _normalize_name(measure_name):
+            return measure_name
+        return f"{measure_name} {modifier}".strip()
+
+    return modifier or measure_name or None
+
+
+def _build_default_unit(food: dict[str, Any]) -> tuple[str, float] | None:
+    serving_size = _coerce_float(food.get("servingSize"))
+    serving_size_unit = food.get("servingSizeUnit")
+    if serving_size is None or serving_size <= 0 or not _is_gram_unit(serving_size_unit):
+        return None
+
+    household_serving_full_text = str(food.get("householdServingFullText") or "").strip()
+    if household_serving_full_text:
+        name = household_serving_full_text
+    else:
+        name = "serving"
+    return name, serving_size
+
+
+def _add_usda_unit(
+    units: list[dict[str, Any]],
+    seen: set[tuple[str, float]],
+    *,
+    name: str | None,
+    grams: float | None,
+    is_default: bool = False,
+) -> None:
+    if grams is None or grams <= 0:
+        return
+
+    normalized_name = _normalize_unit_label(name)
+    if not normalized_name:
+        return
+
+    key = (normalized_name, round(grams, 6))
+    for unit in units:
+        if (_normalize_unit_label(unit["name"]), round(float(unit["grams"]), 6)) == key:
+            unit["is_default"] = unit["is_default"] or is_default
+            return
+
+    if key in seen:
+        return
+
+    units.append(
+        {
+            "name": str(name).strip(),
+            "grams": grams,
+            "is_default": is_default,
+        }
+    )
+    seen.add(key)
+
+
+def _extract_food_units(food: dict[str, Any]) -> list[dict[str, Any]]:
+    units: list[dict[str, Any]] = []
+    seen: set[tuple[str, float]] = set()
+
+    _add_usda_unit(units, seen, name="1 g", grams=1.0, is_default=True)
+
+    default_unit = _build_default_unit(food)
+    if default_unit is not None:
+        for unit in units:
+            unit["is_default"] = False
+        _add_usda_unit(
+            units,
+            seen,
+            name=default_unit[0],
+            grams=default_unit[1],
+            is_default=True,
+        )
+
+    for key in ("foodPortions", "foodMeasures"):
+        for portion in food.get(key, []) or []:
+            grams = _coerce_float(portion.get("gramWeight"))
+            name = _build_portion_unit_name(portion)
+            _add_usda_unit(units, seen, name=name, grams=grams)
+
+    if not any(unit["is_default"] for unit in units) and units:
+        units[0]["is_default"] = True
+
+    return units
 
 
 def _normalize_data_type(data_type: str | None) -> str:
@@ -194,6 +323,7 @@ def _trim_food_payload(food: dict[str, Any]) -> dict[str, Any]:
         "name": food.get("description"),
         "nutrition": nutrition.model_dump() if nutrition is not None else None,
         "normalization": normalization.model_dump(),
+        "units": _extract_food_units(food),
     }
 
 
