@@ -54,7 +54,7 @@ afterEach(() => {
 });
 
 describe('SourceEdit', () => {
-  it('defaults USDA searches to Foundation and forwards selected USDA data types', async () => {
+  it('shows USDA dataset toggles, defaults to Foundation, and updates request params when toggles change', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ foods: [] }),
@@ -69,9 +69,20 @@ describe('SourceEdit', () => {
       />,
     );
 
-    expect(
-      screen.getByRole('button', { name: /foundation \(primary \/ most current usda data\)/i }),
-    ).toHaveAttribute('aria-pressed', 'true');
+    const dataTypeToggleGroup = screen.getByLabelText(/usda data types/i);
+    expect(dataTypeToggleGroup).toBeInTheDocument();
+
+    const foundationToggle = screen.getByRole('button', {
+      name: /foundation \(primary \/ most current usda data\)/i,
+    });
+    const brandedToggle = screen.getByRole('button', { name: /^branded$/i });
+    const experimentalToggle = screen.getByRole('button', { name: /^experimental$/i });
+    const srLegacyToggle = screen.getByRole('button', { name: /^sr legacy$/i });
+
+    expect(foundationToggle).toHaveAttribute('aria-pressed', 'true');
+    expect(brandedToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(experimentalToggle).toHaveAttribute('aria-pressed', 'false');
+    expect(srLegacyToggle).toHaveAttribute('aria-pressed', 'false');
     expect(
       screen.getByText(
         /foundation is selected by default because it is the usda’s primary current food-data set for this use case/i,
@@ -85,12 +96,21 @@ describe('SourceEdit', () => {
       '/api/usda/search?query=banana&data_types=Foundation',
     );
 
-    await userEvent.click(screen.getByRole('button', { name: /branded/i }));
-    await userEvent.click(screen.getByRole('button', { name: /experimental/i }));
+    await userEvent.click(brandedToggle);
+    await userEvent.click(experimentalToggle);
     await userEvent.click(screen.getByRole('button', { name: /^search$/i }));
 
     expect(fetchMock).toHaveBeenLastCalledWith(
       '/api/usda/search?query=banana&data_types=Foundation&data_types=Branded&data_types=Experimental',
+    );
+
+    await userEvent.click(foundationToggle);
+    await userEvent.click(experimentalToggle);
+    await userEvent.click(srLegacyToggle);
+    await userEvent.click(screen.getByRole('button', { name: /^search$/i }));
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/usda/search?query=banana&data_types=Branded&data_types=SR+Legacy',
     );
     expect(screen.getByLabelText(/search usda/i)).toHaveValue('banana');
   });
@@ -208,20 +228,42 @@ describe('SourceEdit', () => {
   });
 
 
-  it('renders dataset labels for all supported USDA result types alongside normalization details', async () => {
+  it('renders dataset labels from normalization.data_type for mixed USDA result rows', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         foods: [
           {
-            id: 1,
-            name: 'Rolled oats',
+            id: 11,
+            name: 'Foundation fennel bulb',
             nutrition: {
-              calories: 3.89,
-              protein: 0.169,
-              carbohydrates: 0.663,
-              fat: 0.069,
-              fiber: 0.106,
+              calories: 0.31,
+              protein: 0.012,
+              carbohydrates: 0.073,
+              fat: 0.002,
+              fiber: 0.031,
+            },
+            normalization: {
+              can_normalize: true,
+              source_basis: 'per_100g',
+              normalized_basis: 'per_g',
+              reason: null,
+              data_type: 'Foundation',
+              serving_size: null,
+              serving_size_unit: null,
+              household_serving_full_text: null,
+            },
+            units: [{ name: '1 fennel bulb', grams: 234, is_default: true }],
+          },
+          {
+            id: 22,
+            name: 'Legacy lentil mix',
+            nutrition: {
+              calories: 3.52,
+              protein: 0.241,
+              carbohydrates: 0.602,
+              fat: 0.011,
+              fiber: 0.107,
             },
             normalization: {
               can_normalize: true,
@@ -233,17 +275,17 @@ describe('SourceEdit', () => {
               serving_size_unit: null,
               household_serving_full_text: null,
             },
-            units: [{ name: '1 g', grams: 1, is_default: true }],
+            units: [{ name: '1 scoop', grams: 42, is_default: true }],
           },
           {
-            id: 2,
-            name: 'Survey cereal',
+            id: 33,
+            name: 'Survey snack clusters',
             nutrition: {
-              calories: 3.7,
-              protein: 0.08,
-              carbohydrates: 0.79,
-              fat: 0.02,
-              fiber: 0.05,
+              calories: 4.01,
+              protein: 0.081,
+              carbohydrates: 0.713,
+              fat: 0.091,
+              fiber: 0.044,
             },
             normalization: {
               can_normalize: true,
@@ -255,11 +297,11 @@ describe('SourceEdit', () => {
               serving_size_unit: null,
               household_serving_full_text: null,
             },
-            units: [{ name: '1 g', grams: 1, is_default: true }],
+            units: [{ name: '1 pouch', grams: 28, is_default: true }],
           },
           {
-            id: 3,
-            name: 'Protein bar',
+            id: 44,
+            name: 'Branded berry bites',
             nutrition: null,
             normalization: {
               can_normalize: false,
@@ -269,9 +311,9 @@ describe('SourceEdit', () => {
               data_type: 'Branded',
               serving_size: 50,
               serving_size_unit: 'g',
-              household_serving_full_text: '1 bar',
+              household_serving_full_text: '1 pack',
             },
-            units: [{ name: '1 bar', grams: 50, is_default: true }],
+            units: [{ name: '1 pack', grams: 50, is_default: true }],
           },
         ],
       }),
@@ -286,15 +328,31 @@ describe('SourceEdit', () => {
       />,
     );
 
-    await userEvent.type(screen.getByLabelText(/search usda/i), 'oats');
+    await userEvent.type(screen.getByLabelText(/search usda/i), 'mix');
     await userEvent.click(screen.getByRole('button', { name: /search/i }));
 
     const resultsList = await screen.findByRole('list');
-    expect(within(resultsList).getByText('SR Legacy')).toBeInTheDocument();
-    expect(within(resultsList).getByText('Survey (FNDDS)')).toBeInTheDocument();
-    expect(within(resultsList).getByText('Branded')).toBeInTheDocument();
+    const foundationRow = within(resultsList)
+      .getByRole('button', { name: /foundation fennel bulb/i })
+      .closest('li');
+    const legacyRow = within(resultsList)
+      .getByRole('button', { name: /legacy lentil mix/i })
+      .closest('li');
+    const surveyRow = within(resultsList)
+      .getByRole('button', { name: /survey snack clusters/i })
+      .closest('li');
+    const brandedRow = within(resultsList)
+      .getByRole('button', { name: /branded berry bites/i })
+      .closest('li');
+
     expect(
-      await screen.findByText(/serving-only data cannot be normalized safely/i),
+      within(foundationRow as HTMLElement).getByText('Foundation (primary)'),
+    ).toBeInTheDocument();
+    expect(within(legacyRow as HTMLElement).getByText('SR Legacy')).toBeInTheDocument();
+    expect(within(surveyRow as HTMLElement).getByText('Survey (FNDDS)')).toBeInTheDocument();
+    expect(within(brandedRow as HTMLElement).getByText('Branded')).toBeInTheDocument();
+    expect(
+      within(brandedRow as HTMLElement).getByText(/serving-only data cannot be normalized safely/i),
     ).toBeInTheDocument();
   });
 
