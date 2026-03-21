@@ -82,13 +82,19 @@ const getDefaultUnitKey = (units: UsdaIngredientUnit[]): string | null => {
 };
 
 const getDefaultUnitLabel = (result: UsdaIngredientResult): string => {
+  const defaultUnit = getDefaultUnit(result);
+
+  return defaultUnit?.name ?? '1 g';
+};
+
+const getDefaultUnit = (result: UsdaIngredientResult): UsdaIngredientUnit | null => {
   const defaultUnit =
     result.units.find((unit) => createUsdaUnitKey(unit) === result.defaultUnitKey) ??
     result.units.find((unit) => unit.is_default) ??
     result.units[0] ??
     null;
 
-  return defaultUnit?.name ?? '1 g';
+  return defaultUnit;
 };
 
 const normalizeNutritionValue = (value: unknown): number => {
@@ -195,7 +201,10 @@ const formatNutritionSummary = (result: UsdaIngredientResult): string => {
     return `${reason} Basis: ${result.normalization.source_basis}.`;
   }
 
-  return `${getDefaultUnitLabel(result)} · Calories ${formatNutritionValue(result.nutrition.calories)} · Protein ${formatNutritionValue(result.nutrition.protein)} · Carbs ${formatNutritionValue(result.nutrition.carbohydrates)} · Fat ${formatNutritionValue(result.nutrition.fat)}`;
+  const defaultUnit = getDefaultUnit(result);
+  const multiplier = defaultUnit?.grams ?? 1;
+
+  return `${getDefaultUnitLabel(result)} · Calories ${formatNutritionValue(result.nutrition.calories * multiplier)} · Protein ${formatNutritionValue(result.nutrition.protein * multiplier)} · Carbs ${formatNutritionValue(result.nutrition.carbohydrates * multiplier)} · Fat ${formatNutritionValue(result.nutrition.fat * multiplier)}`;
 };
 
 function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
