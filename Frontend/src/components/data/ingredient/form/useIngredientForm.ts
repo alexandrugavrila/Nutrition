@@ -6,6 +6,8 @@ import { roundNutritionValue } from "@/utils/nutritionPrecision";
 import { generateUUID, handleFetchRequest } from "@/utils/utils";
 import type { components, operations } from "@/api-types";
 
+import type { UsdaNormalizationDataType } from "./usdaDataTypes";
+
 type IngredientRead = components["schemas"]["IngredientRead"];
 type IngredientUnitUpdate = components["schemas"]["IngredientUnitUpdate"];
 type IngredientUnitCreate = components["schemas"]["IngredientUnitCreate"];
@@ -36,7 +38,7 @@ export type UsdaIngredientResult = {
     normalized_basis: string | null;
     can_normalize: boolean;
     reason: string | null;
-    data_type: string | null;
+    data_type: UsdaNormalizationDataType | null;
     serving_size: number | null;
     serving_size_unit: string | null;
     household_serving_full_text: string | null;

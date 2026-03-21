@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
+  Chip,
   CircularProgress,
   FormControl,
   InputLabel,
@@ -22,6 +23,12 @@ import type {
   UsdaIngredientResult,
   UsdaIngredientUnit,
 } from './useIngredientForm';
+import {
+  DEFAULT_USDA_DATA_TYPES,
+  getUsdaDataTypeLabel,
+  USDA_DATA_TYPE_OPTIONS,
+} from './usdaDataTypes';
+import type { USDADataType } from './usdaDataTypes';
 import { formatNutritionValue } from '@/utils/nutritionPrecision';
 
 const createUsdaUnitKey = (unit: Pick<UsdaIngredientUnit, 'id' | 'name' | 'grams'>): string => {
@@ -181,19 +188,6 @@ const normalizeResults = (data: unknown): UsdaIngredientResult[] => {
 
   return [];
 };
-
-type USDADataType = 'Foundation' | 'SR Legacy' | 'Survey (FNDDS)' | 'Branded' | 'Experimental';
-
-const USDA_DATA_TYPE_OPTIONS: Array<{ value: USDADataType; label: string }> = [
-  { value: 'Foundation', label: 'Foundation (primary / most current USDA data)' },
-  { value: 'SR Legacy', label: 'SR Legacy' },
-  { value: 'Survey (FNDDS)', label: 'Survey (FNDDS)' },
-  { value: 'Branded', label: 'Branded' },
-  { value: 'Experimental', label: 'Experimental' },
-];
-
-const DEFAULT_USDA_DATA_TYPES: USDADataType[] = ['Foundation'];
-
 const formatNutritionSummary = (result: UsdaIngredientResult): string => {
   if (!result.normalization.can_normalize || !result.nutrition) {
     const reason =
@@ -388,8 +382,8 @@ function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
               <Typography variant="caption" color="text.secondary">
-                USDA data sets to search. Foundation is the default because it is the USDA primary /
-                most current data set.
+                Foundation is selected by default because it is the USDA’s primary current food-data
+                set for this use case.
               </Typography>
               <ToggleButtonGroup
                 value={selectedDataTypes}
@@ -433,7 +427,25 @@ function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
                       disabled={!isSupported}
                     >
                       <ListItemText
-                        primary={result.name}
+                        primary={
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              alignItems: 'center',
+                              gap: 0.75,
+                            }}
+                          >
+                            <Box component="span">{result.name}</Box>
+                            {getUsdaDataTypeLabel(result.normalization.data_type, 'result') && (
+                              <Chip
+                                size="small"
+                                label={getUsdaDataTypeLabel(result.normalization.data_type, 'result')}
+                                variant="outlined"
+                              />
+                            )}
+                          </Box>
+                        }
                         secondary={formatNutritionSummary(result)}
                       />
                     </ListItemButton>
