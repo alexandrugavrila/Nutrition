@@ -97,6 +97,34 @@ const getDefaultUnit = (result: UsdaIngredientResult): UsdaIngredientUnit | null
   return defaultUnit;
 };
 
+const getSearchDisplayUnit = (
+  result: UsdaIngredientResult,
+): { label: string; multiplier: number } | null => {
+  const defaultUnit = getDefaultUnit(result);
+  if (defaultUnit && defaultUnit.grams > 1) {
+    return {
+      label: defaultUnit.name,
+      multiplier: defaultUnit.grams,
+    };
+  }
+
+  if (result.normalization.can_normalize && result.normalization.source_basis === 'per_100g') {
+    return {
+      label: '100 g',
+      multiplier: 100,
+    };
+  }
+
+  if (defaultUnit) {
+    return {
+      label: defaultUnit.name,
+      multiplier: defaultUnit.grams,
+    };
+  }
+
+  return null;
+};
+
 const normalizeNutritionValue = (value: unknown): number => {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : 0;
@@ -201,10 +229,11 @@ const formatNutritionSummary = (result: UsdaIngredientResult): string => {
     return `${reason} Basis: ${result.normalization.source_basis}.`;
   }
 
-  const defaultUnit = getDefaultUnit(result);
-  const multiplier = defaultUnit?.grams ?? 1;
+  const searchDisplayUnit = getSearchDisplayUnit(result);
+  const multiplier = searchDisplayUnit?.multiplier ?? 1;
+  const label = searchDisplayUnit?.label ?? getDefaultUnitLabel(result);
 
-  return `${getDefaultUnitLabel(result)} · Calories ${formatNutritionValue(result.nutrition.calories * multiplier)} · Protein ${formatNutritionValue(result.nutrition.protein * multiplier)} · Carbs ${formatNutritionValue(result.nutrition.carbohydrates * multiplier)} · Fat ${formatNutritionValue(result.nutrition.fat * multiplier)}`;
+  return `${label} · Calories ${formatNutritionValue(result.nutrition.calories * multiplier)} · Protein ${formatNutritionValue(result.nutrition.protein * multiplier)} · Carbs ${formatNutritionValue(result.nutrition.carbohydrates * multiplier)} · Fat ${formatNutritionValue(result.nutrition.fat * multiplier)}`;
 };
 
 function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
