@@ -13,6 +13,13 @@ type IngredientRequest = operations["add_ingredient_api_ingredients__post"]["req
 
 export type IngredientSource = "manual" | "usda";
 
+export type UsdaIngredientUnit = {
+  id?: string | number | null;
+  name: string;
+  grams: number;
+  is_default?: boolean;
+};
+
 export type UsdaIngredientResult = {
   id: string;
   name: string;
@@ -33,6 +40,8 @@ export type UsdaIngredientResult = {
     serving_size_unit: string | null;
     household_serving_full_text: string | null;
   };
+  units: UsdaIngredientUnit[];
+  defaultUnitKey: string | null;
 };
 
 type IngredientFormIngredient = IngredientRead & {
@@ -87,6 +96,52 @@ const initializeEmptyIngredient = (): IngredientFormState["ingredient"] => ({
   source_id: null,
   sourceName: null,
 });
+
+
+const createUsdaUnitKey = (unit: Pick<UsdaIngredientUnit, "id" | "name" | "grams">): string => {
+  if (unit.id !== null && unit.id !== undefined && String(unit.id).trim() !== "") {
+    return `id:${String(unit.id)}`;
+  }
+
+  return `name:${unit.name.trim().toLowerCase()}|grams:${Number(unit.grams)}`;
+};
+
+const normalizeUsdaUnits = (units: UsdaIngredientUnit[] | null | undefined): UsdaIngredientUnit[] => {
+  if (!Array.isArray(units)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+
+  return units.reduce<UsdaIngredientUnit[]>((acc, unit) => {
+    const name = typeof unit.name === "string" ? unit.name.trim() : "";
+    const grams = Number(unit.grams);
+
+    if (!name || !Number.isFinite(grams) || grams <= 0) {
+      return acc;
+    }
+
+    const normalizedUnit: UsdaIngredientUnit = {
+      id: unit.id ?? null,
+      name,
+      grams,
+      is_default: Boolean(unit.is_default),
+    };
+    const key = createUsdaUnitKey(normalizedUnit);
+    if (seen.has(key)) {
+      return acc;
+    }
+
+    seen.add(key);
+    acc.push(normalizedUnit);
+    return acc;
+  }, []);
+};
+
+const getDefaultUsdaUnitKey = (units: UsdaIngredientUnit[]): string | null => {
+  const defaultUnit = units.find((unit) => unit.is_default) ?? units[0] ?? null;
+  return defaultUnit ? createUsdaUnitKey(defaultUnit) : null;
+};
 
 const createInitialState = (): IngredientFormState => ({
   ingredient: initializeEmptyIngredient(),
@@ -286,11 +341,38 @@ export const useIngredientForm = () => {
         fiber: result.nutrition.fiber ?? 0,
       };
 
+      const normalizedUsdaUnits = normalizeUsdaUnits(result.units);
+      const importedUnits = [
+        {
+          id: "0",
+          ingredient_id: state.ingredient.id,
+          name: "g",
+          grams: 1,
+        },
+        ...normalizedUsdaUnits
+          .filter((unit) => !(unit.name.toLowerCase() === "1 g" && Number(unit.grams) === 1))
+          .map((unit) => ({
+            id: createUsdaUnitKey(unit),
+            ingredient_id: state.ingredient.id,
+            name: unit.name,
+            grams: unit.grams,
+          })),
+      ];
+
+      const normalizedDefaultUnitKey = result.defaultUnitKey ?? getDefaultUsdaUnitKey(normalizedUsdaUnits);
+      const defaultImportedUnit =
+        importedUnits.find((unit) => String(unit.id) === normalizedDefaultUnitKey) ??
+        importedUnits.find((unit) => unit.name === "g" && Number(unit.grams) === 1) ??
+        importedUnits[0] ??
+        null;
+
       dispatch({
         type: "SET_INGREDIENT",
         payload: {
           ...state.ingredient,
           name: result.name,
+          units: importedUnits,
+          shoppingUnitId: defaultImportedUnit?.id ?? null,
           nutrition: updatedNutrition,
           source: "usda",
           source_id: result.id,
