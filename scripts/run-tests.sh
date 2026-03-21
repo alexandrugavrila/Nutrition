@@ -46,6 +46,8 @@ done
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Invoke child bash scripts explicitly so tests do not rely on executable bits.
+
 # Ensure virtual environment is active
 # shellcheck disable=SC1090
 source "$REPO_ROOT/scripts/lib/venv.sh"
@@ -54,7 +56,7 @@ ensure_venv
 # Optional: synchronize OpenAPI + migrations (non-interactive)
 if $RUN_SYNC; then
   echo "Synchronizing API schema and database migrations..."
-  "$REPO_ROOT/scripts/db/sync-api-and-migrations.sh" -y
+  bash "$REPO_ROOT/scripts/db/sync-api-and-migrations.sh" -y
 fi
 
 # Backend tests (exclude e2e by default; use --e2e to include)
@@ -67,5 +69,5 @@ CI=true npm --prefix Frontend test
 
 # Optional end-to-end tests
 if $RUN_E2E; then
-  "$REPO_ROOT/scripts/tests/run-e2e-tests.sh"
+  bash "$REPO_ROOT/scripts/tests/run-e2e-tests.sh"
 fi

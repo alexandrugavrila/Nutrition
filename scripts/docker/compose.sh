@@ -33,6 +33,9 @@ fi
 
 cd "$REPO_ROOT"
 
+# Use bash for nested shell entrypoints so Docker workflows do not depend on
+# executable permission metadata being preserved in the checkout.
+
 # --- Helper functions shared across subcommands ---
 
 compose_up() {
@@ -98,7 +101,7 @@ compose_up() {
 
   echo "Applying database migrations..."
   docker compose -p "$proj" exec -T backend python -m alembic upgrade head
-  ./scripts/env/activate-venv.sh
+  bash ./scripts/env/activate-venv.sh
   if [[ "$data_mode" == "prod" ]]; then
     echo "Importing production data..."
     python Database/import_from_csv.py --production

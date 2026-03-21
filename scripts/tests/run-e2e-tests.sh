@@ -38,6 +38,9 @@ source "$REPO_ROOT/scripts/lib/branch-env.sh"
 source "$REPO_ROOT/scripts/lib/compose-utils.sh"
 branch_env_load
 
+# Invoke child bash scripts explicitly so the workflow survives non-executable
+# shell scripts on cross-platform filesystems.
+
 # Ensure the virtual environment is active
 ensure_venv
 
@@ -58,7 +61,7 @@ TEST_PROJECT="$(compose_test_project)"
 ENV_FILE=$(mktemp)
 cleanup_env() { rm -f "$ENV_FILE"; }
 trap cleanup_env EXIT
-COMPOSE_ENV_FILE="$ENV_FILE" ./scripts/docker/compose.sh up type -test data -test
+COMPOSE_ENV_FILE="$ENV_FILE" bash ./scripts/docker/compose.sh up type -test data -test
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 
@@ -72,7 +75,7 @@ deadline=$((SECONDS + 120))
 until is_backend_healthy "$DEV_BACKEND_PORT"; do
   if (( SECONDS >= deadline )); then
     echo "Backend did not become healthy on port ${DEV_BACKEND_PORT} within timeout." >&2
-    ./scripts/docker/compose.sh down type -test || true
+    bash ./scripts/docker/compose.sh down type -test || true
     exit 1
   fi
   sleep 1
@@ -83,7 +86,7 @@ deadline=$((SECONDS + 180))
 until is_frontend_healthy "$DEV_FRONTEND_PORT"; do
   if (( SECONDS >= deadline )); then
     echo "Frontend did not become healthy on port ${DEV_FRONTEND_PORT} within timeout." >&2
-    ./scripts/docker/compose.sh down type -test || true
+    bash ./scripts/docker/compose.sh down type -test || true
     exit 1
   fi
   sleep 1
@@ -105,7 +108,7 @@ ui_exit=$?
 set -e
 
 # Tear down the dedicated TEST stack
-./scripts/docker/compose.sh down type -test
+bash ./scripts/docker/compose.sh down type -test
 
 if [[ $api_exit -ne 0 ]]; then
   exit $api_exit
