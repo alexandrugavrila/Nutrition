@@ -650,6 +650,20 @@ export interface components {
       name?: string | null;
       nutrition?: components["schemas"]["UsdaNutrition"] | null;
       normalization: components["schemas"]["UsdaNormalizationMetadata"];
+      /** Units */
+      units?: components["schemas"]["UsdaFoodUnit"][];
+    };
+    /** UsdaFoodUnit */
+    UsdaFoodUnit: {
+      /** Name */
+      name: string;
+      /** Grams */
+      grams: number;
+      /**
+       * Is Default
+       * @default false
+       */
+      is_default?: boolean;
     };
     /** UsdaNormalizationMetadata */
     UsdaNormalizationMetadata: {
