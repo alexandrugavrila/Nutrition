@@ -297,6 +297,7 @@ function IngredientTable({
                         <Button
                           variant="outlined"
                           size="small"
+                          aria-label={`Edit ingredient ${ingredient.name}`}
                           onClick={(event) => handleIngredientEdit(event, ingredient)}
                         >
                           Edit
@@ -306,6 +307,7 @@ function IngredientTable({
                         <Button
                           variant="contained"
                           size="small"
+                          aria-label={`Select ingredient ${ingredient.name}`}
                           onClick={(event) => handleIngredientSelect(event, ingredient)}
                         >
                           Select

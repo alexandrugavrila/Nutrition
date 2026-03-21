@@ -74,12 +74,12 @@ function IngredientEditor({ mode, initial = null, onSaved, onDeleted }: Ingredie
 
       <Divider sx={{ my: 1 }} />
       <Box sx={{ display: "flex", gap: 1 }}>
-        <Button onClick={clearForm}>Clear</Button>
-        <Button variant="contained" onClick={handleSave}>
+        <Button aria-label="clear ingredient form" onClick={clearForm}>Clear</Button>
+        <Button aria-label={mode === "edit" ? "update ingredient" : "add ingredient"} variant="contained" onClick={handleSave}>
           {mode === "edit" ? "Update" : "Add"}
         </Button>
         {mode === "edit" && (
-          <Button color="error" onClick={handleDelete}>
+          <Button aria-label="delete ingredient" color="error" onClick={handleDelete}>
             Delete
           </Button>
         )}
