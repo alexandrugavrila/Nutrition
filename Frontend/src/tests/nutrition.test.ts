@@ -116,16 +116,16 @@ describe("macrosForIngredientPortion", () => {
     expect(result).toEqual(ZERO_MACROS);
   });
 
-  it("applies USDA per-gram nutrition correctly for a 100 gram portion", () => {
+  it("treats USDA nutrition as rounded per-gram base values for larger portions", () => {
     const ingredient = makeIngredient({
       id: 303,
       name: "Banana USDA",
       nutrition: {
         calories: 0.89,
-        protein: 0.0109,
-        fat: 0.0033,
-        carbohydrates: 0.2284,
-        fiber: 0.026,
+        protein: 0.01,
+        fat: 0,
+        carbohydrates: 0.23,
+        fiber: 0.03,
       } as unknown as IngredientRead["nutrition"],
       units: [
         { id: 31, name: "gram", grams: 1 },
@@ -140,11 +140,41 @@ describe("macrosForIngredientPortion", () => {
 
     expect(result).toEqual({
       calories: 89,
-      protein: 1.09,
-      fat: 0.33,
-      carbs: 22.84,
-      fiber: 2.6,
+      protein: 1,
+      fat: 0,
+      carbs: 23,
+      fiber: 3,
     });
+  });
+
+  it("continues to scale per-gram USDA nutrition through non-gram units", () => {
+    const ingredient = makeIngredient({
+      id: 404,
+      name: "Apple slices USDA",
+      nutrition: {
+        calories: 0.52,
+        protein: 0,
+        fat: 0,
+        carbohydrates: 0.14,
+        fiber: 0.02,
+      } as unknown as IngredientRead["nutrition"],
+      units: [
+        { id: 40, name: "gram", grams: 1 },
+        { id: 41, name: "cup sliced", grams: 109 },
+      ] as unknown as IngredientRead["units"],
+    });
+
+    const result = macrosForIngredientPortion({
+      ingredient,
+      unitId: 41,
+      quantity: 1,
+    });
+
+    expect(result.calories).toBeCloseTo(56.68);
+    expect(result.protein).toBeCloseTo(0);
+    expect(result.fat).toBeCloseTo(0);
+    expect(result.carbs).toBeCloseTo(15.26);
+    expect(result.fiber).toBeCloseTo(2.18);
   });
 
 });

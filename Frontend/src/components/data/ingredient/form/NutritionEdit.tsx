@@ -1,13 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { TextField, Typography } from "@mui/material";
-
-const roundToTwoDecimalPlaces = (value: number): number => {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-};
+import { roundNutritionValue } from "@/utils/nutritionPrecision";
 
 function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) {
   const [multiplier, setMultiplier] = useState(1);
@@ -79,11 +72,11 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
   };
   const getRoundedDisplayNutrition = useCallback(
     (targetMultiplier: number) => ({
-      calories: roundToTwoDecimalPlaces((ingredient?.nutrition?.calories ?? 0) * targetMultiplier),
-      protein: roundToTwoDecimalPlaces((ingredient?.nutrition?.protein ?? 0) * targetMultiplier),
-      carbohydrates: roundToTwoDecimalPlaces((ingredient?.nutrition?.carbohydrates ?? 0) * targetMultiplier),
-      fat: roundToTwoDecimalPlaces((ingredient?.nutrition?.fat ?? 0) * targetMultiplier),
-      fiber: roundToTwoDecimalPlaces((ingredient?.nutrition?.fiber ?? 0) * targetMultiplier),
+      calories: roundNutritionValue((ingredient?.nutrition?.calories ?? 0) * targetMultiplier),
+      protein: roundNutritionValue((ingredient?.nutrition?.protein ?? 0) * targetMultiplier),
+      carbohydrates: roundNutritionValue((ingredient?.nutrition?.carbohydrates ?? 0) * targetMultiplier),
+      fat: roundNutritionValue((ingredient?.nutrition?.fat ?? 0) * targetMultiplier),
+      fiber: roundNutritionValue((ingredient?.nutrition?.fiber ?? 0) * targetMultiplier),
     }),
     [ingredient],
   );
@@ -93,7 +86,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
     const normalized = Object.keys(displayNutrition).reduce((acc, key) => {
       const raw = displayNutrition[key];
       const parsed = parseFloat(String(raw).replace(",", "."));
-      const numericValue = Number.isNaN(parsed) ? 0 : roundToTwoDecimalPlaces(parsed);
+      const numericValue = Number.isNaN(parsed) ? 0 : roundNutritionValue(parsed);
       return { ...acc, [key]: numericValue };
     }, {});
 
@@ -250,6 +243,5 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
 }
 
 export default NutritionEdit;
-
 
 

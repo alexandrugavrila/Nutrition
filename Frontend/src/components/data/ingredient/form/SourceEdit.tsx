@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 
 import type { IngredientSource, UsdaIngredientResult, UsdaIngredientUnit } from "./useIngredientForm";
+import { formatNutritionValue } from "@/utils/nutritionPrecision";
 
 
 const createUsdaUnitKey = (unit: Pick<UsdaIngredientUnit, "id" | "name" | "grams">): string => {
@@ -174,7 +175,7 @@ const formatNutritionSummary = (result: UsdaIngredientResult): string => {
     return `${reason} Basis: ${result.normalization.source_basis}.`;
   }
 
-  return `${getDefaultUnitLabel(result)} · Calories ${result.nutrition.calories} · Protein ${result.nutrition.protein} · Carbs ${result.nutrition.carbohydrates} · Fat ${result.nutrition.fat}`;
+  return `${getDefaultUnitLabel(result)} · Calories ${formatNutritionValue(result.nutrition.calories)} · Protein ${formatNutritionValue(result.nutrition.protein)} · Carbs ${formatNutritionValue(result.nutrition.carbohydrates)} · Fat ${formatNutritionValue(result.nutrition.fat)}`;
 };
 
 function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
