@@ -239,7 +239,32 @@ def test_search_foods_defaults_to_foundation_data_type(client, monkeypatch) -> N
     ]
 
 
-def test_search_foods_forwards_selected_data_types(client, monkeypatch) -> None:
+def test_search_foods_forwards_single_selected_data_type(client, monkeypatch) -> None:
+    mock_client = _MockAsyncClient()
+
+    monkeypatch.setattr(usda_routes, "settings", SimpleNamespace(usda_api_key="test-key"))
+    monkeypatch.setattr(usda_routes.httpx, "AsyncClient", lambda *args, **kwargs: mock_client)
+
+    response = client.get(
+        "/api/usda/search",
+        params=[("query", "banana"), ("data_types", "Branded")],
+    )
+
+    assert response.status_code == 200
+    assert mock_client.calls == [
+        (
+            "https://api.nal.usda.gov/fdc/v1/foods/search",
+            {
+                "query": "banana",
+                "pageSize": 25,
+                "dataType": ["Branded"],
+                "api_key": "test-key",
+            },
+        )
+    ]
+
+
+def test_search_foods_forwards_multiple_selected_data_types(client, monkeypatch) -> None:
     mock_client = _MockAsyncClient()
 
     monkeypatch.setattr(usda_routes, "settings", SimpleNamespace(usda_api_key="test-key"))
