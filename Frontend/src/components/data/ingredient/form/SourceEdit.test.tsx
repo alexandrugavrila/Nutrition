@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -74,7 +74,7 @@ describe('SourceEdit', () => {
     ).toHaveAttribute('aria-pressed', 'true');
     expect(
       screen.getByText(
-        /foundation is the default because it is the usda primary \/ most current data set/i,
+        /foundation is selected by default because it is the usda’s primary current food-data set for this use case/i,
       ),
     ).toBeInTheDocument();
 
@@ -175,6 +175,7 @@ describe('SourceEdit', () => {
 
     const bananaRow = await screen.findByRole('button', { name: /banana/i });
     expect(bananaRow).toBeEnabled();
+    expect(await screen.findByText(/Foundation \(primary\)/i)).toBeInTheDocument();
     expect(
       await screen.findByText(/1 medium · Calories 0\.89 · Protein 0\.01 · Carbs 0\.23 · Fat 0/i),
     ).toBeInTheDocument();
@@ -204,6 +205,97 @@ describe('SourceEdit', () => {
         }),
       );
     });
+  });
+
+
+  it('renders dataset labels for all supported USDA result types alongside normalization details', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        foods: [
+          {
+            id: 1,
+            name: 'Rolled oats',
+            nutrition: {
+              calories: 3.89,
+              protein: 0.169,
+              carbohydrates: 0.663,
+              fat: 0.069,
+              fiber: 0.106,
+            },
+            normalization: {
+              can_normalize: true,
+              source_basis: 'per_100g',
+              normalized_basis: 'per_g',
+              reason: null,
+              data_type: 'SR Legacy',
+              serving_size: null,
+              serving_size_unit: null,
+              household_serving_full_text: null,
+            },
+            units: [{ name: '1 g', grams: 1, is_default: true }],
+          },
+          {
+            id: 2,
+            name: 'Survey cereal',
+            nutrition: {
+              calories: 3.7,
+              protein: 0.08,
+              carbohydrates: 0.79,
+              fat: 0.02,
+              fiber: 0.05,
+            },
+            normalization: {
+              can_normalize: true,
+              source_basis: 'per_100g',
+              normalized_basis: 'per_g',
+              reason: null,
+              data_type: 'Survey (FNDDS)',
+              serving_size: null,
+              serving_size_unit: null,
+              household_serving_full_text: null,
+            },
+            units: [{ name: '1 g', grams: 1, is_default: true }],
+          },
+          {
+            id: 3,
+            name: 'Protein bar',
+            nutrition: null,
+            normalization: {
+              can_normalize: false,
+              source_basis: 'per_serving',
+              normalized_basis: null,
+              reason: 'Serving-only data cannot be normalized safely.',
+              data_type: 'Branded',
+              serving_size: 50,
+              serving_size_unit: 'g',
+              household_serving_full_text: '1 bar',
+            },
+            units: [{ name: '1 bar', grams: 50, is_default: true }],
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <SourceEdit
+        ingredient={baseIngredient as never}
+        dispatch={vi.fn()}
+        applyUsdaResult={vi.fn()}
+      />,
+    );
+
+    await userEvent.type(screen.getByLabelText(/search usda/i), 'oats');
+    await userEvent.click(screen.getByRole('button', { name: /search/i }));
+
+    const resultsList = await screen.findByRole('list');
+    expect(within(resultsList).getByText('SR Legacy')).toBeInTheDocument();
+    expect(within(resultsList).getByText('Survey (FNDDS)')).toBeInTheDocument();
+    expect(within(resultsList).getByText('Branded')).toBeInTheDocument();
+    expect(
+      await screen.findByText(/serving-only data cannot be normalized safely/i),
+    ).toBeInTheDocument();
   });
 
   it('disables USDA results that cannot be normalized to per-gram nutrition', async () => {
