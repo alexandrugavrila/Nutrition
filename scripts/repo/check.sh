@@ -60,15 +60,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# Invoke child bash entrypoints explicitly so repo workflows still work when
+# executable bits are missing (common on cross-platform checkouts).
 
 if [[ "$SKIP_SYNC" == false ]]; then
-  "$SCRIPT_DIR/sync-branches.sh" "${SYNC_ARGS[@]}"
+  bash "$SCRIPT_DIR/sync-branches.sh" "${SYNC_ARGS[@]}"
 fi
 
 if [[ "$SKIP_AUDIT" == false ]]; then
-  "$SCRIPT_DIR/audit-worktrees.sh"
+  bash "$SCRIPT_DIR/audit-worktrees.sh"
 fi
 
 if [[ "$SKIP_CONTAINERS" == false ]]; then
-  "$SCRIPT_DIR/audit-container-sets.sh" "${CONTAINER_ARGS[@]}"
+  bash "$SCRIPT_DIR/audit-container-sets.sh" "${CONTAINER_ARGS[@]}"
 fi
