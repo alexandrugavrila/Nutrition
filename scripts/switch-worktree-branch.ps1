@@ -11,6 +11,8 @@
     Suppress launching VS Code after switching.
 .PARAMETER NewVSCodeWindow
     Open the worktree in a new VS Code window instead of reusing the current one.
+.PARAMETER CopyEnv
+    Copy the current worktree .env file into the target worktree if it does not exist there.
 .PARAMETER StartWorkspaceStack
     Start the Docker Compose stack once the worktree is opened. The project's
     virtual environment is always activated.
@@ -23,6 +25,7 @@ param(
     [string]$Branch,
     [switch]$SkipVSCode,
     [switch]$NewVSCodeWindow,
+    [switch]$CopyEnv,
     [switch]$StartWorkspaceStack,
     [ValidateSet('test','prod')]
     [string]$Data
@@ -190,6 +193,31 @@ function Activate-VirtualEnvironment {
     }
 }
 
+function Copy-EnvFileIfRequested {
+    param(
+        [Parameter(Mandatory = $true)][string]$SourceRoot,
+        [Parameter(Mandatory = $true)][string]$TargetRoot,
+        [switch]$Requested
+    )
+
+    if (-not $Requested) { return }
+
+    $sourceEnv = Join-Path $SourceRoot '.env'
+    if (-not (Test-Path -LiteralPath $sourceEnv)) {
+        Write-Host "No .env found at '$sourceEnv'. Skipping env copy."
+        return
+    }
+
+    $targetEnv = Join-Path $TargetRoot '.env'
+    if (Test-Path -LiteralPath $targetEnv) {
+        Write-Host "Target already has .env at '$targetEnv'. Skipping env copy."
+        return
+    }
+
+    Copy-Item -LiteralPath $sourceEnv -Destination $targetEnv
+    Write-Host "Copied .env to '$targetEnv'."
+}
+
 function Start-WorkspaceStack {
     param(
         [Parameter(Mandatory = $true)][ValidateSet('test','prod')][string]$DataMode
@@ -222,6 +250,10 @@ if (-not $repoRootRaw) {
 }
 Set-Location $repoRootRaw
 $repoRoot = Normalize-Path $repoRootRaw
+$branchEnvLib = Join-Path $repoRoot 'scripts' 'lib' 'branch-env.ps1'
+if (Test-Path -LiteralPath $branchEnvLib) {
+    . $branchEnvLib
+}
 
 $remoteName = 'origin'
 Write-Host "Fetching latest refs from '$remoteName'..."
@@ -358,6 +390,7 @@ if ($targetPath) {
     Write-Host ''
     Write-Host "Switching to branch '$Branch' at:"
     Write-Host "  $targetPath"
+    Copy-EnvFileIfRequested -SourceRoot $repoRoot -TargetRoot $targetPath -Requested:$CopyEnv
     Set-Location $targetPath
     Write-Host ''
     Write-Host 'Status:'
@@ -452,6 +485,7 @@ if ($shouldPushNewBranch) {
 Write-Host ''
 Write-Host "Switched to new worktree for '$Branch':"
 Write-Host "  $targetPath"
+Copy-EnvFileIfRequested -SourceRoot $repoRoot -TargetRoot $targetPath -Requested:$CopyEnv
 Set-Location $targetPath
 Write-Host ''
 Write-Host 'Status:'

@@ -46,49 +46,63 @@ class TestIngredientRoutes:
             "units": [{"name": "100g", "grams": 100}],
         }
 
-        # Create
-        resp = httpx.post(f"{BASE_URL}/ingredients/", json=create_payload)
-        assert (
-            resp.status_code == 201
-        ), f"create ingredient expected 201, got {resp.status_code}: {resp.text}"
-        ingredient = resp.json()
-        ingredient_id = ingredient["id"]
-        assert (
-            ingredient["name"] == unique_ing_name
-        ), "created ingredient name should match request"
-        _ok(f"Created ingredient '{unique_ing_name}' with id={ingredient_id}")
+        ingredient_id: int | None = None
+        try:
+            # Create
+            resp = httpx.post(f"{BASE_URL}/ingredients/", json=create_payload)
+            assert (
+                resp.status_code == 201
+            ), f"create ingredient expected 201, got {resp.status_code}: {resp.text}"
+            ingredient = resp.json()
+            ingredient_id = ingredient["id"]
+            assert (
+                ingredient["name"] == unique_ing_name
+            ), "created ingredient name should match request"
+            _ok(f"Created ingredient '{unique_ing_name}' with id={ingredient_id}")
 
-        # Read
-        resp = httpx.get(f"{BASE_URL}/ingredients/{ingredient_id}")
-        assert (
-            resp.status_code == 200
-        ), f"read ingredient expected 200, got {resp.status_code}: {resp.text}"
-        assert (
-            resp.json()["name"] == unique_ing_name
-        ), "fetched ingredient name should equal created name"
-        _ok("Fetched ingredient by id with expected name")
+            # Read
+            resp = httpx.get(f"{BASE_URL}/ingredients/{ingredient_id}")
+            assert (
+                resp.status_code == 200
+            ), f"read ingredient expected 200, got {resp.status_code}: {resp.text}"
+            assert (
+                resp.json()["name"] == unique_ing_name
+            ), "fetched ingredient name should equal created name"
+            _ok("Fetched ingredient by id with expected name")
 
-        # Update
-        updated_ing_name = f"{unique_ing_name}_updated"
-        update_payload = create_payload | {"name": updated_ing_name}
-        resp = httpx.put(f"{BASE_URL}/ingredients/{ingredient_id}", json=update_payload)
-        assert (
-            resp.status_code == 200
-        ), f"update ingredient expected 200, got {resp.status_code}: {resp.text}"
-        assert (
-            resp.json()["name"] == updated_ing_name
-        ), "updated ingredient name should be persisted"
-        _ok("Updated ingredient name persisted")
+            # Update
+            updated_ing_name = f"{unique_ing_name}_updated"
+            update_payload = create_payload | {"name": updated_ing_name}
+            resp = httpx.put(
+                f"{BASE_URL}/ingredients/{ingredient_id}", json=update_payload
+            )
+            assert (
+                resp.status_code == 200
+            ), f"update ingredient expected 200, got {resp.status_code}: {resp.text}"
+            assert (
+                resp.json()["name"] == updated_ing_name
+            ), "updated ingredient name should be persisted"
+            _ok("Updated ingredient name persisted")
 
-        # Delete
-        resp = httpx.delete(f"{BASE_URL}/ingredients/{ingredient_id}")
-        assert (
-            resp.status_code == 200
-        ), f"delete ingredient expected 200, got {resp.status_code}: {resp.text}"
-        assert (
-            resp.json()["message"] == "Ingredient deleted successfully"
-        ), "delete response should include success message"
-        _ok("Deleted ingredient successfully")
+            # Delete
+            resp = httpx.delete(f"{BASE_URL}/ingredients/{ingredient_id}")
+            assert (
+                resp.status_code == 200
+            ), f"delete ingredient expected 200, got {resp.status_code}: {resp.text}"
+            assert (
+                resp.json()["message"] == "Ingredient deleted successfully"
+            ), "delete response should include success message"
+            _ok("Deleted ingredient successfully")
+
+            resp = httpx.get(f"{BASE_URL}/ingredients/{ingredient_id}")
+            assert (
+                resp.status_code == 404
+            ), f"fetch after delete expected 404, got {resp.status_code}: {resp.text}"
+            _ok("Deleted ingredient no longer available by id")
+            ingredient_id = None
+        finally:
+            if ingredient_id is not None:
+                httpx.delete(f"{BASE_URL}/ingredients/{ingredient_id}")
 
 
 @pytest.mark.e2e
@@ -101,63 +115,78 @@ class TestFoodRoutes:
             "name": unique_ing_name,
             "units": [{"name": "1 cup", "grams": 100}],
         }
-        resp = httpx.post(f"{BASE_URL}/ingredients/", json=ingredient_payload)
-        assert (
-            resp.status_code == 201
-        ), f"seed ingredient expected 201, got {resp.status_code}: {resp.text}"
-        ingredient_id = resp.json()["id"]
-        _ok(f"Seeded ingredient '{unique_ing_name}' id={ingredient_id}")
+        ingredient_id: int | None = None
+        food_id: int | None = None
+        try:
+            resp = httpx.post(f"{BASE_URL}/ingredients/", json=ingredient_payload)
+            assert (
+                resp.status_code == 201
+            ), f"seed ingredient expected 201, got {resp.status_code}: {resp.text}"
+            ingredient_id = resp.json()["id"]
+            _ok(f"Seeded ingredient '{unique_ing_name}' id={ingredient_id}")
 
-        unique_food_name = f"_test_e2e_food_{uuid4().hex[:8]}"
-        food_payload = {
-            "name": unique_food_name,
-            "ingredients": [{"ingredient_id": ingredient_id, "unit_quantity": 1}],
-        }
+            unique_food_name = f"_test_e2e_food_{uuid4().hex[:8]}"
+            food_payload = {
+                "name": unique_food_name,
+                "ingredients": [{"ingredient_id": ingredient_id, "unit_quantity": 1}],
+            }
 
-        # Create
-        resp = httpx.post(f"{BASE_URL}/foods/", json=food_payload)
-        assert (
-            resp.status_code == 201
-        ), f"create food expected 201, got {resp.status_code}: {resp.text}"
-        food = resp.json()
-        food_id = food["id"]
-        assert (
-            food["name"] == unique_food_name
-        ), "created food name should match request"
-        _ok(f"Created food '{unique_food_name}' with id={food_id}")
+            # Create
+            resp = httpx.post(f"{BASE_URL}/foods/", json=food_payload)
+            assert (
+                resp.status_code == 201
+            ), f"create food expected 201, got {resp.status_code}: {resp.text}"
+            food = resp.json()
+            food_id = food["id"]
+            assert (
+                food["name"] == unique_food_name
+            ), "created food name should match request"
+            _ok(f"Created food '{unique_food_name}' with id={food_id}")
 
-        # Read
-        resp = httpx.get(f"{BASE_URL}/foods/{food_id}")
-        assert (
-            resp.status_code == 200
-        ), f"read food expected 200, got {resp.status_code}: {resp.text}"
-        assert (
-            resp.json()["name"] == unique_food_name
-        ), "fetched food name should equal created name"
-        _ok("Fetched food by id with expected name")
+            # Read
+            resp = httpx.get(f"{BASE_URL}/foods/{food_id}")
+            assert (
+                resp.status_code == 200
+            ), f"read food expected 200, got {resp.status_code}: {resp.text}"
+            assert (
+                resp.json()["name"] == unique_food_name
+            ), "fetched food name should equal created name"
+            _ok("Fetched food by id with expected name")
 
-        # Update
-        updated_food_name = f"{unique_food_name}_updated"
-        update_payload = food_payload | {"name": updated_food_name}
-        resp = httpx.put(f"{BASE_URL}/foods/{food_id}", json=update_payload)
-        assert (
-            resp.status_code == 200
-        ), f"update food expected 200, got {resp.status_code}: {resp.text}"
-        assert (
-            resp.json()["name"] == updated_food_name
-        ), "updated food name should be persisted"
-        _ok("Updated food name persisted")
+            # Update
+            updated_food_name = f"{unique_food_name}_updated"
+            update_payload = food_payload | {"name": updated_food_name}
+            resp = httpx.put(f"{BASE_URL}/foods/{food_id}", json=update_payload)
+            assert (
+                resp.status_code == 200
+            ), f"update food expected 200, got {resp.status_code}: {resp.text}"
+            assert (
+                resp.json()["name"] == updated_food_name
+            ), "updated food name should be persisted"
+            _ok("Updated food name persisted")
 
-        # Delete
-        resp = httpx.delete(f"{BASE_URL}/foods/{food_id}")
-        assert (
-            resp.status_code == 200
-        ), f"delete food expected 200, got {resp.status_code}: {resp.text}"
-        assert (
-            resp.json()["message"] == "Food deleted successfully"
-        ), "delete response should include success message"
-        _ok("Deleted food successfully")
+            # Delete
+            resp = httpx.delete(f"{BASE_URL}/foods/{food_id}")
+            assert (
+                resp.status_code == 200
+            ), f"delete food expected 200, got {resp.status_code}: {resp.text}"
+            assert (
+                resp.json()["message"] == "Food deleted successfully"
+            ), "delete response should include success message"
+            _ok("Deleted food successfully")
 
-        # Clean up ingredient
-        httpx.delete(f"{BASE_URL}/ingredients/{ingredient_id}")
-        _ok("Cleaned up seed ingredient")
+            resp = httpx.get(f"{BASE_URL}/foods/{food_id}")
+            assert (
+                resp.status_code == 404
+            ), f"fetch after delete expected 404, got {resp.status_code}: {resp.text}"
+            _ok("Deleted food no longer available by id")
+            food_id = None
+        finally:
+            if food_id is not None:
+                httpx.delete(f"{BASE_URL}/foods/{food_id}")
+            if ingredient_id is not None:
+                resp = httpx.delete(f"{BASE_URL}/ingredients/{ingredient_id}")
+                assert (
+                    resp.status_code in (200, 404)
+                ), f"cleanup ingredient delete expected 200/404, got {resp.status_code}: {resp.text}"
+                _ok("Cleaned up seed ingredient")

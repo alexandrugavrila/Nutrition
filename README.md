@@ -21,14 +21,22 @@ A full-stack nutrition planning and tracking app built with:
 2. (Optional) Create or jump to a dedicated worktree when you want hot reload and database state isolated per branch.
 
    ```pwsh
-   pwsh ./scripts/switch-worktree-branch.ps1 feature/my-feature
+   pwsh ./scripts/switch-worktree-branch.ps1 feature/my-feature -CopyEnv
    ```
    - The script fetches remote refs, creates local tracking branches for remote-only branches, then creates `nutrition-feature-my-feature` under the worktree parent (default: parent of the primary clone) and reopens the folder in VS Code (use `-SkipVSCode` to opt out).
    - Worktrees let every branch mount its own code directory and Postgres volume, so multiple stacks can run in parallel.
 
    Bash users can run the script through `pwsh` (PowerShell 7+ is cross-platform).
 
-3. Activate the developer environment (installs backend dependencies and keeps the virtualenv up to date).
+3. Create your local environment file.
+
+   ```pwsh
+   Copy-Item .env.template .env
+   ```
+
+   Then fill in `USDA_API_KEY` and confirm `VITE_API_BASE_URL` in `.env`.
+
+4. Activate the developer environment (installs backend dependencies and keeps the virtualenv up to date).
 
    ```pwsh
    pwsh ./scripts/env/activate-venv.ps1
@@ -38,7 +46,7 @@ A full-stack nutrition planning and tracking app built with:
 
    To verify the current shell is in the right worktree with an active venv, run `pwsh ./scripts/env/check.ps1 -Fix` (or `./scripts/env/check.sh --fix`).
 
-4. Start the branch-local Docker stack.
+5. Start the branch-local Docker stack.
 
    ```pwsh
    pwsh ./scripts/docker/compose.ps1 up data -test
@@ -55,7 +63,7 @@ A full-stack nutrition planning and tracking app built with:
    - Backend API: `http://localhost:<DEV_BACKEND_PORT>/docs`
    - PostgreSQL: `localhost:<DEV_DB_PORT>`
 
-5. Visit the printed URLs or connect a SQL client (default credentials: `nutrition_user` / `nutrition_pass`).
+6. Visit the printed URLs or connect a SQL client (default credentials: `nutrition_user` / `nutrition_pass`).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
 
@@ -64,10 +72,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
 ## Key Helper Scripts
 
 - `pwsh ./scripts/repo/check.ps1`: fetch latest refs, audit worktrees, flag stale container stacks, and suggest fixes. Bash: `./scripts/repo/check.sh`.
-- `pwsh ./scripts/switch-worktree-branch.ps1`: fetch remote refs, sync local tracking branches, and create or hop between branch-dedicated worktrees.
+- `pwsh ./scripts/switch-worktree-branch.ps1`: fetch remote refs, sync local tracking branches, and create or hop between branch-dedicated worktrees (`-CopyEnv` can copy the current `.env` into the target).
 - `pwsh ./scripts/env/check.ps1 -Fix`: ensure you are inside the correct worktree with an activated virtualenv (Bash variant available).
 - `pwsh ./scripts/docker/compose.ps1 <up|down|restart>`: manage the per-branch Docker stack.
-- `pwsh ./scripts/run-tests.ps1 [-sync] [-e2e]`: run backend + frontend tests with optional API/migration sync. Bash variant: `./scripts/run-tests.sh`.
+- `pwsh ./scripts/run-tests.ps1 [-sync] [-e2e]`: run backend + frontend tests with optional API/migration sync and branch-isolated API/browser e2e suites. Bash variant: `./scripts/run-tests.sh`.
 - `pwsh ./scripts/db/backup.ps1` / `restore.ps1`: create or restore branch-local Postgres backups. Bash variants available in the same directory.
 - `pwsh ./scripts/db/export-to-csv.ps1` / `./scripts/db/export-to-csv.sh`: export the current database tables to CSV (production by default, `--test` or `--output-dir` available).
 
@@ -117,8 +125,8 @@ Nutrition/
   the backend stores a fridge entry and the UI now confirms the save with a toast.
 - Stored items validate their macro data server-side: calories, protein, carbs, fat, and fiber must all be zero or positive values,
   and the API refuses to consume more portions than remain in the fridge.
-- Switch to the Food Logging tab to record consumption against a chosen day. Logging actions emit success or error toasts, and the
-  backend enforces the same non-negative macro rules so contributor tests cover the end-to-end fridge workflow.
+- Switch to the Food Logging tab to record consumption against a chosen day. Logging actions emit success or error toasts, while the
+  backend enforces the same non-negative macro rules. Contributor tests cover this end-to-end fridge workflow.
 
 ---
 
@@ -139,17 +147,20 @@ Detailed endpoint documentation is available at `http://localhost:<DEV_BACKEND_P
 
 ```mermaid
 erDiagram
-  INGREDIENT ||--o{ INGREDIENT_UNIT : defines
-  INGREDIENT ||--|| NUTRITION : has
-  INGREDIENT ||--o{ INGREDIENT_TAG : tagged_with
-  INGREDIENT_TAG }o--|| POSSIBLE_INGREDIENT_TAG : references
-  INGREDIENT ||--o| INGREDIENT_SHOPPING_UNIT : shopping_pref
-  INGREDIENT_SHOPPING_UNIT ||--|| INGREDIENT_UNIT : selects_optional
+  INGREDIENT ||--|| NUTRITION : has_nutrition
+  INGREDIENT ||--o{ INGREDIENT_TAG : tagged
+  INGREDIENT ||--o| INGREDIENT_SHOPPING_UNIT : shopping_unit
+  INGREDIENT ||--o{ INGREDIENT_UNIT : has_units
+
+  INGREDIENT_TAG }o--|| POSSIBLE_INGREDIENT_TAG : tag
+  INGREDIENT_SHOPPING_UNIT ||--|| INGREDIENT_UNIT : unit
+
   FOOD ||--o{ FOOD_INGREDIENT : includes
-  FOOD_INGREDIENT }o--|| INGREDIENT : uses
-  FOOD_INGREDIENT }o--|| INGREDIENT_UNIT : portioned_with
-  FOOD ||--o{ FOOD_TAG : tagged_with
-  FOOD_TAG }o--|| POSSIBLE_FOOD_TAG : references
+  FOOD_INGREDIENT }o--|| INGREDIENT : ingredient
+  FOOD_INGREDIENT }o--|| INGREDIENT_UNIT : unit
+
+  FOOD ||--o{ FOOD_TAG : tagged
+  FOOD_TAG }o--|| POSSIBLE_FOOD_TAG : tag
   PLAN {
     id integer
     label varchar
@@ -162,6 +173,179 @@ erDiagram
 </details>
 
 The ingredient shopping unit is optional per ingredient, but when present it must reference one of the ingredient's units; food ingredient quantities can also reference those shared units to keep serving sizes consistent across foods.
+
+<details>
+<summary>Database Schema (Mermaid)</summary>
+
+```mermaid
+erDiagram
+  ingredients {
+    int id PK
+    string name
+    string source "nullable"
+    string source_id "nullable"
+  }
+  nutrition {
+    int id PK
+    int ingredient_id FK
+    numeric calories
+    numeric fat
+    numeric carbohydrates
+    numeric protein
+    numeric fiber
+  }
+  ingredient_units {
+    int id PK
+    int ingredient_id FK
+    string name
+    numeric grams
+  }
+  ingredient_shopping_units {
+    int ingredient_id PK
+    int unit_id FK "nullable"
+  }
+  possible_ingredient_tags {
+    int id PK
+    string name
+  }
+  ingredient_tags {
+    int ingredient_id PK
+    int tag_id PK
+  }
+
+  foods {
+    int id PK
+    string name
+  }
+  food_ingredients {
+    int food_id PK
+    int ingredient_id PK
+    int unit_id FK "nullable"
+    numeric unit_quantity "nullable"
+  }
+  possible_food_tags {
+    int id PK
+    string name
+  }
+  food_tags {
+    int food_id PK
+    int tag_id PK
+  }
+
+  stored_food {
+    int id PK
+    string user_id
+    string label "nullable"
+    int food_id FK "nullable"
+    int ingredient_id FK "nullable"
+    float prepared_portions
+    float remaining_portions
+    float per_portion_calories
+    float per_portion_protein
+    float per_portion_carbohydrates
+    float per_portion_fat
+    float per_portion_fiber
+    boolean is_finished
+    datetime prepared_at
+    datetime updated_at
+    datetime completed_at "nullable"
+  }
+  daily_log_entries {
+    int id PK
+    string user_id
+    date log_date
+    int stored_food_id FK "nullable"
+    int ingredient_id FK "nullable"
+    int food_id FK "nullable"
+    float portions_consumed
+    float calories
+    float protein
+    float carbohydrates
+    float fat
+    float fiber
+    datetime created_at
+  }
+
+  plans {
+    int id PK
+    string label
+    json payload
+    datetime created_at
+    datetime updated_at
+  }
+
+  ingredients ||--o{ nutrition : nutrition
+  ingredients ||--o{ ingredient_units : units
+  ingredients ||--o| ingredient_shopping_units : shopping_unit
+  ingredient_units ||--o| ingredient_shopping_units : unit
+  ingredients ||--o{ ingredient_tags : tagged
+  possible_ingredient_tags ||--o{ ingredient_tags : tag
+
+  foods ||--o{ food_ingredients : includes
+  ingredients ||--o{ food_ingredients : ingredient
+  ingredient_units ||--o{ food_ingredients : unit
+  foods ||--o{ food_tags : tagged
+  possible_food_tags ||--o{ food_tags : tag
+
+  foods ||--o{ stored_food : stored_food
+  ingredients ||--o{ stored_food : stored_ingredient
+  stored_food ||--o{ daily_log_entries : logged
+  foods ||--o{ daily_log_entries : logged_food
+  ingredients ||--o{ daily_log_entries : logged_ingredient
+```
+
+</details>
+
+The database schema adds operational tables (such as `stored_food` and `daily_log_entries`) and uses the physical table names for the same core entities shown in the backend overview above. The `plans.payload` column stores JSON that references foods and ingredients rather than foreign keys.
+
+<details>
+<summary>Plan Payload (Mermaid)</summary>
+
+```mermaid
+classDiagram
+  class PlanPayload {
+    days
+    targetMacros
+    plan
+  }
+
+  class PlanItem {
+    <<union>>
+  }
+
+  class FoodPlanItem {
+    type = "food"
+    foodId
+    portions
+    overrides
+  }
+
+  class IngredientPlanItem {
+    type = "ingredient"
+    ingredientId
+    unitId
+    amount
+    portions
+  }
+
+  class Food {
+    id
+    name
+  }
+
+  class Ingredient {
+    id
+    name
+  }
+
+  PlanPayload "1" --> "*" PlanItem : plan
+  PlanItem <|-- FoodPlanItem
+  PlanItem <|-- IngredientPlanItem
+  FoodPlanItem ..> Food : foodId (JSON)
+  IngredientPlanItem ..> Ingredient : ingredientId (JSON)
+```
+
+</details>
 
 Frontend state mirrors the API schema, so food tags reference the shared `PossibleFoodTag` definitions surfaced by `/api/foods/possible_tags` and plan records reuse the persisted JSON payloads exposed by `/api/plans`.
 

@@ -2,8 +2,11 @@ import { useCallback } from "react";
 
 import { useData } from "@/contexts/DataContext";
 import { useSessionStorageReducer } from "@/hooks/useSessionStorageState";
+import { roundNutritionValue } from "@/utils/nutritionPrecision";
 import { generateUUID, handleFetchRequest } from "@/utils/utils";
 import type { components, operations } from "@/api-types";
+
+import type { UsdaNormalizationDataType } from "./usdaDataTypes";
 
 type IngredientRead = components["schemas"]["IngredientRead"];
 type IngredientUnitUpdate = components["schemas"]["IngredientUnitUpdate"];
@@ -11,8 +14,48 @@ type IngredientUnitCreate = components["schemas"]["IngredientUnitCreate"];
 type IngredientShoppingUnitSelection = components["schemas"]["IngredientShoppingUnitSelection"];
 type IngredientRequest = operations["add_ingredient_api_ingredients__post"]["requestBody"]["content"]["application/json"];
 
+export type IngredientSource = "manual" | "usda";
+
+export type UsdaIngredientUnit = {
+  id?: string | number | null;
+  name: string;
+  grams: number;
+  is_default?: boolean;
+};
+
+export type UsdaIngredientResult = {
+  id: string;
+  name: string;
+  nutrition: {
+    calories: number;
+    protein: number;
+    carbohydrates: number;
+    fat: number;
+    fiber: number;
+  } | null;
+  normalization: {
+    source_basis: string;
+    normalized_basis: string | null;
+    can_normalize: boolean;
+    reason: string | null;
+    data_type: UsdaNormalizationDataType | null;
+    serving_size: number | null;
+    serving_size_unit: string | null;
+    household_serving_full_text: string | null;
+  };
+  units: UsdaIngredientUnit[];
+  defaultUnitKey: string | null;
+};
+
+type IngredientFormIngredient = IngredientRead & {
+  shoppingUnitId?: number | string | null;
+  source?: IngredientSource;
+  source_id?: string | null;
+  sourceName?: string | null;
+};
+
 type IngredientFormState = {
-  ingredient: IngredientRead & { shoppingUnitId?: number | string | null };
+  ingredient: IngredientFormIngredient;
   needsClearForm: boolean;
   needsFillForm: boolean;
 };
@@ -52,7 +95,56 @@ const initializeEmptyIngredient = (): IngredientFormState["ingredient"] => ({
   },
   tags: [],
   shoppingUnitId: "0",
+  source: "manual",
+  source_id: null,
+  sourceName: null,
 });
+
+
+const createUsdaUnitKey = (unit: Pick<UsdaIngredientUnit, "id" | "name" | "grams">): string => {
+  if (unit.id !== null && unit.id !== undefined && String(unit.id).trim() !== "") {
+    return `id:${String(unit.id)}`;
+  }
+
+  return `name:${unit.name.trim().toLowerCase()}|grams:${Number(unit.grams)}`;
+};
+
+const normalizeUsdaUnits = (units: UsdaIngredientUnit[] | null | undefined): UsdaIngredientUnit[] => {
+  if (!Array.isArray(units)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+
+  return units.reduce<UsdaIngredientUnit[]>((acc, unit) => {
+    const name = typeof unit.name === "string" ? unit.name.trim() : "";
+    const grams = Number(unit.grams);
+
+    if (!name || !Number.isFinite(grams) || grams <= 0) {
+      return acc;
+    }
+
+    const normalizedUnit: UsdaIngredientUnit = {
+      id: unit.id ?? null,
+      name,
+      grams,
+      is_default: Boolean(unit.is_default),
+    };
+    const key = createUsdaUnitKey(normalizedUnit);
+    if (seen.has(key)) {
+      return acc;
+    }
+
+    seen.add(key);
+    acc.push(normalizedUnit);
+    return acc;
+  }, []);
+};
+
+const getDefaultUsdaUnitKey = (units: UsdaIngredientUnit[]): string | null => {
+  const defaultUnit = units.find((unit) => unit.is_default) ?? units[0] ?? null;
+  return defaultUnit ? createUsdaUnitKey(defaultUnit) : null;
+};
 
 const createInitialState = (): IngredientFormState => ({
   ingredient: initializeEmptyIngredient(),
@@ -90,6 +182,7 @@ const buildRequestPayload = (ingredient: IngredientFormState["ingredient"]): Ing
 
   // Remove local-only helper property
   delete (payload as { shoppingUnitId?: unknown }).shoppingUnitId;
+  delete (payload as { sourceName?: unknown }).sourceName;
 
   const normalizeShoppingUnitId = (value: unknown): number | null => {
     if (value === null || value === undefined) return null;
@@ -151,16 +244,26 @@ export const useIngredientForm = () => {
   const { setIngredientsNeedsRefetch, startRequest, endRequest } = useData();
   const [state, dispatch] = useSessionStorageReducer(reducer, createInitialState, "ingredient-form-state-v1");
 
+  const applyIngredientDefaults = useCallback((ingredient: IngredientRead): IngredientFormState["ingredient"] => {
+    const maybeIngredient = ingredient as IngredientFormState["ingredient"];
+    return {
+      ...ingredient,
+      source: maybeIngredient.source ?? "manual",
+      source_id: maybeIngredient.source_id ?? null,
+      sourceName: maybeIngredient.sourceName ?? null,
+    };
+  }, []);
+
   const loadIngredient = useCallback(
     (initial?: IngredientRead | null) => {
       if (initial) {
-        dispatch({ type: "SET_INGREDIENT", payload: { ...initial } });
+        dispatch({ type: "SET_INGREDIENT", payload: applyIngredientDefaults(initial) });
         dispatch({ type: "SET_FILL_FORM", payload: true });
       } else {
         dispatch({ type: "SET_INGREDIENT", payload: initializeEmptyIngredient() });
       }
     },
-    [dispatch],
+    [dispatch, applyIngredientDefaults],
   );
 
   const clearForm = useCallback(() => {
@@ -227,6 +330,62 @@ export const useIngredientForm = () => {
     [state.ingredient.id, startRequest, endRequest, setIngredientsNeedsRefetch],
   );
 
+  const applyUsdaResult = useCallback(
+    (result: UsdaIngredientResult) => {
+      if (!result.normalization.can_normalize || !result.nutrition) {
+        return;
+      }
+
+      const updatedNutrition = {
+        calories: roundNutritionValue(result.nutrition.calories ?? 0),
+        protein: roundNutritionValue(result.nutrition.protein ?? 0),
+        carbohydrates: roundNutritionValue(result.nutrition.carbohydrates ?? 0),
+        fat: roundNutritionValue(result.nutrition.fat ?? 0),
+        fiber: roundNutritionValue(result.nutrition.fiber ?? 0),
+      };
+
+      const normalizedUsdaUnits = normalizeUsdaUnits(result.units);
+      const importedUnits = [
+        {
+          id: "0",
+          ingredient_id: state.ingredient.id,
+          name: "g",
+          grams: 1,
+        },
+        ...normalizedUsdaUnits
+          .filter((unit) => !(unit.name.toLowerCase() === "1 g" && Number(unit.grams) === 1))
+          .map((unit) => ({
+            id: createUsdaUnitKey(unit),
+            ingredient_id: state.ingredient.id,
+            name: unit.name,
+            grams: unit.grams,
+          })),
+      ];
+
+      const normalizedDefaultUnitKey = result.defaultUnitKey ?? getDefaultUsdaUnitKey(normalizedUsdaUnits);
+      const defaultImportedUnit =
+        importedUnits.find((unit) => String(unit.id) === normalizedDefaultUnitKey) ??
+        importedUnits.find((unit) => unit.name === "g" && Number(unit.grams) === 1) ??
+        importedUnits[0] ??
+        null;
+
+      dispatch({
+        type: "SET_INGREDIENT",
+        payload: {
+          ...state.ingredient,
+          name: result.name,
+          units: importedUnits,
+          shoppingUnitId: defaultImportedUnit?.id ?? null,
+          nutrition: updatedNutrition,
+          source: "usda",
+          source_id: result.id,
+          sourceName: result.name,
+        },
+      });
+    },
+    [dispatch, state.ingredient],
+  );
+
   return {
     ingredient: state.ingredient,
     needsClearForm: state.needsClearForm,
@@ -238,8 +397,6 @@ export const useIngredientForm = () => {
     acknowledgeFillFlag,
     save,
     remove,
+    applyUsdaResult,
   };
 };
-
-
-

@@ -38,6 +38,11 @@ export const generateUUID = (): string => {
 };
 
 const API_BASE_URL: string = import.meta.env?.VITE_API_BASE_URL || '';
+if (!API_BASE_URL) {
+  console.warn(
+    'VITE_API_BASE_URL is not set. Create a .env file from .env.template.',
+  );
+}
 
 /**
  * Minimal fetch wrapper.

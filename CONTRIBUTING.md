@@ -159,7 +159,7 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
 ### Testing and quality gates
 
 - `scripts/run-tests.ps1` / `scripts/run-tests.sh`
-  - Purpose: run backend unit tests, frontend unit tests, optional OpenAPI/migration sync, and optional end-to-end API tests.
+  - Purpose: run backend unit tests, frontend unit tests, optional OpenAPI/migration sync, and optional end-to-end API + browser suites.
   - Flags:
     - PowerShell: `-e2e`, `-sync`, `-full` (equivalent to both flags).
     - Bash: `--e2e`, `--sync`, `--full` (plus `-h|--help`).
@@ -171,9 +171,9 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
     - Always sources `scripts/lib/venv.ps1|.sh` to ensure the virtual environment is active.
 
 - `scripts/tests/run-e2e-tests.ps1` / `scripts/tests/run-e2e-tests.sh`
-  - Purpose: spin up a branch-isolated Docker Compose test stack, wait for the backend to become healthy, then execute `pytest -m e2e` against `Backend/tests/test_e2e_api.py`.
+  - Purpose: spin up a branch-isolated Docker Compose test stack, wait for the backend and frontend to become healthy, then execute both `pytest -m e2e` against `Backend/tests/test_e2e_api.py` and the Playwright browser suite under `Frontend/e2e/`.
   - Flags: accepts additional pytest arguments (pass-through). Both variants honour `-h|--help`.
-  - Call graph: loads helpers from `scripts/lib/venv.*`, `scripts/lib/branch-env.*`, and `scripts/lib/compose-utils.*`; always shells into `scripts/docker/compose.ps1|.sh` (`up ...` to start, `down ...` to tear down).
+  - Call graph: loads helpers from `scripts/lib/venv.*`, `scripts/lib/branch-env.*`, and `scripts/lib/compose-utils.*`; always shells into `scripts/docker/compose.ps1|.sh` (`up ...` to start, `down ...` to tear down), then runs `npm --prefix Frontend run e2e:install` followed by `npm --prefix Frontend run e2e`.
 
 ### Docker stack management
 
@@ -205,7 +205,7 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
 
 - `scripts/switch-worktree-branch.ps1`
   - Purpose: fetch remote refs, create local tracking branches for remote-only branches, then interactively pick a local branch, jump to its dedicated worktree (creating it if needed), optionally open VS Code, optionally start Docker Compose, and always activate the virtualenv.
-  - Flags/parameters: `-Branch`, `-SkipVSCode`, `-NewVSCodeWindow`, `-StartWorkspaceStack`, and `-Data <test|prod>` (required with `-StartWorkspaceStack`).
+  - Flags/parameters: `-Branch`, `-SkipVSCode`, `-NewVSCodeWindow`, `-CopyEnv` (copies the current worktree `.env` into the target when missing), `-StartWorkspaceStack`, and `-Data <test|prod>` (required with `-StartWorkspaceStack`).
   - Call graph: invokes `scripts/env/activate-venv.ps1` and `scripts/docker/compose.ps1` when the corresponding switches are selected.
 
 ### Repository maintenance
@@ -292,18 +292,19 @@ pwsh ./scripts/run-tests.ps1 -full      # sync + unit + e2e
 
 Bash: `./scripts/run-tests.sh` using the same flags (`--sync`, `--e2e`, `--full`).
 
-End-to-end API tests can also be invoked directly:
+End-to-end suites can also be invoked directly:
 
 ```pwsh
 pwsh ./scripts/tests/run-e2e-tests.ps1
 ./scripts/tests/run-e2e-tests.sh
 ```
 
-The e2e runners launch a temporary stack on the `TEST_*` ports and clean up after completion.
+The e2e runners launch a temporary stack on the `TEST_*` ports, run both the API and browser suites against that stack, and clean up after completion.
 
 Additional tooling:
 
 - `npm --prefix Frontend run lint`
+- `npm --prefix Frontend run e2e`
 - `npm --prefix Frontend run build`
 - `npm --prefix Frontend test`
 - `pytest` (when running backend unit tests outside the wrapper)

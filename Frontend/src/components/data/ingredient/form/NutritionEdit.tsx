@@ -1,13 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { TextField } from "@mui/material";
-
-const roundToTwoDecimalPlaces = (value: number): number => {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-};
+import { TextField, Typography } from "@mui/material";
+import { roundNutritionValue } from "@/utils/nutritionPrecision";
 
 function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) {
   const [multiplier, setMultiplier] = useState(1);
@@ -18,6 +11,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
     fat: 0,
     fiber: 0,
   });
+  const isUsdaSource = ingredient?.source === "usda";
 
   const inputStyle = {
     width: "15ch",
@@ -78,11 +72,11 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
   };
   const getRoundedDisplayNutrition = useCallback(
     (targetMultiplier: number) => ({
-      calories: roundToTwoDecimalPlaces((ingredient?.nutrition?.calories ?? 0) * targetMultiplier),
-      protein: roundToTwoDecimalPlaces((ingredient?.nutrition?.protein ?? 0) * targetMultiplier),
-      carbohydrates: roundToTwoDecimalPlaces((ingredient?.nutrition?.carbohydrates ?? 0) * targetMultiplier),
-      fat: roundToTwoDecimalPlaces((ingredient?.nutrition?.fat ?? 0) * targetMultiplier),
-      fiber: roundToTwoDecimalPlaces((ingredient?.nutrition?.fiber ?? 0) * targetMultiplier),
+      calories: roundNutritionValue((ingredient?.nutrition?.calories ?? 0) * targetMultiplier),
+      protein: roundNutritionValue((ingredient?.nutrition?.protein ?? 0) * targetMultiplier),
+      carbohydrates: roundNutritionValue((ingredient?.nutrition?.carbohydrates ?? 0) * targetMultiplier),
+      fat: roundNutritionValue((ingredient?.nutrition?.fat ?? 0) * targetMultiplier),
+      fiber: roundNutritionValue((ingredient?.nutrition?.fiber ?? 0) * targetMultiplier),
     }),
     [ingredient],
   );
@@ -92,7 +86,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
     const normalized = Object.keys(displayNutrition).reduce((acc, key) => {
       const raw = displayNutrition[key];
       const parsed = parseFloat(String(raw).replace(",", "."));
-      const numericValue = Number.isNaN(parsed) ? 0 : roundToTwoDecimalPlaces(parsed);
+      const numericValue = Number.isNaN(parsed) ? 0 : roundNutritionValue(parsed);
       return { ...acc, [key]: numericValue };
     }, {});
 
@@ -166,7 +160,13 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
   }, [needsFillForm, ingredient, multiplier, getRoundedDisplayNutrition]); // Fills the form on needsFillForm
 
   return (
-    <div style={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+      {isUsdaSource && (
+        <Typography variant="caption" color="text.secondary" sx={{ mx: 1 }}>
+          USDA-sourced nutrition is read-only.
+        </Typography>
+      )}
+      <div style={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
       <TextField
         label="Calories"
         value={displayNutrition.calories}
@@ -175,6 +175,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
         onBlur={handleFieldEditFinish}
         variant="outlined"
         sx={inputStyle}
+        disabled={isUsdaSource}
         inputProps={{
           sx: inputStyle["& input"],
           inputMode: "decimal",
@@ -188,6 +189,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
         onBlur={handleFieldEditFinish}
         variant="outlined"
         sx={inputStyle}
+        disabled={isUsdaSource}
         inputProps={{
           sx: inputStyle["& input"],
           inputMode: "decimal",
@@ -201,6 +203,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
         onBlur={handleFieldEditFinish}
         variant="outlined"
         sx={inputStyle}
+        disabled={isUsdaSource}
         inputProps={{
           sx: inputStyle["& input"],
           inputMode: "decimal",
@@ -214,6 +217,7 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
         onBlur={handleFieldEditFinish}
         variant="outlined"
         sx={inputStyle}
+        disabled={isUsdaSource}
         inputProps={{
           sx: inputStyle["& input"],
           inputMode: "decimal",
@@ -227,17 +231,17 @@ function NutritionEdit({ ingredient, dispatch, needsClearForm, needsFillForm }) 
         onBlur={handleFieldEditFinish}
         variant="outlined"
         sx={inputStyle}
+        disabled={isUsdaSource}
         inputProps={{
           sx: inputStyle["& input"],
           inputMode: "decimal",
         }}
       />
+      </div>
     </div>
   );
 }
 
 export default NutritionEdit;
-
-
 
 

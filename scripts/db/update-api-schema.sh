@@ -36,4 +36,8 @@ done
 curl "http://localhost:${DEV_BACKEND_PORT}/openapi.json" -o Backend/openapi.json
 
 # Generate TypeScript types for the frontend
-npx --prefix Frontend openapi-typescript Backend/openapi.json -o Frontend/src/api-types.ts
+if [ ! -f "Frontend/node_modules/.bin/openapi-typescript" ]; then
+  echo "Missing Frontend/node_modules/.bin/openapi-typescript. Run 'npm install' in Frontend before generating API types." >&2
+  exit 1
+fi
+npx --yes --prefix Frontend openapi-typescript Backend/openapi.json -o Frontend/src/api-types.ts

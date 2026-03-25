@@ -178,6 +178,14 @@ export interface paths {
      */
     delete: operations["delete_daily_log_api_logs__entry_id__delete"];
   };
+  "/api/usda/search": {
+    /** Search Foods */
+    get: operations["search_foods_api_usda_search_get"];
+  };
+  "/api/usda/foods/{fdc_id}": {
+    /** Get Food Details */
+    get: operations["get_food_details_api_usda_foods__fdc_id__get"];
+  };
 }
 
 export type webhooks = Record<string, never>;
@@ -329,6 +337,10 @@ export interface components {
     IngredientCreate: {
       /** Name */
       name: string;
+      /** Source */
+      source?: string | null;
+      /** Source Id */
+      source_id?: string | null;
       nutrition?: components["schemas"]["NutritionCreate"] | null;
       /** Units */
       units?: components["schemas"]["IngredientUnitCreate"][];
@@ -347,6 +359,10 @@ export interface components {
       id: number;
       /** Name */
       name: string;
+      /** Source */
+      source?: string | null;
+      /** Source Id */
+      source_id?: string | null;
       nutrition?: components["schemas"]["Nutrition"] | null;
       /** Units */
       units?: components["schemas"]["IngredientUnit"][];
@@ -411,6 +427,10 @@ export interface components {
     IngredientUpdate: {
       /** Name */
       name: string;
+      /** Source */
+      source?: string | null;
+      /** Source Id */
+      source_id?: string | null;
       nutrition?: components["schemas"]["NutritionCreate"] | null;
       /** Units */
       units?: components["schemas"]["IngredientUnitUpdate"][];
@@ -621,6 +641,69 @@ export interface components {
     TagRef: {
       /** Id */
       id: number;
+    };
+    /** UsdaFoodSummary */
+    UsdaFoodSummary: {
+      /** Id */
+      id?: number | null;
+      /** Name */
+      name?: string | null;
+      nutrition?: components["schemas"]["UsdaNutrition"] | null;
+      normalization: components["schemas"]["UsdaNormalizationMetadata"];
+      /** Units */
+      units?: components["schemas"]["UsdaFoodUnit"][];
+    };
+    /** UsdaFoodUnit */
+    UsdaFoodUnit: {
+      /** Name */
+      name: string;
+      /** Grams */
+      grams: number;
+      /**
+       * Is Default
+       * @default false
+       */
+      is_default?: boolean;
+    };
+    /** UsdaNormalizationMetadata */
+    UsdaNormalizationMetadata: {
+      /** Data Type */
+      data_type?: string | null;
+      /**
+       * Source Basis
+       * @enum {string}
+       */
+      source_basis: "per_100g" | "per_100ml" | "per_serving" | "unknown";
+      /** Normalized Basis */
+      normalized_basis?: "per_g" | null;
+      /** Can Normalize */
+      can_normalize: boolean;
+      /** Reason */
+      reason?: string | null;
+      /** Serving Size */
+      serving_size?: number | null;
+      /** Serving Size Unit */
+      serving_size_unit?: string | null;
+      /** Household Serving Full Text */
+      household_serving_full_text?: string | null;
+    };
+    /** UsdaNutrition */
+    UsdaNutrition: {
+      /** Calories */
+      calories?: number | null;
+      /** Protein */
+      protein?: number | null;
+      /** Fat */
+      fat?: number | null;
+      /** Carbohydrates */
+      carbohydrates?: number | null;
+      /** Fiber */
+      fiber?: number | null;
+    };
+    /** UsdaSearchResponse */
+    UsdaSearchResponse: {
+      /** Foods */
+      foods: components["schemas"]["UsdaFoodSummary"][];
     };
     /** ValidationError */
     ValidationError: {
@@ -1306,6 +1389,51 @@ export interface operations {
       /** @description Successful Response */
       204: {
         content: never;
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Search Foods */
+  search_foods_api_usda_search_get: {
+    parameters: {
+      query: {
+        query: string;
+        data_types?: (("Foundation" | "SR Legacy" | "Survey (FNDDS)" | "Branded" | "Experimental")[]) | null;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["UsdaSearchResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Get Food Details */
+  get_food_details_api_usda_foods__fdc_id__get: {
+    parameters: {
+      path: {
+        fdc_id: number;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["UsdaFoodSummary"];
+        };
       };
       /** @description Validation Error */
       422: {

@@ -397,6 +397,8 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }: UnitEditProps) {
         <Select
           labelId="unit-select-label"
           id="unit-select"
+          inputProps={{ "aria-label": "Preferred shopping unit" }}
+          SelectDisplayProps={{ "aria-label": "Preferred shopping unit" }}
           value={
             ingredient.shoppingUnitId == null
               ? NULL_UNIT_VALUE
@@ -417,6 +419,7 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }: UnitEditProps) {
         </Select>
         <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-start" }}>
           <Button
+            aria-label="add ingredient unit"
             variant="outlined"
             onClick={() => {
               setDialogMode("add");
@@ -426,6 +429,7 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }: UnitEditProps) {
             Add
           </Button>
           <Button
+            aria-label="edit ingredient unit"
             variant="outlined"
             onClick={() => {
               if (!selectedUnit) return;
@@ -436,7 +440,7 @@ function UnitEdit({ ingredient, dispatch, needsClearForm }: UnitEditProps) {
           >
             Edit
           </Button>
-          <Button variant="outlined" color="error" onClick={handleRemoveUnit} disabled={!selectedUnit}>
+          <Button aria-label="remove ingredient unit" variant="outlined" color="error" onClick={handleRemoveUnit} disabled={!selectedUnit}>
             Remove
           </Button>
         </Box>
