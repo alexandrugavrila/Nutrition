@@ -1317,7 +1317,6 @@ function Logging() {
                                     <Button
                                       variant="contained"
                                       size="small"
-                                      aria-label={`Add ${displayName} to log`}
                                       onClick={() => handleLogItem(item)}
                                       disabled={
                                         isDepleted ||
@@ -1331,7 +1330,6 @@ function Logging() {
                                       variant="outlined"
                                       size="small"
                                       color="error"
-                                      aria-label={`Remove stored item ${displayName}`}
                                       onClick={() => handleRemoveStoredItem(item)}
                                       disabled={
                                         removingStoredId === item.id || pendingId === item.id

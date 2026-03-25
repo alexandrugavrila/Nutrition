@@ -452,3 +452,52 @@ def test_clear_stored_food(client: TestClient, engine) -> None:
             select(StoredFood).where(StoredFood.user_id == "other-user")
         ).all()
         assert len(others) == 1
+
+
+def test_clear_stored_food_preserves_daily_logs(client: TestClient, engine) -> None:
+    with Session(engine) as session:
+        ingredient = _create_ingredient(session, "Lentil Soup")
+
+    payload = {
+        "user_id": "user-clear-stored-logs",
+        "ingredient_id": ingredient.id,
+        "prepared_portions": 2,
+        "per_portion_calories": 190,
+        "per_portion_protein": 11,
+        "per_portion_carbohydrates": 24,
+        "per_portion_fat": 5,
+        "per_portion_fiber": 7,
+    }
+
+    stored_response = client.post("/api/stored_food/", json=payload)
+    assert stored_response.status_code == 201
+    stored_id = stored_response.json()["id"]
+
+    log_response = client.post(
+        "/api/logs/",
+        json={
+            "user_id": payload["user_id"],
+            "log_date": "2024-02-03",
+            "stored_food_id": stored_id,
+            "portions_consumed": 1,
+            "calories": payload["per_portion_calories"],
+            "protein": payload["per_portion_protein"],
+            "carbohydrates": payload["per_portion_carbohydrates"],
+            "fat": payload["per_portion_fat"],
+            "fiber": payload["per_portion_fiber"],
+        },
+    )
+    assert log_response.status_code == 201
+    log_id = log_response.json()["id"]
+
+    clear_response = client.delete(
+        "/api/stored_food/", params={"user_id": payload["user_id"]}
+    )
+    assert clear_response.status_code == 204
+
+    with Session(engine) as session:
+        entry = session.get(DailyLogEntry, log_id)
+        assert entry is not None
+        assert entry.stored_food_id is None
+        assert entry.ingredient_id == ingredient.id
+        assert entry.food_id is None
