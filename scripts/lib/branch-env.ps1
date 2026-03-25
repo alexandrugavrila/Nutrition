@@ -5,6 +5,32 @@ function Get-RepoRoot {
   git rev-parse --show-toplevel
 }
 
+function Get-PrimaryWorktreeRoot {
+  param([string]$RepoRoot)
+  if (-not $RepoRoot) {
+    $RepoRoot = Get-RepoRoot
+  }
+  $commonGitDir = (git -C $RepoRoot rev-parse --git-common-dir).Trim()
+  if (-not [System.IO.Path]::IsPathRooted($commonGitDir)) {
+    $commonGitDir = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $commonGitDir))
+  }
+  return [System.IO.Path]::GetFullPath((Join-Path $commonGitDir '..'))
+}
+
+function Get-WorktreeParentDir {
+  param([string]$RepoRoot)
+  $override = $env:NUTRITION_WORKTREE_PARENT
+  if ($override) {
+    if (-not [System.IO.Path]::IsPathRooted($override)) {
+      if (-not $RepoRoot) { $RepoRoot = Get-RepoRoot }
+      $override = Join-Path $RepoRoot $override
+    }
+    return ([System.IO.Path]::GetFullPath($override)).TrimEnd([char]92,'/')
+  }
+  $primaryRoot = Get-PrimaryWorktreeRoot -RepoRoot $RepoRoot
+  return (Split-Path -Parent $primaryRoot)
+}
+
 function Get-SanitizedBranch {
   param(
     [string]$Branch

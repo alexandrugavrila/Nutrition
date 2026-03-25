@@ -33,6 +33,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$branchEnvLib = Join-Path $PSScriptRoot 'lib' 'branch-env.ps1'
+if (Test-Path $branchEnvLib) {
+    . $branchEnvLib
+}
+
 function Invoke-Git {
     param(
         [Parameter(Mandatory = $true)]
@@ -148,14 +153,6 @@ function Get-LastLine {
     param([Parameter(Mandatory = $true)]$Lines)
 
     return [string]($Lines | Select-Object -Last 1)
-}
-
-function Sanitize-WorktreeName {
-    param([Parameter(Mandatory = $true)][string]$BranchName)
-
-    $sanitized = [Regex]::Replace($BranchName,'[^A-Za-z0-9._-]+','-').Trim('-')
-    if (-not $sanitized) { $sanitized = 'worktree' }
-    return $sanitized
 }
 
 function Open-VSCode {
@@ -412,20 +409,18 @@ if ($targetPath) {
     return
 }
 
-$sanitizedName = if (Get-Command -Name Get-SanitizedBranch -ErrorAction SilentlyContinue) {
-    Get-SanitizedBranch $Branch
-} else {
-    Sanitize-WorktreeName $Branch
-}
-$parentDir = Split-Path -Parent $repoRoot
+$sanitizedName = Get-SanitizedBranch $Branch
+if (-not $sanitizedName) { $sanitizedName = 'worktree' }
+$worktreeName = "nutrition-$sanitizedName"
+$parentDir = Get-WorktreeParentDir -RepoRoot $repoRoot
 if (-not $parentDir) { $parentDir = $repoRoot }
-$defaultPath = Normalize-Path (Join-Path $parentDir ("nutrition-$sanitizedName"))
+$defaultPath = Normalize-Path (Join-Path $parentDir $worktreeName)
 if ($defaultPath -eq $repoRoot) {
-    $defaultPath = Normalize-Path (Join-Path $parentDir ($sanitizedName + '-worktree'))
+    $defaultPath = Normalize-Path (Join-Path $parentDir ($worktreeName + '-worktree'))
 }
 $counter = 1
 while (Test-Path $defaultPath) {
-    $defaultPath = Normalize-Path (Join-Path $parentDir ("$sanitizedName-$counter"))
+    $defaultPath = Normalize-Path (Join-Path $parentDir ("$worktreeName-$counter"))
     $counter++
 }
 

@@ -23,8 +23,7 @@ A full-stack nutrition planning and tracking app built with:
    ```pwsh
    pwsh ./scripts/switch-worktree-branch.ps1 feature/my-feature -CopyEnv
    ```
-   - The script fetches remote refs, creates local tracking branches for remote-only branches, then creates `../nutrition-feature-my-feature` if needed and reopens the folder in VS Code (use `-SkipVSCode` to opt out).
-   - Pass `-CopyEnv` to copy the current worktree `.env` into the target worktree if it does not already exist.
+   - The script fetches remote refs, creates local tracking branches for remote-only branches, then creates `nutrition-feature-my-feature` under the worktree parent (default: parent of the primary clone) and reopens the folder in VS Code (use `-SkipVSCode` to opt out).
    - Worktrees let every branch mount its own code directory and Postgres volume, so multiple stacks can run in parallel.
 
    Bash users can run the script through `pwsh` (PowerShell 7+ is cross-platform).
@@ -85,7 +84,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
 ## Worktrees & Branch Isolation
 
 - The default branch (`main`) lives in the primary clone.
-- Feature branches should run from sibling worktrees named `nutrition-<sanitized-branch>`.
+- Feature branches should run from dedicated worktrees named `nutrition-<sanitized-branch>`; set `NUTRITION_WORKTREE_PARENT` if you want them under a different parent directory.
 - Each worktree gets unique compose project names, container names, ports, and Postgres volumes via the branch-aware scripts.
 - Run `pwsh ./scripts/repo/sync-branches.ps1` to mirror new remote branches and `pwsh ./scripts/repo/audit-worktrees.ps1` to confirm every branch maps to exactly one worktree.
 - More details and troubleshooting live in [CONTRIBUTING.md](CONTRIBUTING.md#branching--worktrees).

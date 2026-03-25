@@ -147,7 +147,7 @@ if [[ "$common_git_dir" != /* && ! "$common_git_dir" =~ ^[A-Za-z]:/ ]]; then
 fi
 common_git_dir="$(normalize_path "$common_git_dir")"
 primary_root="$(cd "$common_git_dir/.." && pwd -P)"
-parent_dir="$(dirname "$primary_root")"
+parent_dir="$(branch_env_worktree_parent "$repo_root")"
 
 declare -a local_branches=()
 mapfile -t local_branches < <(git -C "$repo_root" for-each-ref --format '%(refname:short)' refs/heads | awk 'NF')

@@ -22,7 +22,7 @@ if [[ "$common_git_dir" != /* ]]; then
   common_git_dir="$repo_root/$common_git_dir"
 fi
 primary_root="$(cd "$common_git_dir/.." && pwd)"
-parent_dir="$(dirname "$primary_root")"
+parent_dir="$(branch_env_worktree_parent "$repo_root")"
 default_branch="$(_wt_default_branch)"
 
 info "Primary worktree root: $primary_root"
