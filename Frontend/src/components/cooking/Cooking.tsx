@@ -1292,7 +1292,6 @@ function Cooking() {
                                 <Button
                                   variant="contained"
                                   size="small"
-                                  aria-label={`Mark ${food?.name ?? "food"} complete`}
                                   onClick={() => markItemComplete(item, index)}
                                   disabled={foodCompletionDisabled}
                                 >
@@ -1890,7 +1889,6 @@ function Cooking() {
                         <Button
                             variant="contained"
                             size="small"
-                            aria-label={`Mark ${ingredient?.name ?? "ingredient"} complete`}
                             onClick={() => markItemComplete(item, index)}
                             disabled={
                               !ingredient ||

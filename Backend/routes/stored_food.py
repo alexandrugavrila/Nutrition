@@ -209,6 +209,23 @@ def clear_stored_food(user_id: str = Query(...), db: Session = Depends(get_db)) 
     if not _stored_food_table_available(db):
         return
 
+    stored_food_items = db.exec(
+        select(StoredFood).where(StoredFood.user_id == user_id)
+    ).all()
+
+    for stored_food in stored_food_items:
+        entries = db.exec(
+            select(DailyLogEntry).where(DailyLogEntry.stored_food_id == stored_food.id)
+        ).all()
+        for entry in entries:
+            entry.stored_food_id = None
+            if stored_food.food_id is not None:
+                entry.food_id = stored_food.food_id
+                entry.ingredient_id = None
+            elif stored_food.ingredient_id is not None:
+                entry.ingredient_id = stored_food.ingredient_id
+                entry.food_id = None
+
     statement = delete(StoredFood).where(StoredFood.user_id == user_id)
     db.exec(statement)
     db.commit()
