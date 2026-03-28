@@ -69,6 +69,28 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
 
 ---
 
+
+## Development vs Production Compose
+
+- `docker-compose.yml` is **development-only**. It builds local images, bind-mounts `Backend/` and `Frontend/`, and enables hot reload for iterative coding.
+- `docker-compose.prod.yml` is **production-focused**. It runs prebuilt immutable images, uses an `env_file` (`.env.prod`), enforces required runtime variables via `${VAR:?error}` checks, and persists only PostgreSQL data in a named volume. Start from `.env.prod.template` when creating the production env file.
+
+Production entrypoint example:
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+```
+
+Development entrypoint remains the branch-aware wrapper:
+
+```pwsh
+pwsh ./scripts/docker/compose.ps1 up data -test
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md#docker-workflows) for detailed contributor workflows.
+
+---
+
 ## Key Helper Scripts
 
 - `pwsh ./scripts/repo/check.ps1`: fetch latest refs, audit worktrees, flag stale container stacks, and suggest fixes. Bash: `./scripts/repo/check.sh`.
@@ -98,7 +120,8 @@ Nutrition/
 ├── Backend/       # FastAPI app (routes, models, migrations)
 ├── Frontend/      # React app (Vite + Material UI)
 ├── Database/      # CSV seed data and backup scripts
-├── docker-compose.yml
+├── docker-compose.yml      # Development compose (bind mounts + hot reload)
+├── docker-compose.prod.yml # Production compose (immutable images only)
 └── scripts/       # Cross-platform helper scripts
     ├── db/        # Database + OpenAPI utilities
     ├── docker/    # Compose orchestration
