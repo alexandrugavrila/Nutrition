@@ -3,7 +3,7 @@ services:
     image: "${POSTGRES_IMAGE:-postgres:13}"
     restart: unless-stopped
     env_file:
-      - .env.prod
+      - .env.production
     environment:
       POSTGRES_USER: "${POSTGRES_USER:?POSTGRES_USER is required}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
@@ -23,12 +23,13 @@ services:
     image: "${BACKEND_IMAGE:?BACKEND_IMAGE is required (immutable tag)}"
     restart: unless-stopped
     env_file:
-      - .env.prod
+      - .env.production
     environment:
       DATABASE_URL: "${DATABASE_URL:?DATABASE_URL is required}"
       USDA_API_KEY: "${USDA_API_KEY:?USDA_API_KEY is required}"
       CORS_ALLOW_ORIGINS: "${CORS_ALLOW_ORIGINS:?CORS_ALLOW_ORIGINS is required}"
       DB_AUTO_CREATE: "${DB_AUTO_CREATE:-false}"
+      ENVIRONMENT: "${ENVIRONMENT:-production}"
       ALEMBIC_CONFIG: /app/Backend/alembic.ini
       HOST: "${HOST:-0.0.0.0}"
       PORT: "${PORT:-8000}"
@@ -61,7 +62,7 @@ services:
     image: "${FRONTEND_IMAGE:?FRONTEND_IMAGE is required (immutable tag)}"
     restart: unless-stopped
     env_file:
-      - .env.prod
+      - .env.production
     depends_on:
       backend:
         condition: service_healthy

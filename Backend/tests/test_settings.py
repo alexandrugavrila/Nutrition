@@ -1,5 +1,7 @@
 import importlib
 
+import pytest
+
 
 def _reload_settings():
     # Reload the module so the singleton picks up environment changes.
@@ -37,3 +39,23 @@ def test_db_auto_create_can_be_overridden(monkeypatch):
     settings = _reload_settings()
     assert settings.database_url == "sqlite:///./nutrition.db"
     assert settings.db_auto_create is False
+
+
+def test_production_requires_usda_api_key(monkeypatch):
+    monkeypatch.setenv(
+        "DATABASE_URL", "postgresql://nutrition_user:secret@db:5432/nutrition"
+    )
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.delenv("USDA_API_KEY", raising=False)
+
+    with pytest.raises(RuntimeError, match="USDA_API_KEY is required"):
+        _reload_settings()
+
+
+def test_production_requires_database_password(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://nutrition_user@db:5432/nutrition")
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("USDA_API_KEY", "set")
+
+    with pytest.raises(RuntimeError, match="DATABASE_URL must include a database password"):
+        _reload_settings()
