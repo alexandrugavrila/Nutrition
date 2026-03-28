@@ -51,11 +51,9 @@ A full-stack nutrition planning and tracking app built with:
    ```pwsh
    pwsh ./scripts/docker/compose.ps1 up data -test
    ```
-  - Replace `-test` with `-prod` to restore the latest branch backup. The compose script calls
-    `restore.ps1` and exits if that step fails (for example, when no dump is available), so rerun the
-    command to relaunch the stack before importing data.
-    When no dump exists yet, reseed manually once the stack is running: `pwsh ./scripts/db/import-from-csv.ps1`
-    (or `./scripts/db/import-from-csv.sh`).
+  - Replace `-test` with `-prod` for production-like startup (no automatic seed or restore).
+    Run migrations explicitly before serving traffic: `pwsh ./scripts/db/migrate.ps1` (or `./scripts/db/migrate.sh`).
+    CSV fixture import remains available for local/test workflows and requires explicit confirmation for production mode.
    - Add `type -test` to run on the dedicated test ports (used by the end-to-end suite).
 
    The script prints the branch-specific ports and waits until the services are ready:
@@ -114,6 +112,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md#docker-workflows) for detailed contributor
 - `pwsh ./scripts/switch-worktree-branch.ps1`: fetch remote refs, sync local tracking branches, and create or hop between branch-dedicated worktrees (`-CopyEnv` can copy the current `.env` into the target).
 - `pwsh ./scripts/env/check.ps1 -Fix`: ensure you are inside the correct worktree with an activated virtualenv (Bash variant available).
 - `pwsh ./scripts/docker/compose.ps1 <up|down|restart>`: manage the per-branch Docker stack.
+- `pwsh ./scripts/db/migrate.ps1` / `./scripts/db/migrate.sh`: explicit migration job for deploy pipelines (run before app traffic).
 - `pwsh ./scripts/run-tests.ps1 [-sync] [-e2e]`: run backend + frontend tests with optional API/migration sync and branch-isolated API/browser e2e suites. Bash variant: `./scripts/run-tests.sh`.
 - `pwsh ./scripts/db/backup.ps1` / `restore.ps1`: create or restore branch-local Postgres backups. Bash variants available in the same directory.
 - `pwsh ./scripts/db/export-to-csv.ps1` / `./scripts/db/export-to-csv.sh`: export the current database tables to CSV (production by default, `--test` or `--output-dir` available).

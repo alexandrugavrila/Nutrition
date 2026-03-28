@@ -89,15 +89,18 @@ Always use the wrapper scripts instead of calling `docker compose` directly for 
 Start services (choose a seed dataset):
 
 ```pwsh
-pwsh ./scripts/docker/compose.ps1 up data -test     # test fixtures
-pwsh ./scripts/docker/compose.ps1 up data -prod     # production-like fixtures
+pwsh ./scripts/docker/compose.ps1 up data -test     # test fixtures + auto migrations
+pwsh ./scripts/docker/compose.ps1 up data -prod     # production-like startup (no implicit seed)
 ```
 
 Options:
 
 - Add `type -test` to run on the dedicated test ports (`TEST_*`). Useful for end-to-end runs that should not collide with your dev stack.
 - Append service names (e.g. `frontend backend`) to limit which containers start.
-- The script waits for PostgreSQL, ensures the backend dependencies are present, runs Alembic migrations inside the container, then seeds data: `data -test` loads test CSV fixtures; `data -prod` restores the latest branch dump in PowerShell and seeds production CSV fixtures in Bash.
+- The script waits for PostgreSQL and backend dependencies.
+- `data -test` runs migrations then loads test CSV fixtures.
+- `data -prod` intentionally skips migrations/seeding so deployment pipelines can run an explicit migration job before traffic.
+- Run the explicit migration job with `pwsh ./scripts/db/migrate.ps1` (or `./scripts/db/migrate.sh`) during deploy.
 
 Stop services:
 
@@ -183,13 +186,15 @@ Deployment secret checklist:
 All database helpers live under `scripts/db/` and respect the current branch's environment variables. Detailed usage for every script—including call chains and flags—lives in the [Script catalog](#script-catalog--call-graph), but the short list below highlights the most common flows.
 
 - `pwsh ./scripts/db/backup.ps1` / `./scripts/db/backup.sh`
-  Writes `Database/backups/<sanitized>-<timestamp>.dump` plus metadata (Alembic revision, git SHA).
+  Writes `Database/backups/<sanitized>-<timestamp>.dump` plus metadata (Alembic revision, git SHA). Refuses non-local DBs unless `-AllowNonLocalDb` / `--allow-non-local-db` is provided.
+- `pwsh ./scripts/db/migrate.ps1`
+  Explicitly runs `alembic upgrade head` against the running stack. Use this as a one-time deploy job before routing traffic.
 - `pwsh ./scripts/db/restore.ps1 [-ResetSchema] [-UpgradeAfter] [<file>]`
   Restores the most recent dump for the branch or a provided file. `-ResetSchema` drops/recreates the public schema; `-UpgradeAfter` reapplies migrations.
 - `pwsh ./scripts/db/export-to-csv.ps1 [-Production|-Test] [-OutputDir <path>]`
   Writes the current database tables to CSV (defaults to production data). Bash: `./scripts/db/export-to-csv.sh`.
 - `pwsh ./scripts/db/import-from-csv.ps1 [-test|-production]`
-  Loads CSV seed data into the running container; used automatically for `compose.ps1 up data -test`.
+  Loads CSV seed data into the running container; used automatically for `compose.ps1 up data -test`. Production mode requires explicit confirmation flags.
 - `pwsh ./scripts/db/check-migration-drift.ps1`
   Compares the migration state between the database and `Backend/migrations`.
 - `pwsh ./scripts/db/update-api-schema.ps1`
@@ -198,6 +203,19 @@ All database helpers live under `scripts/db/` and respect the current branch's e
   One-stop command: runs Alembic autogenerate, formats new migrations, updates OpenAPI + TS types, runs drift checks, and prompts you to commit generated artifacts.
 
 Most scripts accept Bash equivalents with the same flags.
+
+### Safe deploy sequence (backup, migrate, rollback)
+
+Use this sequence in server deployments to keep schema lifecycle deterministic:
+
+1. **Backup before migration**  
+   `pwsh ./scripts/db/backup.ps1` (or `./scripts/db/backup.sh`).
+2. **Run one explicit migration job (before app traffic)**  
+   `pwsh ./scripts/db/migrate.ps1` (or `./scripts/db/migrate.sh`).
+3. **Start/update app containers**  
+   Use your deploy platform; avoid implicit seeding in production startup.
+4. **Rollback if migration fails post-deploy**  
+   `pwsh ./scripts/db/restore.ps1 -ResetSchema <backup.dump>` (or `./scripts/db/restore.sh --reset-schema <backup.dump>`), then redeploy the previous app version.
 
 ---
 
@@ -234,10 +252,11 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
     - `restart [type <-dev|-test>] data <-test|-prod>`
   - Behavior:
     - `type -test` remaps the dev ports/volumes to the dedicated `TEST_*` values for isolated stacks.
-    - `data -prod` seeds production fixtures. PowerShell restores the latest branch backup via `scripts/db/restore.ps1 -UpgradeAfter`; Bash seeds CSV fixtures via `Database/import_from_csv.py --production`.
+    - `data -test` runs migrations and then loads test fixtures.
+    - `data -prod` skips migrations and fixture import by design; run `scripts/db/migrate.ps1|.sh` explicitly in deployment flows.
     - Writes resolved ports to `$COMPOSE_ENV_FILE` when present so callers (for example the e2e runner) can source them.
-    - Ensures migrations run and seed data loads after startup, and provides graceful teardown including volume cleanup.
-  - Call graph: loads `scripts/lib/branch-env.*`, `scripts/lib/worktree.sh` (Bash variant), and `scripts/lib/compose-utils.*`; PowerShell also imports `scripts/env/activate-venv.ps1` when applying test data.
+    - Provides graceful teardown including volume cleanup.
+  - Call graph: loads `scripts/lib/branch-env.*`, `scripts/lib/worktree.sh` (Bash variant), and `scripts/lib/compose-utils.*`; PowerShell also imports `scripts/env/activate-venv.ps1` for test-fixture startup.
 
 - `docker-compose.prod.yml`
   - Purpose: production runtime stack using prebuilt immutable images only (no host bind mounts).
@@ -280,19 +299,24 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
 
 - `scripts/db/backup.ps1` / `scripts/db/backup.sh`
   - Purpose: capture a branch-local Postgres dump and write companion metadata.
-  - Flags: none.
+  - Flags: `-AllowNonLocalDb` / `--allow-non-local-db` to permit non-local DATABASE_URL targets.
   - Call graph: loads `scripts/lib/branch-env.*` and `scripts/lib/compose-utils.*`; PowerShell variant falls back to running pg_dump inside the container when the host CLI is unavailable.
+
+- `scripts/db/migrate.ps1` / `scripts/db/migrate.sh`
+  - Purpose: run `alembic upgrade head` as an explicit migration job.
+  - Flags: `-AllowNonLocalDb` / `--allow-non-local-db` to permit non-local DATABASE_URL targets.
+  - Call graph: loads `scripts/lib/branch-env.*` and `scripts/lib/compose-utils.*`, waits for Alembic availability in the backend container, then runs Alembic in `/app/Backend`.
 
 - `scripts/db/restore.ps1` / `scripts/db/restore.sh`
   - Purpose: restore a custom-format dump into the branch-local database and optionally upgrade afterward.
   - Flags:
-    - PowerShell: `-UpgradeAfter`, `-FailOnMismatch`, `-ResetSchema`, optional positional `DumpPath`.
-    - Bash: `--upgrade-after`, `--fail-on-mismatch`, `--reset-schema`, optional dump file argument, `-h|--help`.
-  - Behavior: auto-selects the newest dump for the current branch (falling back to `main` when necessary), refuses to touch non-localhost databases, can drop/recreate the `public` schema, and compares backup Alembic revision metadata against repo heads.
+    - PowerShell: `-UpgradeAfter`, `-FailOnMismatch`, `-ResetSchema`, `-AllowNonLocalDb`, optional positional `DumpPath`.
+    - Bash: `--upgrade-after`, `--fail-on-mismatch`, `--reset-schema`, `--allow-non-local-db`, optional dump file argument, `-h|--help`.
+  - Behavior: auto-selects the newest dump for the current branch (falling back to `main` when necessary), blocks non-localhost targets unless explicitly allowed, can drop/recreate the `public` schema, and compares backup Alembic revision metadata against repo heads.
 
 - `scripts/db/import-from-csv.ps1` / `scripts/db/import-from-csv.sh`
   - Purpose: load CSV fixtures into the running branch database.
-  - Flags: exactly one of `-production`/`--production` or `-test`/`--test`.
+  - Flags: exactly one of `-production`/`--production` or `-test`/`--test`; production requires `-AllowProductionSeed` / `--allow-production-seed`; non-local DATABASE_URL requires `-AllowNonLocalDb` / `--allow-non-local-db`.
   - Call graph: ensures venv activation and running containers before executing `python Database/import_from_csv.py` with the matching flag.
 
 - `scripts/db/export-to-csv.ps1` / `scripts/db/export-to-csv.sh`
