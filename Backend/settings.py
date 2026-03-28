@@ -79,8 +79,10 @@ class Settings:
             os.getenv("DB_AUTO_CREATE"), default=auto_create_default
         )
 
-        # Comma-separated list or "*"
-        origins_raw = os.getenv("CORS_ALLOW_ORIGINS", "*")
+        # Comma-separated list or "*".
+        # Keep ALLOW_ORIGINS as a backward-compatible alias used by older
+        # deployment manifests.
+        origins_raw = os.getenv("CORS_ALLOW_ORIGINS") or os.getenv("ALLOW_ORIGINS", "*")
         if origins_raw.strip() == "*":
             origins = ["*"]
         else:

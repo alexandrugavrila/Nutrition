@@ -18,6 +18,7 @@ export default defineConfig({
     port: 3000,
     host: true,
     strictPort: true,
+    // Dev-only API proxy. Production uses nginx same-origin routing.
     proxy: {
       "/api": {
         target: backendUrl,

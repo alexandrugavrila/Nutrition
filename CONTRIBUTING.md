@@ -144,6 +144,29 @@ Production compose intentionally differs from development compose:
 - only a named PostgreSQL data volume is persisted;
 - runtime configuration comes from `.env.prod` plus required `${VAR:?error}` guards that fail fast when critical variables are missing. Copy `.env.prod.template` to `.env.prod` and fill in real values before deployment.
 
+Frontend/API routing convention:
+
+- Production uses a **same-origin** strategy: browser requests hit the frontend origin and nginx forwards `/api/*` to `backend:8000`.
+- Development keeps the Vite proxy in `Frontend/vite.config.ts`; this proxy is dev-only and uses `BACKEND_URL`.
+- Because the app uses relative API paths (`/api/...`), production does not need `VITE_API_BASE_URL` or any runtime-injected frontend API config file.
+
+Recommended `.env.prod` values (defaults shown where applicable):
+
+| Variable | Required | Default | Notes |
+| --- | --- | --- | --- |
+| `BACKEND_IMAGE` | Yes | — | Immutable backend image tag/digest. |
+| `FRONTEND_IMAGE` | Yes | — | Immutable frontend image tag/digest. |
+| `POSTGRES_IMAGE` | No | `postgres:13` | Override only when needed. |
+| `POSTGRES_USER` | Yes | — | DB user for Postgres container init. |
+| `POSTGRES_PASSWORD` | Yes | — | DB password for Postgres container init. |
+| `POSTGRES_DB` | Yes | — | Database name for Postgres container init. |
+| `DATABASE_URL` | Yes | — | Backend SQLAlchemy connection string. |
+| `USDA_API_KEY` | Yes | — | Required for USDA endpoints. |
+| `CORS_ALLOW_ORIGINS` | Yes | — | Comma-separated origins (`https://app.example.com`). Keep this tight in production. |
+| `DB_AUTO_CREATE` | No | `false` | Leave false when running migrations separately. |
+| `PROD_BACKEND_PORT` | No | `8000` | Host-port mapping for backend service. |
+| `PROD_FRONTEND_PORT` | No | `80` | Host-port mapping for frontend service. |
+
 ---
 
 ## Database Utilities
@@ -210,7 +233,7 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
 - `docker-compose.prod.yml`
   - Purpose: production runtime stack using prebuilt immutable images only (no host bind mounts).
   - Entry point: `docker compose --env-file .env.prod -f docker-compose.prod.yml up -d`.
-  - Requirements: `.env.prod` must define critical runtime variables (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, database credentials, `DATABASE_URL`, `USDA_API_KEY`, `ALLOW_ORIGINS`) or Compose exits immediately via `${VAR:?error}` guards.
+  - Requirements: `.env.prod` must define critical runtime variables (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, database credentials, `DATABASE_URL`, `USDA_API_KEY`, `CORS_ALLOW_ORIGINS`) or Compose exits immediately via `${VAR:?error}` guards.
 
 ### Environment and worktree helpers
 

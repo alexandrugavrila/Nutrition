@@ -27,7 +27,7 @@ services:
     environment:
       DATABASE_URL: "${DATABASE_URL:?DATABASE_URL is required}"
       USDA_API_KEY: "${USDA_API_KEY:?USDA_API_KEY is required}"
-      ALLOW_ORIGINS: "${ALLOW_ORIGINS:?ALLOW_ORIGINS is required}"
+      CORS_ALLOW_ORIGINS: "${CORS_ALLOW_ORIGINS:?CORS_ALLOW_ORIGINS is required}"
       DB_AUTO_CREATE: "${DB_AUTO_CREATE:-false}"
       ALEMBIC_CONFIG: /app/Backend/alembic.ini
       HOST: "${HOST:-0.0.0.0}"

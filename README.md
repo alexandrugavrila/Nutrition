@@ -34,7 +34,7 @@ A full-stack nutrition planning and tracking app built with:
    Copy-Item .env.template .env
    ```
 
-   Then fill in `USDA_API_KEY` and confirm `VITE_API_BASE_URL` in `.env`.
+   Then fill in `USDA_API_KEY`.
 
 4. Activate the developer environment (installs backend dependencies and keeps the virtualenv up to date).
 
@@ -88,6 +88,12 @@ pwsh ./scripts/docker/compose.ps1 up data -test
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md#docker-workflows) for detailed contributor workflows.
+
+### Frontend API routing strategy
+
+- **Production:** frontend and API are served from the same public origin, and nginx forwards `/api/*` to the backend container.
+- **Development:** Vite keeps a dev-only `/api` proxy (configured in `Frontend/vite.config.ts`) and targets `BACKEND_URL` from the frontend container environment.
+- **Environment impact:** the frontend image does not require `VITE_API_BASE_URL` in production because API calls are relative (`/api/...`).
 
 ---
 
