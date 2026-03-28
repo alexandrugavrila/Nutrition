@@ -149,7 +149,7 @@ Production compose intentionally differs from development compose:
 
 Frontend/API routing convention:
 
-- Production uses a **same-origin** strategy: browser requests hit the frontend origin and nginx forwards `/api/*` to `backend:8000`.
+- Production uses a dedicated **edge nginx** service for TLS termination. The edge routes `/` to the frontend container and `/api/*` to `backend:8000`.
 - Development keeps the Vite proxy in `Frontend/vite.config.ts`; this proxy is dev-only and uses `BACKEND_URL`.
 - Because the app uses relative API paths (`/api/...`), production does not need `VITE_API_BASE_URL` or any runtime-injected frontend API config file.
 
@@ -167,10 +167,24 @@ Required `.env.production` values (defaults shown where applicable):
 | `USDA_API_KEY` | Yes | — | Required for USDA endpoints. |
 | `CORS_ALLOW_ORIGINS` | Yes | — | Comma-separated origins (`https://app.example.com`). Keep this tight in production. |
 | `DB_AUTO_CREATE` | No | `false` | Leave false when running migrations separately. |
-| `PROD_BACKEND_PORT` | No | `8000` | Host-port mapping for backend service. |
-| `PROD_FRONTEND_PORT` | No | `80` | Host-port mapping for frontend service. |
+| `EDGE_IMAGE` | No | `nginx:1.27-alpine` | Edge proxy image override. |
+| `EDGE_TLS_CERTS_DIR` | No | `./Edge/tls` | Host path containing `tls.crt` and `tls.key`. |
+| `PROD_HTTP_PORT` | No | `80` | Host-port mapping for edge HTTP redirect listener. |
+| `PROD_HTTPS_PORT` | No | `443` | Host-port mapping for edge HTTPS listener. |
 | `ENVIRONMENT` | No | `production` | Keep `production` in deployed runtime so startup validation enforces required secrets. |
 
+
+
+Runtime controls in production compose:
+
+- Edge injects HTTP security headers (`Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, and a baseline `Content-Security-Policy`).
+- Health probes are dependency-aware:
+  - Postgres: `pg_isready` against local socket (`db` readiness).
+  - Backend: `GET /api/health/ready` which performs a DB round trip.
+  - Frontend: `GET /healthz` static response from nginx.
+  - Edge: `GET /healthz` over HTTPS, proxied to backend readiness.
+- Resource guardrails are enabled with CPU/memory limits + reservations and conservative `ulimit` defaults (`nofile`, `nproc`) for each service.
+- All services emit logs to stdout/stderr and Compose applies `json-file` log rotation (`max-size`, `max-file`, non-blocking mode).
 
 Deployment secret checklist:
 
@@ -178,6 +192,48 @@ Deployment secret checklist:
 - Provide `POSTGRES_PASSWORD`, `DATABASE_URL`, `USDA_API_KEY`, and any future tokens from CI/CD or a dedicated secret manager.
 - Keep `.env.production.example` values as placeholders only.
 - Set `ENVIRONMENT=production` in runtime so backend startup fails if required secrets are missing.
+
+---
+
+
+### Production monitoring, logging, and incident runbook
+
+#### Uptime target endpoint
+
+Use the edge endpoint as the external uptime probe target:
+
+```text
+GET https://<your-domain>/healthz
+```
+
+Expected behavior:
+- `200 OK` means edge is reachable *and* backend readiness passed (including DB connectivity).
+- `503` or timeout means routing path degraded; trigger incident triage.
+
+#### Log collection and rotation strategy
+
+- Containers log to stdout/stderr (backend gunicorn access logs are JSON-formatted; frontend/edge nginx logs are JSON-formatted; Postgres uses structured line prefixes).
+- Docker `json-file` driver rotates logs in-place to bound disk usage:
+  - edge/frontend: `max-size=10m`, `max-file=5`
+  - backend/db: `max-size=20m`, `max-file=10`
+- Recommended aggregation: ship container logs to your platform collector (Loki/ELK/CloudWatch/etc.) and alert on sustained 5xx rates, backend readiness failures, and DB restart loops.
+
+#### Incident runbook (minimal)
+
+1. **Confirm symptom**
+   - Check uptime probe (`/healthz`) and recent deployment events.
+2. **Identify failing tier**
+   - `docker compose --env-file .env.production -f docker-compose.prod.yml ps`
+   - `docker compose --env-file .env.production -f docker-compose.prod.yml logs --since=15m edge frontend backend db`
+3. **Common failure patterns**
+   - Edge unhealthy: verify certificate mount (`EDGE_TLS_CERTS_DIR` contains `tls.crt`/`tls.key`) and nginx config syntax.
+   - Backend unhealthy: call `http://localhost:8000/api/health/ready` inside backend container; inspect DB auth/network errors.
+   - DB unhealthy: validate credentials, volume free space, and Postgres start logs.
+4. **Immediate mitigation**
+   - Roll back to last known-good image tags (`BACKEND_IMAGE`, `FRONTEND_IMAGE`) and restart stack.
+   - If schema issues caused outage, follow the backup/restore section above before reintroducing traffic.
+5. **Post-incident**
+   - Capture timeline, root cause, customer impact, and preventive action items in your incident tracker.
 
 ---
 
@@ -259,9 +315,9 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
   - Call graph: loads `scripts/lib/branch-env.*`, `scripts/lib/worktree.sh` (Bash variant), and `scripts/lib/compose-utils.*`; PowerShell also imports `scripts/env/activate-venv.ps1` for test-fixture startup.
 
 - `docker-compose.prod.yml`
-  - Purpose: production runtime stack using prebuilt immutable images only (no host bind mounts).
+  - Purpose: production runtime stack using prebuilt immutable images only (no host bind mounts), with an edge TLS proxy, runtime health probes, resource guardrails, and bounded log rotation.
   - Entry point: `docker compose --env-file .env.production -f docker-compose.prod.yml up -d`.
-  - Requirements: `.env.production` must define critical runtime variables (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, database credentials, `DATABASE_URL`, `USDA_API_KEY`, `CORS_ALLOW_ORIGINS`) or Compose exits immediately via `${VAR:?error}` guards.
+  - Requirements: `.env.production` must define critical runtime variables (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, database credentials, `DATABASE_URL`, `USDA_API_KEY`, `CORS_ALLOW_ORIGINS`), plus edge TLS certificate mount inputs (`EDGE_TLS_CERTS_DIR`) or Compose exits immediately via `${VAR:?error}` guards where configured.
 
 ### Environment and worktree helpers
 
