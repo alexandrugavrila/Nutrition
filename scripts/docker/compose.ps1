@@ -94,11 +94,6 @@ function Invoke-Up {
       exit 1
     }
 
-  if ($empty) {
-    Write-Host "Starting with empty database."
-    return
-  }
-
   Write-Host "Waiting for database to be ready..."
   $deadline = (Get-Date).AddMinutes(2)
   do {
@@ -121,15 +116,15 @@ function Invoke-Up {
     exit 1
   }
 
-    & "$PSScriptRoot/../env/activate-venv.ps1"
     if ($dataMode -eq '-prod') {
-      Write-Host "Restoring latest backup dump..."
-      & "$PSScriptRoot/../db/restore.ps1" -UpgradeAfter
-      if ($LASTEXITCODE -ne 0) {
-        Write-Error "Database restore failed with exit code $LASTEXITCODE."
-        exit $LASTEXITCODE
-      }
+      Write-Host "Production-like startup selected."
+      Write-Host "Skipping automatic migrations and CSV seeding."
+      Write-Host "Run an explicit migration job before serving traffic:"
+      Write-Host "  pwsh ./scripts/db/migrate.ps1"
+      Write-Host "If you intentionally need CSV fixtures in production-like environments:"
+      Write-Host "  pwsh ./scripts/db/import-from-csv.ps1 -production -AllowProductionSeed"
     } else {
+      & "$PSScriptRoot/../env/activate-venv.ps1"
       Write-Host "Applying database migrations..."
       # Ensure Alembic resolves relative paths from Backend/ where alembic.ini lives
       docker compose -p $proj exec -T backend sh -lc "cd /app/Backend && python -m alembic -c alembic.ini upgrade head"

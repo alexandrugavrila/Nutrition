@@ -2,15 +2,22 @@
 [CmdletBinding()]
 param(
   [switch]$production,
-  [switch]$test
+  [switch]$test,
+  [switch]$AllowProductionSeed,
+  [switch]$AllowNonLocalDb
 )
 
 function Show-Usage {
-  Write-Host "Usage: pwsh ./scripts/db/import-from-csv.ps1 -production|-test" -ForegroundColor Yellow
+  Write-Host "Usage: pwsh ./scripts/db/import-from-csv.ps1 -production|-test [-AllowProductionSeed] [-AllowNonLocalDb]" -ForegroundColor Yellow
 }
 
 if (([int]$production + [int]$test) -ne 1) {
   Show-Usage
+  exit 1
+}
+
+if ($production -and -not $AllowProductionSeed) {
+  Write-Error "Refusing production CSV seed without -AllowProductionSeed."
   exit 1
 }
 
@@ -27,5 +34,10 @@ Ensure-Venv
 
 # Ensure containers are running for this branch
 Ensure-BranchContainers | Out-Null
+
+if ($env:DATABASE_URL -notmatch 'localhost' -and -not $AllowNonLocalDb) {
+  Write-Error "Refusing to target non-local database without -AllowNonLocalDb."
+  exit 1
+}
 
 python Database/import_from_csv.py $flag
