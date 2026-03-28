@@ -29,6 +29,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: "./src/tests/setupTests.ts",
+    exclude: ["e2e/**", "node_modules/**", "dist/**"],
     transformMode: {
       web: [/\.[jt]sx?$/],
     },
