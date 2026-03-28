@@ -30,6 +30,13 @@ services:
       ALLOW_ORIGINS: "${ALLOW_ORIGINS:?ALLOW_ORIGINS is required}"
       DB_AUTO_CREATE: "${DB_AUTO_CREATE:-false}"
       ALEMBIC_CONFIG: /app/Backend/alembic.ini
+      HOST: "${HOST:-0.0.0.0}"
+      PORT: "${PORT:-8000}"
+      WEB_CONCURRENCY: "${WEB_CONCURRENCY:-2}"
+      GUNICORN_TIMEOUT: "${GUNICORN_TIMEOUT:-60}"
+      GUNICORN_GRACEFUL_TIMEOUT: "${GUNICORN_GRACEFUL_TIMEOUT:-30}"
+      GUNICORN_KEEPALIVE: "${GUNICORN_KEEPALIVE:-5}"
+      LOG_LEVEL: "${LOG_LEVEL:-info}"
     depends_on:
       db:
         condition: service_healthy
@@ -49,8 +56,6 @@ services:
       - nutrition-net
     ports:
       - "${PROD_BACKEND_PORT:-8000}:8000"
-    command:
-      ["python", "-m", "uvicorn", "Backend.backend:app", "--host", "0.0.0.0", "--port", "8000"]
 
   frontend:
     image: "${FRONTEND_IMAGE:?FRONTEND_IMAGE is required (immutable tag)}"
