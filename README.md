@@ -63,7 +63,7 @@ A full-stack nutrition planning and tracking app built with:
    - Backend API: `http://localhost:<DEV_BACKEND_PORT>/docs`
    - PostgreSQL: `localhost:<DEV_DB_PORT>`
 
-6. Visit the printed URLs or connect a SQL client (default credentials: `nutrition_user` / `nutrition_pass`).
+6. Visit the printed URLs or connect a SQL client using the database credentials you injected through environment variables (never commit real secrets).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
 
@@ -73,12 +73,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
 ## Development vs Production Compose
 
 - `docker-compose.yml` is **development-only**. It builds local images, bind-mounts `Backend/` and `Frontend/`, and enables hot reload for iterative coding.
-- `docker-compose.prod.yml` is **production-focused**. It runs prebuilt immutable images, uses an `env_file` (`.env.prod`), enforces required runtime variables via `${VAR:?error}` checks, and persists only PostgreSQL data in a named volume. Start from `.env.prod.template` when creating the production env file.
+- `docker-compose.prod.yml` is **production-focused**. It runs prebuilt immutable images, uses an `env_file` (`.env.production`), enforces required runtime variables via `${VAR:?error}` checks, and persists only PostgreSQL data in a named volume. Start from `.env.production.example` when creating the production env file.
 
 Production entrypoint example:
 
 ```bash
-docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 ```
 
 Development entrypoint remains the branch-aware wrapper:
@@ -94,6 +94,17 @@ See [CONTRIBUTING.md](CONTRIBUTING.md#docker-workflows) for detailed contributor
 - **Production:** frontend and API are served from the same public origin, and nginx forwards `/api/*` to the backend container.
 - **Development:** Vite keeps a dev-only `/api` proxy (configured in `Frontend/vite.config.ts`) and targets `BACKEND_URL` from the frontend container environment.
 - **Environment impact:** the frontend image does not require `VITE_API_BASE_URL` in production because API calls are relative (`/api/...`).
+
+---
+
+
+## Production Secret Injection Checklist
+
+- Copy `.env.production.example` to `.env.production` for local deployment scaffolding only; do not commit `.env.production`.
+- Inject `POSTGRES_PASSWORD`, `DATABASE_URL`, `USDA_API_KEY`, and any future API tokens from your deployment platform or secret manager (for example, GitHub Actions secrets, cloud secret stores, Vault, etc.).
+- Keep `.env.production.example` placeholders non-sensitive and rotate any secret that was ever exposed in logs or commit history.
+- Verify `ENVIRONMENT=production` in deployed backend containers so startup validation fails fast if secrets are missing.
+- Never hardcode credentials in Compose files, scripts, docs, or source code.
 
 ---
 

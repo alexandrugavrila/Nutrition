@@ -134,7 +134,7 @@ Multiple branches can run simultaneously because each stack has a unique project
 For production-style deployments, use the root-level `docker-compose.prod.yml` directly:
 
 ```bash
-docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 ```
 
 Production compose intentionally differs from development compose:
@@ -142,7 +142,7 @@ Production compose intentionally differs from development compose:
 - no source bind mounts (immutable image-only runtime);
 - explicit `restart: unless-stopped` and service healthchecks;
 - only a named PostgreSQL data volume is persisted;
-- runtime configuration comes from `.env.prod` plus required `${VAR:?error}` guards that fail fast when critical variables are missing. Copy `.env.prod.template` to `.env.prod` and fill in real values before deployment.
+- runtime configuration comes from `.env.production` plus required `${VAR:?error}` guards that fail fast when critical variables are missing. Copy `.env.production.example` to `.env.production` and inject real values from your deployment secret manager before deployment.
 
 Frontend/API routing convention:
 
@@ -150,7 +150,7 @@ Frontend/API routing convention:
 - Development keeps the Vite proxy in `Frontend/vite.config.ts`; this proxy is dev-only and uses `BACKEND_URL`.
 - Because the app uses relative API paths (`/api/...`), production does not need `VITE_API_BASE_URL` or any runtime-injected frontend API config file.
 
-Recommended `.env.prod` values (defaults shown where applicable):
+Required `.env.production` values (defaults shown where applicable):
 
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
@@ -166,6 +166,15 @@ Recommended `.env.prod` values (defaults shown where applicable):
 | `DB_AUTO_CREATE` | No | `false` | Leave false when running migrations separately. |
 | `PROD_BACKEND_PORT` | No | `8000` | Host-port mapping for backend service. |
 | `PROD_FRONTEND_PORT` | No | `80` | Host-port mapping for frontend service. |
+| `ENVIRONMENT` | No | `production` | Keep `production` in deployed runtime so startup validation enforces required secrets. |
+
+
+Deployment secret checklist:
+
+- Never commit real secrets (`.env.production` must stay untracked).
+- Provide `POSTGRES_PASSWORD`, `DATABASE_URL`, `USDA_API_KEY`, and any future tokens from CI/CD or a dedicated secret manager.
+- Keep `.env.production.example` values as placeholders only.
+- Set `ENVIRONMENT=production` in runtime so backend startup fails if required secrets are missing.
 
 ---
 
@@ -232,8 +241,8 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
 
 - `docker-compose.prod.yml`
   - Purpose: production runtime stack using prebuilt immutable images only (no host bind mounts).
-  - Entry point: `docker compose --env-file .env.prod -f docker-compose.prod.yml up -d`.
-  - Requirements: `.env.prod` must define critical runtime variables (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, database credentials, `DATABASE_URL`, `USDA_API_KEY`, `CORS_ALLOW_ORIGINS`) or Compose exits immediately via `${VAR:?error}` guards.
+  - Entry point: `docker compose --env-file .env.production -f docker-compose.prod.yml up -d`.
+  - Requirements: `.env.production` must define critical runtime variables (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, database credentials, `DATABASE_URL`, `USDA_API_KEY`, `CORS_ALLOW_ORIGINS`) or Compose exits immediately via `${VAR:?error}` guards.
 
 ### Environment and worktree helpers
 
@@ -370,7 +379,7 @@ Additional tooling:
 
 - Vite dev server: `http://localhost:$DEV_FRONTEND_PORT`
 - FastAPI docs: `http://localhost:$DEV_BACKEND_PORT/docs`
-- Postgres: `localhost:$DEV_DB_PORT`, database `nutrition`, user `nutrition_user`, password `nutrition_pass`
+- Postgres: `localhost:$DEV_DB_PORT` using the credentials provided through your local environment variables (never commit real values).
 - Optional DB client: DBeaver or psql using the above credentials.
 
 ---
