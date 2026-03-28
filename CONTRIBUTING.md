@@ -82,7 +82,9 @@ Other repo utilities:
 
 ## Docker Workflows
 
-Always use the wrapper scripts instead of calling `docker compose` directly; they load branch metadata and enforce the naming scheme.
+### Development entrypoint (default contributor flow)
+
+Always use the wrapper scripts instead of calling `docker compose` directly for day-to-day development; they load branch metadata and enforce the naming scheme.
 
 Start services (choose a seed dataset):
 
@@ -126,6 +128,21 @@ Branch-aware environment variables exported by the wrapper:
 | `DATABASE_URL`       | Branch-local connection string                     |
 
 Multiple branches can run simultaneously because each stack has a unique project name, volume suffix, and port offset.
+
+### Production entrypoint (immutable runtime images)
+
+For production-style deployments, use the root-level `docker-compose.prod.yml` directly:
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+```
+
+Production compose intentionally differs from development compose:
+
+- no source bind mounts (immutable image-only runtime);
+- explicit `restart: unless-stopped` and service healthchecks;
+- only a named PostgreSQL data volume is persisted;
+- runtime configuration comes from `.env.prod` plus required `${VAR:?error}` guards that fail fast when critical variables are missing. Copy `.env.prod.template` to `.env.prod` and fill in real values before deployment.
 
 ---
 
@@ -178,7 +195,7 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
 ### Docker stack management
 
 - `scripts/docker/compose.ps1` / `scripts/docker/compose.sh`
-  - Purpose: orchestrate Docker Compose stacks with branch-specific project names, port offsets, and data seed flows.
+  - Purpose: orchestrate **development** Docker Compose stacks with branch-specific project names, port offsets, and data seed flows (`docker-compose.yml`).
   - Subcommands (common to both shells):
     - `up [type <-dev|-test>] data <-test|-prod> [service...]`
     - `down [type <-dev|-test>]`
@@ -189,6 +206,11 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
     - Writes resolved ports to `$COMPOSE_ENV_FILE` when present so callers (for example the e2e runner) can source them.
     - Ensures migrations run and seed data loads after startup, and provides graceful teardown including volume cleanup.
   - Call graph: loads `scripts/lib/branch-env.*`, `scripts/lib/worktree.sh` (Bash variant), and `scripts/lib/compose-utils.*`; PowerShell also imports `scripts/env/activate-venv.ps1` when applying test data.
+
+- `docker-compose.prod.yml`
+  - Purpose: production runtime stack using prebuilt immutable images only (no host bind mounts).
+  - Entry point: `docker compose --env-file .env.prod -f docker-compose.prod.yml up -d`.
+  - Requirements: `.env.prod` must define critical runtime variables (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, database credentials, `DATABASE_URL`, `USDA_API_KEY`, `ALLOW_ORIGINS`) or Compose exits immediately via `${VAR:?error}` guards.
 
 ### Environment and worktree helpers
 
