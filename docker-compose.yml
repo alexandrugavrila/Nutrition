@@ -21,6 +21,7 @@ services:
     build:
       context: .
       dockerfile: Backend/Dockerfile
+      target: dev
     environment:
       DATABASE_URL: postgresql://nutrition_user:nutrition_pass@db:5432/nutrition
       WATCHFILES_FORCE_POLLING: "true"
@@ -31,10 +32,8 @@ services:
         condition: service_healthy
     volumes:
       - ${BRANCH_WORKTREE_DIR:-.}/Backend:/app/Backend
-    command: >
-      bash -c "set -eux; python -m pip install --break-system-packages -v -r Backend/requirements.txt;
-      python -m pip show uvicorn;
-      exec python -m uvicorn Backend.backend:app --host 0.0.0.0 --port 8000 --reload"
+    command:
+      ["python", "-m", "uvicorn", "Backend.backend:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     networks:
       - nutrition-net
     ports:
@@ -53,7 +52,6 @@ services:
     environment:
       CHOKIDAR_USEPOLLING: "true"
       BACKEND_URL: "http://backend:8000"
-      VITE_API_BASE_URL: "${VITE_API_BASE_URL}"
     ports:
         - "${DEV_FRONTEND_PORT:-3000}:3000"
     networks:

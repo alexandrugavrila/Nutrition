@@ -82,20 +82,25 @@ Other repo utilities:
 
 ## Docker Workflows
 
-Always use the wrapper scripts instead of calling `docker compose` directly; they load branch metadata and enforce the naming scheme.
+### Development entrypoint (default contributor flow)
+
+Always use the wrapper scripts instead of calling `docker compose` directly for day-to-day development; they load branch metadata and enforce the naming scheme.
 
 Start services (choose a seed dataset):
 
 ```pwsh
-pwsh ./scripts/docker/compose.ps1 up data -test     # test fixtures
-pwsh ./scripts/docker/compose.ps1 up data -prod     # production-like fixtures
+pwsh ./scripts/docker/compose.ps1 up data -test     # test fixtures + auto migrations
+pwsh ./scripts/docker/compose.ps1 up data -prod     # production-like startup (no implicit seed)
 ```
 
 Options:
 
 - Add `type -test` to run on the dedicated test ports (`TEST_*`). Useful for end-to-end runs that should not collide with your dev stack.
 - Append service names (e.g. `frontend backend`) to limit which containers start.
-- The script waits for PostgreSQL, ensures the backend dependencies are present, runs Alembic migrations inside the container, then seeds data: `data -test` loads test CSV fixtures; `data -prod` restores the latest branch dump in PowerShell and seeds production CSV fixtures in Bash.
+- The script waits for PostgreSQL and backend dependencies.
+- `data -test` runs migrations then loads test CSV fixtures.
+- `data -prod` intentionally skips migrations/seeding so deployment pipelines can run an explicit migration job before traffic.
+- Run the explicit migration job with `pwsh ./scripts/db/migrate.ps1` (or `./scripts/db/migrate.sh`) during deploy.
 
 Stop services:
 
@@ -127,6 +132,109 @@ Branch-aware environment variables exported by the wrapper:
 
 Multiple branches can run simultaneously because each stack has a unique project name, volume suffix, and port offset.
 
+### Production entrypoint (immutable runtime images)
+
+For production-style deployments, use the root-level `docker-compose.prod.yml` directly:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+```
+
+Production compose intentionally differs from development compose:
+
+- no source bind mounts (immutable image-only runtime);
+- explicit `restart: unless-stopped` and service healthchecks;
+- only a named PostgreSQL data volume is persisted;
+- runtime configuration comes from `.env.production` plus required `${VAR:?error}` guards that fail fast when critical variables are missing. Copy `.env.production.example` to `.env.production` and inject real values from your deployment secret manager before deployment.
+
+Frontend/API routing convention:
+
+- Production uses a dedicated **edge nginx** service for TLS termination. The edge routes `/` to the frontend container and `/api/*` to `backend:8000`.
+- Development keeps the Vite proxy in `Frontend/vite.config.ts`; this proxy is dev-only and uses `BACKEND_URL`.
+- Because the app uses relative API paths (`/api/...`), production does not need `VITE_API_BASE_URL` or any runtime-injected frontend API config file.
+
+Required `.env.production` values (defaults shown where applicable):
+
+| Variable | Required | Default | Notes |
+| --- | --- | --- | --- |
+| `BACKEND_IMAGE` | Yes | — | Immutable backend image tag/digest. |
+| `FRONTEND_IMAGE` | Yes | — | Immutable frontend image tag/digest. |
+| `POSTGRES_IMAGE` | No | `postgres:13` | Override only when needed. |
+| `POSTGRES_USER` | Yes | — | DB user for Postgres container init. |
+| `POSTGRES_PASSWORD` | Yes | — | DB password for Postgres container init. |
+| `POSTGRES_DB` | Yes | — | Database name for Postgres container init. |
+| `DATABASE_URL` | Yes | — | Backend SQLAlchemy connection string. |
+| `USDA_API_KEY` | Yes | — | Required for USDA endpoints. |
+| `CORS_ALLOW_ORIGINS` | Yes | — | Comma-separated origins (`https://app.example.com`). Keep this tight in production. |
+| `DB_AUTO_CREATE` | No | `false` | Leave false when running migrations separately. |
+| `EDGE_IMAGE` | No | `nginx:1.27-alpine` | Edge proxy image override. |
+| `EDGE_TLS_CERTS_DIR` | No | `./Edge/tls` | Host path containing `tls.crt` and `tls.key`. |
+| `PROD_HTTP_PORT` | No | `80` | Host-port mapping for edge HTTP redirect listener. |
+| `PROD_HTTPS_PORT` | No | `443` | Host-port mapping for edge HTTPS listener. |
+| `ENVIRONMENT` | No | `production` | Keep `production` in deployed runtime so startup validation enforces required secrets. |
+
+
+
+Runtime controls in production compose:
+
+- Edge injects HTTP security headers (`Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, and a baseline `Content-Security-Policy`).
+- Health probes are dependency-aware:
+  - Postgres: `pg_isready` against local socket (`db` readiness).
+  - Backend: `GET /api/health/ready` which performs a DB round trip.
+  - Frontend: `GET /healthz` static response from nginx.
+  - Edge: `GET /healthz` over HTTPS, proxied to backend readiness.
+- Resource guardrails are enabled with CPU/memory limits + reservations and conservative `ulimit` defaults (`nofile`, `nproc`) for each service.
+- All services emit logs to stdout/stderr and Compose applies `json-file` log rotation (`max-size`, `max-file`, non-blocking mode).
+
+Deployment secret checklist:
+
+- Never commit real secrets (`.env.production` must stay untracked).
+- Provide `POSTGRES_PASSWORD`, `DATABASE_URL`, `USDA_API_KEY`, and any future tokens from CI/CD or a dedicated secret manager.
+- Keep `.env.production.example` values as placeholders only.
+- Set `ENVIRONMENT=production` in runtime so backend startup fails if required secrets are missing.
+
+---
+
+
+### Production monitoring, logging, and incident runbook
+
+#### Uptime target endpoint
+
+Use the edge endpoint as the external uptime probe target:
+
+```text
+GET https://<your-domain>/healthz
+```
+
+Expected behavior:
+- `200 OK` means edge is reachable *and* backend readiness passed (including DB connectivity).
+- `503` or timeout means routing path degraded; trigger incident triage.
+
+#### Log collection and rotation strategy
+
+- Containers log to stdout/stderr (backend gunicorn access logs are JSON-formatted; frontend/edge nginx logs are JSON-formatted; Postgres uses structured line prefixes).
+- Docker `json-file` driver rotates logs in-place to bound disk usage:
+  - edge/frontend: `max-size=10m`, `max-file=5`
+  - backend/db: `max-size=20m`, `max-file=10`
+- Recommended aggregation: ship container logs to your platform collector (Loki/ELK/CloudWatch/etc.) and alert on sustained 5xx rates, backend readiness failures, and DB restart loops.
+
+#### Incident runbook (minimal)
+
+1. **Confirm symptom**
+   - Check uptime probe (`/healthz`) and recent deployment events.
+2. **Identify failing tier**
+   - `docker compose --env-file .env.production -f docker-compose.prod.yml ps`
+   - `docker compose --env-file .env.production -f docker-compose.prod.yml logs --since=15m edge frontend backend db`
+3. **Common failure patterns**
+   - Edge unhealthy: verify certificate mount (`EDGE_TLS_CERTS_DIR` contains `tls.crt`/`tls.key`) and nginx config syntax.
+   - Backend unhealthy: call `http://localhost:8000/api/health/ready` inside backend container; inspect DB auth/network errors.
+   - DB unhealthy: validate credentials, volume free space, and Postgres start logs.
+4. **Immediate mitigation**
+   - Roll back to last known-good image tags (`BACKEND_IMAGE`, `FRONTEND_IMAGE`) and restart stack.
+   - If schema issues caused outage, follow the backup/restore section above before reintroducing traffic.
+5. **Post-incident**
+   - Capture timeline, root cause, customer impact, and preventive action items in your incident tracker.
+
 ---
 
 ## Database Utilities
@@ -134,13 +242,15 @@ Multiple branches can run simultaneously because each stack has a unique project
 All database helpers live under `scripts/db/` and respect the current branch's environment variables. Detailed usage for every script—including call chains and flags—lives in the [Script catalog](#script-catalog--call-graph), but the short list below highlights the most common flows.
 
 - `pwsh ./scripts/db/backup.ps1` / `./scripts/db/backup.sh`
-  Writes `Database/backups/<sanitized>-<timestamp>.dump` plus metadata (Alembic revision, git SHA).
+  Writes `Database/backups/<sanitized>-<timestamp>.dump` plus metadata (Alembic revision, git SHA). Refuses non-local DBs unless `-AllowNonLocalDb` / `--allow-non-local-db` is provided.
+- `pwsh ./scripts/db/migrate.ps1`
+  Explicitly runs `alembic upgrade head` against the running stack. Use this as a one-time deploy job before routing traffic.
 - `pwsh ./scripts/db/restore.ps1 [-ResetSchema] [-UpgradeAfter] [<file>]`
   Restores the most recent dump for the branch or a provided file. `-ResetSchema` drops/recreates the public schema; `-UpgradeAfter` reapplies migrations.
 - `pwsh ./scripts/db/export-to-csv.ps1 [-Production|-Test] [-OutputDir <path>]`
   Writes the current database tables to CSV (defaults to production data). Bash: `./scripts/db/export-to-csv.sh`.
 - `pwsh ./scripts/db/import-from-csv.ps1 [-test|-production]`
-  Loads CSV seed data into the running container; used automatically for `compose.ps1 up data -test`.
+  Loads CSV seed data into the running container; used automatically for `compose.ps1 up data -test`. Production mode requires explicit confirmation flags.
 - `pwsh ./scripts/db/check-migration-drift.ps1`
   Compares the migration state between the database and `Backend/migrations`.
 - `pwsh ./scripts/db/update-api-schema.ps1`
@@ -149,6 +259,19 @@ All database helpers live under `scripts/db/` and respect the current branch's e
   One-stop command: runs Alembic autogenerate, formats new migrations, updates OpenAPI + TS types, runs drift checks, and prompts you to commit generated artifacts.
 
 Most scripts accept Bash equivalents with the same flags.
+
+### Safe deploy sequence (backup, migrate, rollback)
+
+Use this sequence in server deployments to keep schema lifecycle deterministic:
+
+1. **Backup before migration**  
+   `pwsh ./scripts/db/backup.ps1` (or `./scripts/db/backup.sh`).
+2. **Run one explicit migration job (before app traffic)**  
+   `pwsh ./scripts/db/migrate.ps1` (or `./scripts/db/migrate.sh`).
+3. **Start/update app containers**  
+   Use your deploy platform; avoid implicit seeding in production startup.
+4. **Rollback if migration fails post-deploy**  
+   `pwsh ./scripts/db/restore.ps1 -ResetSchema <backup.dump>` (or `./scripts/db/restore.sh --reset-schema <backup.dump>`), then redeploy the previous app version.
 
 ---
 
@@ -178,17 +301,23 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
 ### Docker stack management
 
 - `scripts/docker/compose.ps1` / `scripts/docker/compose.sh`
-  - Purpose: orchestrate Docker Compose stacks with branch-specific project names, port offsets, and data seed flows.
+  - Purpose: orchestrate **development** Docker Compose stacks with branch-specific project names, port offsets, and data seed flows (`docker-compose.yml`).
   - Subcommands (common to both shells):
     - `up [type <-dev|-test>] data <-test|-prod> [service...]`
     - `down [type <-dev|-test>]`
     - `restart [type <-dev|-test>] data <-test|-prod>`
   - Behavior:
     - `type -test` remaps the dev ports/volumes to the dedicated `TEST_*` values for isolated stacks.
-    - `data -prod` seeds production fixtures. PowerShell restores the latest branch backup via `scripts/db/restore.ps1 -UpgradeAfter`; Bash seeds CSV fixtures via `Database/import_from_csv.py --production`.
+    - `data -test` runs migrations and then loads test fixtures.
+    - `data -prod` skips migrations and fixture import by design; run `scripts/db/migrate.ps1|.sh` explicitly in deployment flows.
     - Writes resolved ports to `$COMPOSE_ENV_FILE` when present so callers (for example the e2e runner) can source them.
-    - Ensures migrations run and seed data loads after startup, and provides graceful teardown including volume cleanup.
-  - Call graph: loads `scripts/lib/branch-env.*`, `scripts/lib/worktree.sh` (Bash variant), and `scripts/lib/compose-utils.*`; PowerShell also imports `scripts/env/activate-venv.ps1` when applying test data.
+    - Provides graceful teardown including volume cleanup.
+  - Call graph: loads `scripts/lib/branch-env.*`, `scripts/lib/worktree.sh` (Bash variant), and `scripts/lib/compose-utils.*`; PowerShell also imports `scripts/env/activate-venv.ps1` for test-fixture startup.
+
+- `docker-compose.prod.yml`
+  - Purpose: production runtime stack using prebuilt immutable images only (no host bind mounts), with an edge TLS proxy, runtime health probes, resource guardrails, and bounded log rotation.
+  - Entry point: `docker compose --env-file .env.production -f docker-compose.prod.yml up -d`.
+  - Requirements: `.env.production` must define critical runtime variables (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, database credentials, `DATABASE_URL`, `USDA_API_KEY`, `CORS_ALLOW_ORIGINS`), plus edge TLS certificate mount inputs (`EDGE_TLS_CERTS_DIR`) or Compose exits immediately via `${VAR:?error}` guards where configured.
 
 ### Environment and worktree helpers
 
@@ -226,19 +355,24 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
 
 - `scripts/db/backup.ps1` / `scripts/db/backup.sh`
   - Purpose: capture a branch-local Postgres dump and write companion metadata.
-  - Flags: none.
+  - Flags: `-AllowNonLocalDb` / `--allow-non-local-db` to permit non-local DATABASE_URL targets.
   - Call graph: loads `scripts/lib/branch-env.*` and `scripts/lib/compose-utils.*`; PowerShell variant falls back to running pg_dump inside the container when the host CLI is unavailable.
+
+- `scripts/db/migrate.ps1` / `scripts/db/migrate.sh`
+  - Purpose: run `alembic upgrade head` as an explicit migration job.
+  - Flags: `-AllowNonLocalDb` / `--allow-non-local-db` to permit non-local DATABASE_URL targets.
+  - Call graph: loads `scripts/lib/branch-env.*` and `scripts/lib/compose-utils.*`, waits for Alembic availability in the backend container, then runs Alembic in `/app/Backend`.
 
 - `scripts/db/restore.ps1` / `scripts/db/restore.sh`
   - Purpose: restore a custom-format dump into the branch-local database and optionally upgrade afterward.
   - Flags:
-    - PowerShell: `-UpgradeAfter`, `-FailOnMismatch`, `-ResetSchema`, optional positional `DumpPath`.
-    - Bash: `--upgrade-after`, `--fail-on-mismatch`, `--reset-schema`, optional dump file argument, `-h|--help`.
-  - Behavior: auto-selects the newest dump for the current branch (falling back to `main` when necessary), refuses to touch non-localhost databases, can drop/recreate the `public` schema, and compares backup Alembic revision metadata against repo heads.
+    - PowerShell: `-UpgradeAfter`, `-FailOnMismatch`, `-ResetSchema`, `-AllowNonLocalDb`, optional positional `DumpPath`.
+    - Bash: `--upgrade-after`, `--fail-on-mismatch`, `--reset-schema`, `--allow-non-local-db`, optional dump file argument, `-h|--help`.
+  - Behavior: auto-selects the newest dump for the current branch (falling back to `main` when necessary), blocks non-localhost targets unless explicitly allowed, can drop/recreate the `public` schema, and compares backup Alembic revision metadata against repo heads.
 
 - `scripts/db/import-from-csv.ps1` / `scripts/db/import-from-csv.sh`
   - Purpose: load CSV fixtures into the running branch database.
-  - Flags: exactly one of `-production`/`--production` or `-test`/`--test`.
+  - Flags: exactly one of `-production`/`--production` or `-test`/`--test`; production requires `-AllowProductionSeed` / `--allow-production-seed`; non-local DATABASE_URL requires `-AllowNonLocalDb` / `--allow-non-local-db`.
   - Call graph: ensures venv activation and running containers before executing `python Database/import_from_csv.py` with the matching flag.
 
 - `scripts/db/export-to-csv.ps1` / `scripts/db/export-to-csv.sh`
@@ -325,7 +459,7 @@ Additional tooling:
 
 - Vite dev server: `http://localhost:$DEV_FRONTEND_PORT`
 - FastAPI docs: `http://localhost:$DEV_BACKEND_PORT/docs`
-- Postgres: `localhost:$DEV_DB_PORT`, database `nutrition`, user `nutrition_user`, password `nutrition_pass`
+- Postgres: `localhost:$DEV_DB_PORT` using the credentials provided through your local environment variables (never commit real values).
 - Optional DB client: DBeaver or psql using the above credentials.
 
 ---

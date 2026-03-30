@@ -4,12 +4,13 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<USAGE
-Usage: $(basename "$0") [--upgrade-after] [--fail-on-mismatch] [--reset-schema] [dump_file]
+Usage: $(basename "$0") [--upgrade-after] [--fail-on-mismatch] [--reset-schema] [--allow-non-local-db] [dump_file]
 
 Options:
   --upgrade-after      Run 'alembic -c Backend/alembic.ini upgrade head' after restore
   --fail-on-mismatch   Exit if backup Alembic revision doesn't match repo head(s)
   --reset-schema       Drop and recreate 'public' schema before restore (dev-safe)
+  --allow-non-local-db Allow restores when DATABASE_URL is not localhost
 
 Notes:
   When 'dump_file' is omitted, the script auto-selects the most recent backup for
@@ -21,12 +22,14 @@ USAGE
 upgrade_after=false
 fail_on_mismatch=false
 reset_schema=false
+allow_non_local=false
 args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --upgrade-after) upgrade_after=true; shift;;
     --fail-on-mismatch) fail_on_mismatch=true; shift;;
     --reset-schema) reset_schema=true; shift;;
+    --allow-non-local-db) allow_non_local=true; shift;;
     -h|--help) usage;;
     --*) echo "Unknown option: $1" >&2; usage;;
     *) args+=("$1"); shift;;
@@ -107,14 +110,10 @@ else
   dump_file="$latest"
 fi
 
-case "$DATABASE_URL" in
-  postgresql://*localhost*|postgres://*localhost*)
-    ;;
-  *)
-    echo "Refusing to restore to non-localhost database" >&2
-    exit 1
-    ;;
-esac
+if [[ "$DATABASE_URL" != *"localhost"* && "$allow_non_local" != true ]]; then
+  echo "Refusing to restore to non-local database without --allow-non-local-db." >&2
+  exit 1
+fi
 
 # Ensure containers are running for this branch
 require_branch_containers

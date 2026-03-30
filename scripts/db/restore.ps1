@@ -11,7 +11,8 @@ param(
   [string]$DumpPath,
   [switch]$UpgradeAfter,
   [switch]$FailOnMismatch,
-  [switch]$ResetSchema
+  [switch]$ResetSchema,
+  [switch]$AllowNonLocalDb
 )
 
 $ErrorActionPreference = 'Stop'
@@ -98,8 +99,8 @@ if (-not (Test-Path $DumpPath)) {
   exit 1
 }
 
-if ($env:DATABASE_URL -notlike "postgresql://*localhost*") {
-  Write-Error "Refusing to restore to non-localhost database"
+if ($env:DATABASE_URL -notmatch "localhost" -and -not $AllowNonLocalDb) {
+  Write-Error "Refusing to restore to non-local database without -AllowNonLocalDb."
   exit 1
 }
 
@@ -188,4 +189,3 @@ if ($UpgradeAfter) {
     }
   }
 }
-

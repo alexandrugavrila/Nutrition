@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import warnings
+from urllib.parse import urlparse
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -62,6 +63,37 @@ class Settings:
     # USDA FoodData Central API key.
     usda_api_key: str | None
 
+    # Runtime environment name (e.g. development/test/production).
+    environment: str
+
+    @staticmethod
+    def _is_production(environment: str) -> bool:
+        return environment.strip().lower() in {"prod", "production"}
+
+    @staticmethod
+    def _validate_required_production_secrets(
+        *, db_url: str, usda_api_key: str | None, environment: str
+    ) -> None:
+        if not Settings._is_production(environment):
+            return
+
+        parsed = urlparse(db_url)
+        db_password = parsed.password
+        if not db_password:
+            raise RuntimeError(
+                "DATABASE_URL must include a database password when ENVIRONMENT is production."
+            )
+
+        if parsed.scheme.startswith("sqlite"):
+            raise RuntimeError(
+                "SQLite is not supported when ENVIRONMENT is production. Use a managed PostgreSQL DATABASE_URL."
+            )
+
+        if not usda_api_key:
+            raise RuntimeError(
+                "USDA_API_KEY is required when ENVIRONMENT is production."
+            )
+
     @staticmethod
     def load() -> "Settings":
         _load_dotenv()
@@ -79,8 +111,10 @@ class Settings:
             os.getenv("DB_AUTO_CREATE"), default=auto_create_default
         )
 
-        # Comma-separated list or "*"
-        origins_raw = os.getenv("CORS_ALLOW_ORIGINS", "*")
+        # Comma-separated list or "*".
+        # Keep ALLOW_ORIGINS as a backward-compatible alias used by older
+        # deployment manifests.
+        origins_raw = os.getenv("CORS_ALLOW_ORIGINS") or os.getenv("ALLOW_ORIGINS", "*")
         if origins_raw.strip() == "*":
             origins = ["*"]
         else:
@@ -93,11 +127,25 @@ class Settings:
                 RuntimeWarning,
             )
 
+        environment = (
+            os.getenv("ENVIRONMENT")
+            or os.getenv("APP_ENV")
+            or os.getenv("FASTAPI_ENV")
+            or "development"
+        )
+
+        Settings._validate_required_production_secrets(
+            db_url=db_url,
+            usda_api_key=usda_api_key,
+            environment=environment,
+        )
+
         return Settings(
             database_url=db_url,
             db_auto_create=auto_create,
             allow_origins=origins,
             usda_api_key=usda_api_key,
+            environment=environment,
         )
 
 

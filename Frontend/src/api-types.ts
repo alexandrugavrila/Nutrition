@@ -186,6 +186,20 @@ export interface paths {
     /** Get Food Details */
     get: operations["get_food_details_api_usda_foods__fdc_id__get"];
   };
+  "/api/health/live": {
+    /**
+     * Liveness
+     * @description Report process liveness for container orchestrators.
+     */
+    get: operations["liveness_api_health_live_get"];
+  };
+  "/api/health/ready": {
+    /**
+     * Readiness
+     * @description Report readiness only when the API can reach the database.
+     */
+    get: operations["readiness_api_health_ready_get"];
+  };
 }
 
 export type webhooks = Record<string, never>;
@@ -1439,6 +1453,38 @@ export interface operations {
       422: {
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Liveness
+   * @description Report process liveness for container orchestrators.
+   */
+  liveness_api_health_live_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": {
+            [key: string]: string;
+          };
+        };
+      };
+    };
+  };
+  /**
+   * Readiness
+   * @description Report readiness only when the API can reach the database.
+   */
+  readiness_api_health_ready_get: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": {
+            [key: string]: string;
+          };
         };
       };
     };

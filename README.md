@@ -34,7 +34,7 @@ A full-stack nutrition planning and tracking app built with:
    Copy-Item .env.template .env
    ```
 
-   Then fill in `USDA_API_KEY` and confirm `VITE_API_BASE_URL` in `.env`.
+   Then fill in `USDA_API_KEY`.
 
 4. Activate the developer environment (installs backend dependencies and keeps the virtualenv up to date).
 
@@ -51,11 +51,9 @@ A full-stack nutrition planning and tracking app built with:
    ```pwsh
    pwsh ./scripts/docker/compose.ps1 up data -test
    ```
-  - Replace `-test` with `-prod` to restore the latest branch backup. The compose script calls
-    `restore.ps1` and exits if that step fails (for example, when no dump is available), so rerun the
-    command to relaunch the stack before importing data.
-    When no dump exists yet, reseed manually once the stack is running: `pwsh ./scripts/db/import-from-csv.ps1`
-    (or `./scripts/db/import-from-csv.sh`).
+  - Replace `-test` with `-prod` for production-like startup (no automatic seed or restore).
+    Run migrations explicitly before serving traffic: `pwsh ./scripts/db/migrate.ps1` (or `./scripts/db/migrate.sh`).
+    CSV fixture import remains available for local/test workflows and requires explicit confirmation for production mode.
    - Add `type -test` to run on the dedicated test ports (used by the end-to-end suite).
 
    The script prints the branch-specific ports and waits until the services are ready:
@@ -63,9 +61,48 @@ A full-stack nutrition planning and tracking app built with:
    - Backend API: `http://localhost:<DEV_BACKEND_PORT>/docs`
    - PostgreSQL: `localhost:<DEV_DB_PORT>`
 
-6. Visit the printed URLs or connect a SQL client (default credentials: `nutrition_user` / `nutrition_pass`).
+6. Visit the printed URLs or connect a SQL client using the database credentials you injected through environment variables (never commit real secrets).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
+
+---
+
+
+## Development vs Production Compose
+
+- `docker-compose.yml` is **development-only**. It builds local images, bind-mounts `Backend/` and `Frontend/`, and enables hot reload for iterative coding.
+- `docker-compose.prod.yml` is **production-focused**. It runs prebuilt immutable images, uses an `env_file` (`.env.production`), enforces required runtime variables via `${VAR:?error}` checks, and persists only PostgreSQL data in a named volume. Start from `.env.production.example` when creating the production env file.
+
+Production entrypoint example:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+```
+
+Development entrypoint remains the branch-aware wrapper:
+
+```pwsh
+pwsh ./scripts/docker/compose.ps1 up data -test
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md#docker-workflows) for detailed contributor workflows.
+
+### Frontend API routing strategy
+
+- **Production:** frontend and API are served from the same public origin, and nginx forwards `/api/*` to the backend container.
+- **Development:** Vite keeps a dev-only `/api` proxy (configured in `Frontend/vite.config.ts`) and targets `BACKEND_URL` from the frontend container environment.
+- **Environment impact:** the frontend image does not require `VITE_API_BASE_URL` in production because API calls are relative (`/api/...`).
+
+---
+
+
+## Production Secret Injection Checklist
+
+- Copy `.env.production.example` to `.env.production` for local deployment scaffolding only; do not commit `.env.production`.
+- Inject `POSTGRES_PASSWORD`, `DATABASE_URL`, `USDA_API_KEY`, and any future API tokens from your deployment platform or secret manager (for example, GitHub Actions secrets, cloud secret stores, Vault, etc.).
+- Keep `.env.production.example` placeholders non-sensitive and rotate any secret that was ever exposed in logs or commit history.
+- Verify `ENVIRONMENT=production` in deployed backend containers so startup validation fails fast if secrets are missing.
+- Never hardcode credentials in Compose files, scripts, docs, or source code.
 
 ---
 
@@ -75,6 +112,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
 - `pwsh ./scripts/switch-worktree-branch.ps1`: fetch remote refs, sync local tracking branches, and create or hop between branch-dedicated worktrees (`-CopyEnv` can copy the current `.env` into the target).
 - `pwsh ./scripts/env/check.ps1 -Fix`: ensure you are inside the correct worktree with an activated virtualenv (Bash variant available).
 - `pwsh ./scripts/docker/compose.ps1 <up|down|restart>`: manage the per-branch Docker stack.
+- `pwsh ./scripts/db/migrate.ps1` / `./scripts/db/migrate.sh`: explicit migration job for deploy pipelines (run before app traffic).
 - `pwsh ./scripts/run-tests.ps1 [-sync] [-e2e]`: run backend + frontend tests with optional API/migration sync and branch-isolated API/browser e2e suites. Bash variant: `./scripts/run-tests.sh`.
 - `pwsh ./scripts/db/backup.ps1` / `restore.ps1`: create or restore branch-local Postgres backups. Bash variants available in the same directory.
 - `pwsh ./scripts/db/export-to-csv.ps1` / `./scripts/db/export-to-csv.sh`: export the current database tables to CSV (production by default, `--test` or `--output-dir` available).
@@ -98,7 +136,8 @@ Nutrition/
 ├── Backend/       # FastAPI app (routes, models, migrations)
 ├── Frontend/      # React app (Vite + Material UI)
 ├── Database/      # CSV seed data and backup scripts
-├── docker-compose.yml
+├── docker-compose.yml      # Development compose (bind mounts + hot reload)
+├── docker-compose.prod.yml # Production compose (immutable images only)
 └── scripts/       # Cross-platform helper scripts
     ├── db/        # Database + OpenAPI utilities
     ├── docker/    # Compose orchestration
