@@ -61,7 +61,7 @@ Recommended flow when starting or updating a branch:
    pwsh ./scripts/switch-worktree-branch.ps1 feature/my-feature
    ```
 
-   The script creates `../nutrition-feature-my-feature` if needed, checks out the branch there, and optionally opens VS Code. Pass `-SkipVSCode` to stay in the terminal or `-NewVSCodeWindow` for a new window.
+   The script fetches remote refs, creates local tracking branches for any remote-only branches, then creates `../nutrition-feature-my-feature` if needed, checks out the branch there, and optionally opens VS Code. Pass `-SkipVSCode` to stay in the terminal or `-NewVSCodeWindow` for a new window.
 
 4. Verify the environment:
 
@@ -103,7 +103,7 @@ Options:
 
 - Add `type -test` to run on the dedicated test ports (`TEST_*`). Useful for end-to-end runs that should not collide with your dev stack.
 - Append service names (e.g. `frontend backend`) to limit which containers start.
-- The script waits for PostgreSQL, ensures the backend dependencies are present, runs Alembic migrations inside the container, and seeds data based on the `data` flag.
+- The script waits for PostgreSQL, ensures the backend dependencies are present, runs Alembic migrations inside the container, then seeds data: `data -test` loads test CSV fixtures; `data -prod` restores the latest branch dump in PowerShell and seeds production CSV fixtures in Bash.
 
 Stop services:
 
@@ -212,8 +212,8 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
   - Call graph: relies on `scripts/lib/branch-env.*` and `scripts/lib/worktree.sh`; PowerShell version can invoke `scripts/env/activate-venv.ps1` during fixes.
 
 - `scripts/switch-worktree-branch.ps1`
-  - Purpose: interactively pick a branch, jump to its dedicated worktree (creating it if needed), optionally open VS Code, optionally start Docker Compose, and always activate the virtualenv.
-  - Flags/parameters: `-Branch`, `-Remote`, `-SkipVSCode`, `-NewVSCodeWindow`, `-StartWorkspaceStack`, and `-Data <test|prod>` (required with `-StartWorkspaceStack`).
+  - Purpose: fetch remote refs, create local tracking branches for remote-only branches, then interactively pick a local branch, jump to its dedicated worktree (creating it if needed), optionally open VS Code, optionally start Docker Compose, and always activate the virtualenv.
+  - Flags/parameters: `-Branch`, `-SkipVSCode`, `-NewVSCodeWindow`, `-StartWorkspaceStack`, and `-Data <test|prod>` (required with `-StartWorkspaceStack`).
   - Call graph: invokes `scripts/env/activate-venv.ps1` and `scripts/docker/compose.ps1` when the corresponding switches are selected.
 
 ### Repository maintenance

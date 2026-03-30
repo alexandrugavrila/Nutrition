@@ -12,6 +12,8 @@ import {
   CardHeader,
   CircularProgress,
   Dialog,
+  DialogActions,
+  DialogTitle,
   Grid,
   MenuItem,
   Paper,
@@ -34,6 +36,7 @@ import type { components } from "@/api-types";
 import FeedbackSnackbar, {
   SnackbarMessage,
 } from "@/components/common/FeedbackSnackbar";
+import IngredientModal from "@/components/common/IngredientModal";
 import IngredientTable from "@/components/data/ingredient/IngredientTable";
 import FoodTable from "@/components/data/food/FoodTable";
 import {
@@ -147,6 +150,7 @@ function Logging() {
   });
   const [ingredientPickerOpen, setIngredientPickerOpen] = useState(false);
   const [foodPickerOpen, setFoodPickerOpen] = useState(false);
+  const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
   const [activeLogType, setActiveLogType] = useState<"ingredient" | "food" | null>(
     null,
   );
@@ -154,6 +158,14 @@ function Logging() {
   const [pendingFoodLog, setPendingFoodLog] = useState(false);
   const handleFeedbackClose = useCallback(() => {
     setFeedback(null);
+  }, []);
+
+  const handleOpenIngredientModal = useCallback(() => {
+    setIngredientModalOpen(true);
+  }, []);
+
+  const handleCloseIngredientModal = useCallback(() => {
+    setIngredientModalOpen(false);
   }, []);
 
   const toNumber = useCallback((value: unknown, fallback = 0): number => {
@@ -401,27 +413,17 @@ function Logging() {
     };
   }, [selectedDate, fetchLogsForDate]);
 
-  const groupedInventory = useMemo(() => {
-    const foodItems: CookedBatch[] = [];
-    const ingredientItems: CookedBatch[] = [];
-    const otherItems: CookedBatch[] = [];
-
-    fridgeInventory.forEach((item) => {
-      if (item.food_id != null) {
-        foodItems.push(item);
-      } else if (item.ingredient_id != null) {
-        ingredientItems.push(item);
-      } else {
-        otherItems.push(item);
-      }
-    });
-
-    return [
-      { key: "food", label: "Prepared Foods", items: foodItems },
-      { key: "ingredient", label: "Prepared Ingredients", items: ingredientItems },
-      { key: "other", label: "Other Items", items: otherItems },
-    ].filter((group) => group.items.length > 0);
-  }, [fridgeInventory]);
+  const groupedInventory = useMemo(
+    () =>
+      [
+        {
+          key: "all",
+          label: "Fridge Items",
+          items: fridgeInventory,
+        },
+      ].filter((group) => group.items.length > 0),
+    [fridgeInventory],
+  );
 
   const resolveDisplayName = useCallback(
     (item: CookedBatch): string => {
@@ -866,7 +868,171 @@ function Logging() {
         />
       </Box>
 
-      <Stack direction={{ xs: "column", md: "row" }} spacing={3} alignItems="flex-start">
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={3}
+        alignItems="flex-start"
+      >
+        <Card sx={{ flex: 1, minWidth: 0 }}>
+          <CardHeader
+            title="Daily Log"
+          />
+          <CardContent>
+            {sortedLogDates.length === 0 ? (
+              <Typography color="text.secondary">
+                No items have been logged yet. Log items to see them here.
+              </Typography>
+            ) : (
+              <Stack spacing={3}>
+                {sortedLogDates.map((dateKey) => {
+                  const entries = displayLogsByDate[dateKey] ?? [];
+                  const totals = sumMacroTotals(entries.map((entry) => entry.macros));
+                  const totalPortions = entries.reduce(
+                    (total, entry) => total + entry.portions,
+                    0,
+                  );
+                  const summaryId = `${dateKey}-daily-total`;
+                  const summaryMetrics = [
+                    {
+                      label: "Portions",
+                      value: formatCellNumber(totalPortions),
+                      ariaLabel: "Total portions",
+                    },
+                    {
+                      label: "Calories",
+                      value: formatCellNumber(totals.calories),
+                      ariaLabel: "Total calories",
+                    },
+                    {
+                      label: "Protein",
+                      value: formatCellNumber(totals.protein),
+                      ariaLabel: "Total protein",
+                    },
+                    {
+                      label: "Carbs",
+                      value: formatCellNumber(totals.carbs),
+                      ariaLabel: "Total carbs",
+                    },
+                    {
+                      label: "Fat",
+                      value: formatCellNumber(totals.fat),
+                      ariaLabel: "Total fat",
+                    },
+                    {
+                      label: "Fiber",
+                      value: formatCellNumber(totals.fiber),
+                      ariaLabel: "Total fiber",
+                    },
+                  ];
+                  return (
+                    <Box key={dateKey}>
+                      <Stack spacing={2}>
+                        <Typography variant="h6" component="h3">
+                          {formatIsoDate(dateKey)}
+                        </Typography>
+                        <Paper
+                          role="group"
+                          aria-labelledby={summaryId}
+                          variant="outlined"
+                          sx={{
+                            p: 2,
+                            borderWidth: 2,
+                            borderColor: (theme) => theme.palette.primary.light,
+                            bgcolor: (theme) =>
+                              alpha(theme.palette.primary.light, 0.12),
+                          }}
+                        >
+                          <Stack spacing={2}>
+                            <Typography
+                              id={summaryId}
+                              variant="subtitle1"
+                              sx={{ fontWeight: 600 }}
+                            >
+                              Daily Total
+                            </Typography>
+                            <Grid container spacing={2}>
+                              {summaryMetrics.map((metric) => (
+                                <Grid item xs={6} sm={4} md={3} lg={2} key={metric.label}>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{ textTransform: "uppercase" }}
+                                  >
+                                    {metric.label}
+                                  </Typography>
+                                  <Typography
+                                    variant="h6"
+                                    component="p"
+                                    aria-label={metric.ariaLabel}
+                                  >
+                                    {metric.value}
+                                  </Typography>
+                                </Grid>
+                              ))}
+                            </Grid>
+                          </Stack>
+                        </Paper>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Item</TableCell>
+                              <TableCell align="right">Portions</TableCell>
+                              <TableCell align="right">Calories</TableCell>
+                              <TableCell align="right">Protein</TableCell>
+                              <TableCell align="right">Carbs</TableCell>
+                              <TableCell align="right">Fat</TableCell>
+                              <TableCell align="right">Fiber</TableCell>
+                              <TableCell align="right">Actions</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {entries.map((entry) => (
+                              <TableRow key={entry.id}>
+                                <TableCell>{entry.label}</TableCell>
+                                <TableCell align="right">
+                                  {formatCellNumber(entry.portions)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {formatCellNumber(entry.macros.calories)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {formatCellNumber(entry.macros.protein)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {formatCellNumber(entry.macros.carbs)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {formatCellNumber(entry.macros.fat)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {formatCellNumber(entry.macros.fiber)}
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    color="error"
+                                    onClick={() =>
+                                      handleRemoveLogEntry(entry.id, entry.label)
+                                    }
+                                    disabled={removingLogId === entry.id}
+                                  >
+                                    {removingLogId === entry.id ? "Removing..." : "Remove"}
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </Stack>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            )}
+          </CardContent>
+        </Card>
+
         <Stack spacing={3} sx={{ flex: 1, minWidth: 0 }}>
           <Card>
             <CardHeader
@@ -1185,166 +1351,6 @@ function Logging() {
             </CardContent>
           </Card>
         </Stack>
-
-        <Card sx={{ flex: 1, minWidth: 0 }}>
-          <CardHeader
-            title="Daily Log"
-          />
-          <CardContent>
-            {sortedLogDates.length === 0 ? (
-              <Typography color="text.secondary">
-                No items have been logged yet. Log items to see them here.
-              </Typography>
-            ) : (
-              <Stack spacing={3}>
-                {sortedLogDates.map((dateKey) => {
-                  const entries = displayLogsByDate[dateKey] ?? [];
-                  const totals = sumMacroTotals(entries.map((entry) => entry.macros));
-                  const totalPortions = entries.reduce(
-                    (total, entry) => total + entry.portions,
-                    0,
-                  );
-                  const summaryId = `${dateKey}-daily-total`;
-                  const summaryMetrics = [
-                    {
-                      label: "Portions",
-                      value: formatCellNumber(totalPortions),
-                      ariaLabel: "Total portions",
-                    },
-                    {
-                      label: "Calories",
-                      value: formatCellNumber(totals.calories),
-                      ariaLabel: "Total calories",
-                    },
-                    {
-                      label: "Protein",
-                      value: formatCellNumber(totals.protein),
-                      ariaLabel: "Total protein",
-                    },
-                    {
-                      label: "Carbs",
-                      value: formatCellNumber(totals.carbs),
-                      ariaLabel: "Total carbs",
-                    },
-                    {
-                      label: "Fat",
-                      value: formatCellNumber(totals.fat),
-                      ariaLabel: "Total fat",
-                    },
-                    {
-                      label: "Fiber",
-                      value: formatCellNumber(totals.fiber),
-                      ariaLabel: "Total fiber",
-                    },
-                  ];
-                  return (
-                    <Box key={dateKey}>
-                      <Stack spacing={2}>
-                        <Typography variant="h6" component="h3">
-                          {formatIsoDate(dateKey)}
-                        </Typography>
-                        <Paper
-                          role="group"
-                          aria-labelledby={summaryId}
-                          variant="outlined"
-                          sx={{
-                            p: 2,
-                            borderWidth: 2,
-                            borderColor: (theme) => theme.palette.primary.light,
-                            bgcolor: (theme) =>
-                              alpha(theme.palette.primary.light, 0.12),
-                          }}
-                        >
-                          <Stack spacing={2}>
-                            <Typography
-                              id={summaryId}
-                              variant="subtitle1"
-                              sx={{ fontWeight: 600 }}
-                            >
-                              Daily Total
-                            </Typography>
-                            <Grid container spacing={2}>
-                              {summaryMetrics.map((metric) => (
-                                <Grid item xs={6} sm={4} md={3} lg={2} key={metric.label}>
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    sx={{ textTransform: "uppercase" }}
-                                  >
-                                    {metric.label}
-                                  </Typography>
-                                  <Typography
-                                    variant="h6"
-                                    component="p"
-                                    aria-label={metric.ariaLabel}
-                                  >
-                                    {metric.value}
-                                  </Typography>
-                                </Grid>
-                              ))}
-                            </Grid>
-                          </Stack>
-                        </Paper>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>Item</TableCell>
-                              <TableCell align="right">Portions</TableCell>
-                              <TableCell align="right">Calories</TableCell>
-                              <TableCell align="right">Protein</TableCell>
-                              <TableCell align="right">Carbs</TableCell>
-                              <TableCell align="right">Fat</TableCell>
-                              <TableCell align="right">Fiber</TableCell>
-                              <TableCell align="right">Actions</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {entries.map((entry) => (
-                              <TableRow key={entry.id}>
-                                <TableCell>{entry.label}</TableCell>
-                                <TableCell align="right">
-                                  {formatCellNumber(entry.portions)}
-                                </TableCell>
-                                <TableCell align="right">
-                                  {formatCellNumber(entry.macros.calories)}
-                                </TableCell>
-                                <TableCell align="right">
-                                  {formatCellNumber(entry.macros.protein)}
-                                </TableCell>
-                                <TableCell align="right">
-                                  {formatCellNumber(entry.macros.carbs)}
-                                </TableCell>
-                                <TableCell align="right">
-                                  {formatCellNumber(entry.macros.fat)}
-                                </TableCell>
-                                <TableCell align="right">
-                                  {formatCellNumber(entry.macros.fiber)}
-                                </TableCell>
-                                <TableCell align="right">
-                                  <Button
-                                    variant="outlined"
-                                    size="small"
-                                    color="error"
-                                    onClick={() =>
-                                      handleRemoveLogEntry(entry.id, entry.label)
-                                    }
-                                    disabled={removingLogId === entry.id}
-                                  >
-                                    {removingLogId === entry.id ? "Removing..." : "Remove"}
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </Stack>
-                    </Box>
-                  );
-                })}
-              </Stack>
-            )}
-          </CardContent>
-        </Card>
       </Stack>
       <Dialog
         open={ingredientPickerOpen}
@@ -1353,11 +1359,20 @@ function Logging() {
         maxWidth="lg"
         scroll="paper"
       >
+        <DialogTitle>Select Ingredient</DialogTitle>
         <IngredientTable
           onIngredientDoubleClick={(ingredient) => {
             handleIngredientSelection(ingredient);
           }}
         />
+        <DialogActions>
+          <Button onClick={handleOpenIngredientModal}>
+            New Ingredient
+          </Button>
+          <Button onClick={() => setIngredientPickerOpen(false)}>
+            Close
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <Dialog
@@ -1373,6 +1388,13 @@ function Logging() {
           }}
         />
       </Dialog>
+
+      <IngredientModal
+        open={ingredientModalOpen}
+        mode="add"
+        ingredient={null}
+        onClose={handleCloseIngredientModal}
+      />
 
       <FeedbackSnackbar
         snackbar={feedback}

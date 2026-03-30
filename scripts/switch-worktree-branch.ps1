@@ -7,8 +7,6 @@
     the matching worktree or creates a fresh worktree for that branch.
 .PARAMETER Branch
     Optional branch name or numeric selection. If omitted the script prompts.
-.PARAMETER Remote
-    Remote name used for fetches and default tracking. Defaults to origin.
 .PARAMETER SkipVSCode
     Suppress launching VS Code after switching.
 .PARAMETER NewVSCodeWindow
@@ -23,7 +21,6 @@
 [CmdletBinding()]
 param(
     [string]$Branch,
-    [string]$Remote = 'origin',
     [switch]$SkipVSCode,
     [switch]$NewVSCodeWindow,
     [switch]$StartWorkspaceStack,
@@ -73,6 +70,26 @@ function Test-RemoteBranch {
 
     & git ls-remote --exit-code --heads $RemoteName $Name > $null 2>&1
     return ($LASTEXITCODE -eq 0)
+}
+
+function Sync-RemoteBranchesToLocal {
+    param(
+        [Parameter(Mandatory = $true)][string]$RemoteName
+    )
+
+    $remoteRefs = Invoke-Git @('for-each-ref','--format=%(refname:short)',"refs/remotes/$RemoteName")
+    foreach ($ref in $remoteRefs) {
+        if (-not $ref) { continue }
+        if ($ref -eq "$RemoteName/HEAD") { continue }
+        if (-not $ref.StartsWith("$RemoteName/")) { continue }
+
+        $branchName = $ref.Substring($RemoteName.Length + 1)
+        if (-not $branchName) { continue }
+        if (Test-LocalBranch -Name $branchName) { continue }
+
+        Write-Host "Creating local branch '$branchName' tracking '$ref'..."
+        Invoke-Git @('branch','--track',$branchName,$ref) | Out-Null
+    }
 }
 
 function Parse-Worktrees {
@@ -209,11 +226,14 @@ if (-not $repoRootRaw) {
 Set-Location $repoRootRaw
 $repoRoot = Normalize-Path $repoRootRaw
 
-Write-Host "Fetching latest refs from '$Remote'..."
-Invoke-Git @('fetch',$Remote,'--prune') | Out-Null
+$remoteName = 'origin'
+Write-Host "Fetching latest refs from '$remoteName'..."
+Invoke-Git @('fetch',$remoteName,'--prune') | Out-Null
+Sync-RemoteBranchesToLocal -RemoteName $remoteName
 
 $worktreeLines = Invoke-Git @('worktree','list','--porcelain')
 $worktrees = Parse-Worktrees $worktreeLines
+$localBranches = Invoke-Git @('for-each-ref','--format=%(refname:short)','refs/heads')
 
 $branchMap = @{}
 foreach ($wt in $worktrees) {
@@ -233,7 +253,11 @@ $optionIndex = 1
 foreach ($wt in $worktrees | Sort-Object Branch, Path) {
     $marker = if ($wt.Path -eq $repoRoot) { '>' } else { ' ' }
     $branchLabel = if ($wt.Branch) { $wt.Branch } else { '<detached>' }
-    Write-Host (" $marker $branchLabel -> $($wt.Path)")
+    $indexLabel = ''
+    if ($wt.Branch) {
+        $indexLabel = "[$optionIndex] "
+    }
+    Write-Host (" $marker $indexLabel$branchLabel -> $($wt.Path)")
     if ($wt.Branch) {
         $branchOptions += [pscustomobject]@{
             Index  = $optionIndex
@@ -244,19 +268,34 @@ foreach ($wt in $worktrees | Sort-Object Branch, Path) {
     }
 }
 
+$localBranchesWithoutWorktrees = $localBranches | Where-Object { -not $branchMap.ContainsKey($_) } | Sort-Object
+if ($localBranchesWithoutWorktrees.Count -gt 0) {
+    Write-Host ''
+    Write-Host 'Local branches (no worktree yet):'
+    foreach ($localBranch in $localBranchesWithoutWorktrees) {
+        Write-Host ("  [$optionIndex] $localBranch")
+        $branchOptions += [pscustomobject]@{
+            Index  = $optionIndex
+            Branch = $localBranch
+            Path   = $null
+        }
+        $optionIndex++
+    }
+}
+
 $currentBranch = Get-LastLine (Invoke-Git @('rev-parse','--abbrev-ref','HEAD'))
 $hasValidCurrentBranch = $currentBranch -and $currentBranch -ne 'HEAD'
 
-$defaultBase = "$Remote/main"
+$defaultBase = "$remoteName/main"
 if ($hasValidCurrentBranch) {
     $defaultBase = $currentBranch
 }
 else {
     try {
-        $remoteHead = Get-LastLine (Invoke-Git @('symbolic-ref',"refs/remotes/$Remote/HEAD"))
+        $remoteHead = Get-LastLine (Invoke-Git @('symbolic-ref',"refs/remotes/$remoteName/HEAD"))
         if ($remoteHead) {
-            $remoteHeadName = $remoteHead -replace "^refs/remotes/$Remote/", ''
-            if ($remoteHeadName) { $defaultBase = "$Remote/$remoteHeadName" }
+            $remoteHeadName = $remoteHead -replace "^refs/remotes/$remoteName/", ''
+            if ($remoteHeadName) { $defaultBase = "$remoteName/$remoteHeadName" }
         }
     } catch {
         # ignore
@@ -276,6 +315,9 @@ if (-not $Branch) {
     Write-Error 'No branch supplied.'
     Set-Location $initialLocation
     exit 1
+}
+if ($Branch.StartsWith("$remoteName/")) {
+    $Branch = $Branch.Substring($remoteName.Length + 1)
 }
 
 $selectedOption = $null
@@ -378,30 +420,19 @@ if ($branchExists) {
     Invoke-Git @('worktree','add',$targetPath,$Branch) | Out-Null
 }
 else {
-    $remoteBranchExists = Test-RemoteBranch -RemoteName $Remote -Name $Branch
-    $remoteHasBranch = $remoteBranchExists
-    $baseRef = $null
+    $remoteBranchExists = Test-RemoteBranch -RemoteName $remoteName -Name $Branch
+    $baseRef = $defaultBase
     $useTracking = $false
     $shouldPushNewBranch = -not $remoteBranchExists
 
-    if ($remoteHasBranch) {
-        $response = Read-Host "Branch '$Branch' exists on '$Remote'. Track it in a new worktree? (Y/n)"
-        if ($response -and $response.Trim().ToLower().StartsWith('n')) {
-            $remoteHasBranch = $false
-        }
-        else {
-            $baseRef = "$Remote/$Branch"
-            $useTracking = $true
-        }
+    if ($remoteBranchExists) {
+        $baseRef = "$remoteName/$Branch"
+        $useTracking = $true
     }
-
-    if (-not $remoteHasBranch) {
-        $baseRef = $defaultBase
-        if (-not $baseRef) {
-            Write-Host 'Aborting.'
-            Set-Location $initialLocation
-            exit 1
-        }
+    elseif (-not $baseRef) {
+        Write-Host 'Aborting.'
+        Set-Location $initialLocation
+        exit 1
     }
 
     if ($useTracking) {
@@ -415,8 +446,8 @@ else {
 }
 
 if ($shouldPushNewBranch) {
-    Write-Host "Pushing new branch '$Branch' to '$Remote' and setting upstream..."
-    Invoke-Git @('-C',$targetPath,'push','--set-upstream',$Remote,$Branch) | Out-Null
+    Write-Host "Pushing new branch '$Branch' to '$remoteName' and setting upstream..."
+    Invoke-Git @('-C',$targetPath,'push','--set-upstream',$remoteName,$Branch) | Out-Null
 }
 
 Write-Host ''
