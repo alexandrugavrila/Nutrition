@@ -11,12 +11,14 @@ A full-stack nutrition planning and tracking app built with:
 
 ## Quick Start
 
-1. Clone the repository.
+1. Clone the repository (recommended layout keeps the primary clone under a parent `Nutrition` folder so worktrees are siblings).
 
    ```pwsh
-   git clone https://github.com/alexandrugavrila/Nutrition
-   cd Nutrition
+   git clone https://github.com/alexandrugavrila/Nutrition C:\_Code\Nutrition\nutrition-main
+   cd C:\_Code\Nutrition\nutrition-main
    ```
+
+   You can choose any parent directory; just keep the primary clone in its own subfolder.
 
 2. (Optional) Create or jump to a dedicated worktree when you want hot reload and database state isolated per branch.
 
@@ -76,7 +78,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
 ## Worktrees & Branch Isolation
 
 - The default branch (`main`) lives in the primary clone.
-- Feature branches should run from sibling worktrees named `nutrition-<sanitized-branch>`.
+- Feature branches should run from sibling worktrees named `nutrition-<sanitized-branch>` under the worktree parent; set `NUTRITION_WORKTREE_PARENT` if you want a different parent folder.
 - Each worktree gets unique compose project names, container names, ports, and Postgres volumes via the branch-aware scripts.
 - Run `pwsh ./scripts/repo/sync-branches.ps1` to mirror new remote branches and `pwsh ./scripts/repo/audit-worktrees.ps1` to confirm every branch maps to exactly one worktree.
 - More details and troubleshooting live in [CONTRIBUTING.md](CONTRIBUTING.md#branching--worktrees).
