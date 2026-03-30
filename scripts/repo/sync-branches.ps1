@@ -134,7 +134,7 @@ if (-not [System.IO.Path]::IsPathRooted($commonGitDir)) {
   $commonGitDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $commonGitDir))
 }
 $primaryRoot = [System.IO.Path]::GetFullPath((Join-Path $commonGitDir '..'))
-$parentDir = Split-Path -Parent $primaryRoot
+$parentDir = Get-WorktreeParentDir -RepoRoot $repoRoot
 
 $localBranches = (& git -C $repoRoot for-each-ref --format '%(refname:short)' refs/heads) | Where-Object { $_ }
 $remoteBranches = (& git -C $repoRoot for-each-ref --format '%(refname:short)' refs/remotes/origin) |

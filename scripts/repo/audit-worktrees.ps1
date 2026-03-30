@@ -58,7 +58,7 @@ if (-not [System.IO.Path]::IsPathRooted($commonGitDir)) {
   $commonGitDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $commonGitDir))
 }
 $primaryRoot = [System.IO.Path]::GetFullPath((Join-Path $commonGitDir '..'))
-$parentDir = Split-Path -Parent $primaryRoot
+$parentDir = Get-WorktreeParentDir -RepoRoot $repoRoot
 $defaultBranch = Get-DefaultBranch
 
 Write-Info "Primary worktree root: $primaryRoot"

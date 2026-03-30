@@ -266,6 +266,7 @@ function FoodTable({ onFoodDoubleClick, onFoodCtrlClick }: FoodTableProps) {
                           <Button
                             variant="outlined"
                             size="small"
+                            aria-label={`Edit food ${food.name}`}
                             onClick={(event) => handleFoodEdit(event, food)}
                           >
                             Edit
@@ -275,6 +276,7 @@ function FoodTable({ onFoodDoubleClick, onFoodCtrlClick }: FoodTableProps) {
                           <Button
                             variant="contained"
                             size="small"
+                            aria-label={`Select food ${food.name}`}
                             onClick={(event) => handleFoodSelect(event, food)}
                           >
                             Select
@@ -399,7 +401,6 @@ function FoodTable({ onFoodDoubleClick, onFoodCtrlClick }: FoodTableProps) {
   );
 }
 export default FoodTable;
-
 
 
 

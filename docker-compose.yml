@@ -21,19 +21,19 @@ services:
     build:
       context: .
       dockerfile: Backend/Dockerfile
+      target: dev
     environment:
       DATABASE_URL: postgresql://nutrition_user:nutrition_pass@db:5432/nutrition
       WATCHFILES_FORCE_POLLING: "true"
       ALEMBIC_CONFIG: /app/Backend/alembic.ini
+      USDA_API_KEY: "${USDA_API_KEY}"
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ${BRANCH_WORKTREE_DIR:-.}/Backend:/app/Backend
-    command: >
-      bash -c "set -eux; python -m pip install --break-system-packages -v -r Backend/requirements.txt;
-      python -m pip show uvicorn;
-      exec python -m uvicorn Backend.backend:app --host 0.0.0.0 --port 8000 --reload"
+    command:
+      ["python", "-m", "uvicorn", "Backend.backend:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     networks:
       - nutrition-net
     ports:

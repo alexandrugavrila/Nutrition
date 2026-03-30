@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { Box, Button, Divider } from "@mui/material";
 
 import NameEdit from "./NameEdit";
+import SourceEdit from "./SourceEdit";
 import UnitEdit from "./UnitEdit";
 import NutritionEdit from "./NutritionEdit";
 import TagEdit from "./TagEdit";
@@ -34,6 +35,7 @@ function IngredientEditor({ mode, initial = null, onSaved, onDeleted }: Ingredie
     acknowledgeFillFlag,
     save,
     remove,
+    applyUsdaResult,
   } = useIngredientForm();
 
   useEffect(() => {
@@ -60,6 +62,7 @@ function IngredientEditor({ mode, initial = null, onSaved, onDeleted }: Ingredie
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
       <NameEdit ingredient={ingredient} dispatch={dispatch} needsClearForm={needsClearForm} />
+      <SourceEdit ingredient={ingredient} dispatch={dispatch} applyUsdaResult={applyUsdaResult} />
       <UnitEdit ingredient={ingredient} dispatch={dispatch} needsClearForm={needsClearForm} />
       <NutritionEdit
         ingredient={ingredient}
@@ -71,12 +74,12 @@ function IngredientEditor({ mode, initial = null, onSaved, onDeleted }: Ingredie
 
       <Divider sx={{ my: 1 }} />
       <Box sx={{ display: "flex", gap: 1 }}>
-        <Button onClick={clearForm}>Clear</Button>
-        <Button variant="contained" onClick={handleSave}>
+        <Button aria-label="clear ingredient form" onClick={clearForm}>Clear</Button>
+        <Button aria-label={mode === "edit" ? "update ingredient" : "add ingredient"} variant="contained" onClick={handleSave}>
           {mode === "edit" ? "Update" : "Add"}
         </Button>
         {mode === "edit" && (
-          <Button color="error" onClick={handleDelete}>
+          <Button aria-label="delete ingredient" color="error" onClick={handleDelete}>
             Delete
           </Button>
         )}

@@ -7,6 +7,7 @@ const backendUrl = process.env.BACKEND_URL || `http://localhost:${backendPort}`;
 
 export default defineConfig({
   plugins: [react()],
+  envDir: path.resolve(__dirname, ".."),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -17,6 +18,7 @@ export default defineConfig({
     port: 3000,
     host: true,
     strictPort: true,
+    // Dev-only API proxy. Production uses nginx same-origin routing.
     proxy: {
       "/api": {
         target: backendUrl,
@@ -27,6 +29,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: "./src/tests/setupTests.ts",
+    include: ["src/**/*.{test,spec}.{js,jsx,ts,tsx}"],
     transformMode: {
       web: [/\.[jt]sx?$/],
     },

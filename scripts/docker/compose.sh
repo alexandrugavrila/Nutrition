@@ -33,6 +33,9 @@ fi
 
 cd "$REPO_ROOT"
 
+# Use bash for nested shell entrypoints so Docker workflows do not depend on
+# executable permission metadata being preserved in the checkout.
+
 # --- Helper functions shared across subcommands ---
 
 compose_up() {
@@ -96,13 +99,17 @@ compose_up() {
     sleep 1
   done
 
-  echo "Applying database migrations..."
-  docker compose -p "$proj" exec -T backend python -m alembic upgrade head
-  ./scripts/env/activate-venv.sh
   if [[ "$data_mode" == "prod" ]]; then
-    echo "Importing production data..."
-    python Database/import_from_csv.py --production
+    echo "Production-like startup selected."
+    echo "Skipping automatic migrations and CSV seeding."
+    echo "Run an explicit migration job before serving traffic:"
+    echo "  ./scripts/db/migrate.sh"
+    echo "If you intentionally need CSV fixtures in production-like environments:"
+    echo "  ./scripts/db/import-from-csv.sh -production --allow-production-seed"
   else
+    echo "Applying database migrations..."
+    docker compose -p "$proj" exec -T backend sh -lc "cd /app/Backend && python -m alembic -c alembic.ini upgrade head"
+    bash ./scripts/env/activate-venv.sh
     echo "Importing test data..."
     python Database/import_from_csv.py --test
   fi

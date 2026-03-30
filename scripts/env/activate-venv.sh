@@ -16,7 +16,7 @@ if [ ! -d "$VENV_PATH" ]; then
 fi
 
 # Activate the virtual environment unless we're already inside it.
-if [ "$VIRTUAL_ENV" != "$VENV_PATH" ]; then
+if [ "${VIRTUAL_ENV:-}" != "$VENV_PATH" ]; then
     echo "Activating Python virtual environment at: $VENV_PATH"
     # shellcheck disable=SC1090
     source "$VENV_PATH/bin/activate"

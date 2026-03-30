@@ -2,6 +2,23 @@
 # Create a timestamped PostgreSQL dump for the branch-local database.
 set -euo pipefail
 
+allow_non_local=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --allow-non-local-db) allow_non_local=true ;;
+    -h|--help)
+      echo "Usage: $(basename "$0") [--allow-non-local-db]" >&2
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      echo "Usage: $(basename "$0") [--allow-non-local-db]" >&2
+      exit 1
+      ;;
+  esac
+  shift
+done
+
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/branch-env.sh"
 branch_env_load
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/compose-utils.sh"
@@ -9,6 +26,11 @@ cd "$REPO_ROOT"
 
 # Ensure containers are running for this branch
 require_branch_containers
+
+if [[ "$DATABASE_URL" != *"localhost"* && "$allow_non_local" != true ]]; then
+  echo "Refusing to back up non-local database without --allow-non-local-db." >&2
+  exit 1
+fi
 
 mkdir -p Database/backups
 timestamp=$(date +"%Y%m%d-%H%M%S")

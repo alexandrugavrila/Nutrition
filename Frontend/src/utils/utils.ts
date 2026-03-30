@@ -37,8 +37,6 @@ export const generateUUID = (): string => {
   });
 };
 
-const API_BASE_URL: string = import.meta.env?.VITE_API_BASE_URL || '';
-
 /**
  * Minimal fetch wrapper.
  */
@@ -47,7 +45,7 @@ export const handleFetchRequest = async (
   method: string,
   data: unknown,
 ): Promise<void> => {
-  const endpoint = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  const endpoint = url;
   const response = await fetch(endpoint, {
     method,
     headers: {

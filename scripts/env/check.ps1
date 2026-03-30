@@ -33,7 +33,7 @@ elseif (git show-ref --verify --quiet refs/heads/main) { $base = 'main' }
 elseif (git show-ref --verify --quiet refs/heads/master) { $base = 'master' }
 else { $base = 'main' }
 
-$parent = Split-Path -Parent $repoRoot
+$parent = Get-WorktreeParentDir -RepoRoot $repoRoot
 $desired = Join-Path $parent "nutrition-$sanitized"
 
 # Compute primary root from common git dir
@@ -124,7 +124,7 @@ else {
       $repoRoot = Get-RepoRoot
     }
     else {
-      Fail "Branch '$branch' should be in its dedicated worktree, but that folder does not exist. Expected: $desired`nCreate it with:`n  git worktree add ..\\nutrition-$sanitized $branch`nOr re-run with -Fix to create and switch."
+      Fail "Branch '$branch' should be in its dedicated worktree, but that folder does not exist. Expected: $desired`nCreate it with:`n  git worktree add `"$desired`" `"$branch`"`nOr re-run with -Fix to create and switch."
     }
   }
   # Compare normalized paths; $desired may not have existed earlier

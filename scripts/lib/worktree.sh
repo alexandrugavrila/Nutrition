@@ -45,7 +45,7 @@ ensure_worktree() {
     return 1
   fi
   sanitized="$(branch_env_sanitize_branch "$branch")"
-  parent="$(dirname "$root")"
+  parent="$(branch_env_worktree_parent "$root")"
   desired="$parent/nutrition-$sanitized"
   base="$(_wt_default_branch)"
 

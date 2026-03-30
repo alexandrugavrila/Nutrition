@@ -4,7 +4,9 @@
   Falls back to running pg_dump inside the db container if client tools are not on PATH.
 #>
 [CmdletBinding()]
-param()
+param(
+  [switch]$AllowNonLocalDb
+)
 
 $ErrorActionPreference = 'Stop'
 
@@ -15,6 +17,10 @@ Set-Location $envInfo.RepoRoot
 
 # Ensure containers are running for this branch
 Ensure-BranchContainers | Out-Null
+
+if ($env:DATABASE_URL -notmatch 'localhost' -and -not $AllowNonLocalDb) {
+  throw "Refusing to back up non-local database without -AllowNonLocalDb."
+}
 
 $backupDir = Join-Path $envInfo.RepoRoot "Database/backups"
 New-Item -ItemType Directory -Path $backupDir -Force | Out-Null

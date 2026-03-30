@@ -25,7 +25,7 @@ repo_root="$(_wt_repo_root)"
 branch="$(git -C "$repo_root" rev-parse --abbrev-ref HEAD)"
 [[ -n "$branch" && "$branch" != HEAD ]] || fail "Detached HEAD is not supported. Please checkout a branch."
 sanitized="$(branch_env_sanitize_branch "$branch")"
-parent="$(dirname "$repo_root")"
+parent="$(branch_env_worktree_parent "$repo_root")"
 desired="$parent/nutrition-$sanitized"
 base="$(_wt_default_branch)"
 
@@ -78,7 +78,7 @@ else
       else
         fail "Branch '$branch' should be in its dedicated worktree, but that folder does not exist. Expected: $desired
 Create it with:
-  git worktree add ../nutrition-$sanitized $branch"
+  git worktree add \"$desired\" \"$branch\""
       fi
     else
       if $FIX; then
