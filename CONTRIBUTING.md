@@ -29,6 +29,14 @@ This guide covers developer setup, branching, Docker workflows, API and migratio
 
 Branch naming pattern: `<type>/<slug>` where `type` is one of `feature`, `bugfix`, `refactor`, or `housekeeping`.
 
+Recommended clone layout:
+
+```pwsh
+git clone <repo-url> C:\_Code\Nutrition\nutrition-main
+```
+
+You can use any parent directory; the key is that the primary clone sits in its own folder so worktrees can be siblings. To override the parent directory used by scripts, set `NUTRITION_WORKTREE_PARENT` before running them.
+
 Recommended flow when starting or updating a branch:
 
 1. Sync remote refs and audit existing worktrees:
@@ -68,7 +76,9 @@ Recommended flow when starting or updating a branch:
 Worktree conventions:
 
 - `main` (or the repository's default branch) remains in the original clone (the "primary root").
+
 - Every other branch should live in a dedicated directory named `nutrition-<sanitized-branch>` under the worktree parent (defaults to the parent of the primary clone). You can override the parent directory by setting `NUTRITION_WORKTREE_PARENT` before running the helpers.
+
 - The helpers error out on detached HEADs or mismatched worktree locations to avoid running the wrong stack.
 
 Other repo utilities:
