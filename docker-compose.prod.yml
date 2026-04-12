@@ -9,16 +9,14 @@ services:
         condition: service_healthy
     volumes:
       - ./Edge/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ${EDGE_TLS_CERTS_DIR:-./Edge/tls}:/etc/nginx/tls:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider --no-check-certificate https://localhost/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/healthz || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
       start_period: 15s
     ports:
       - "${PROD_HTTP_PORT:-80}:80"
-      - "${PROD_HTTPS_PORT:-443}:443"
     ulimits:
       nofile:
         soft: 65535
@@ -104,7 +102,7 @@ services:
       [
         "sh",
         "-c",
-        "exec gunicorn Backend.backend:app -k uvicorn.workers.UvicornWorker --bind ${HOST}:${PORT} --workers ${WEB_CONCURRENCY} --timeout ${GUNICORN_TIMEOUT} --graceful-timeout ${GUNICORN_GRACEFUL_TIMEOUT} --keep-alive ${GUNICORN_KEEPALIVE} --access-logfile - --error-logfile - --access-logformat '{\"ts\":\"%(t)s\",\"remote\":\"%(h)s\",\"method\":\"%(m)s\",\"path\":\"%(U)s\",\"query\":\"%(q)s\",\"status\":%(s)s,\"size\":%(B)s,\"referer\":\"%(f)s\",\"agent\":\"%(a)s\",\"request_time_s\":%(D)s}' --log-level ${LOG_LEVEL}",
+        "exec gunicorn Backend.backend:app -k uvicorn.workers.UvicornWorker --bind $${HOST}:$${PORT} --workers $${WEB_CONCURRENCY} --timeout $${GUNICORN_TIMEOUT} --graceful-timeout $${GUNICORN_GRACEFUL_TIMEOUT} --keep-alive $${GUNICORN_KEEPALIVE} --access-logfile - --error-logfile - --access-logformat '{\"ts\":\"%(t)s\",\"remote\":\"%(h)s\",\"method\":\"%(m)s\",\"path\":\"%(U)s\",\"query\":\"%(q)s\",\"status\":%(s)s,\"size\":%(B)s,\"referer\":\"%(f)s\",\"agent\":\"%(a)s\",\"request_time_s\":%(D)s}' --log-level $${LOG_LEVEL}",
       ]
     depends_on:
       db:
@@ -115,12 +113,12 @@ services:
           "CMD",
           "python",
           "-c",
-          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready', timeout=5)",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready', timeout=5)"
         ]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 40s
     ulimits:
       nofile:
         soft: 65535
@@ -147,7 +145,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/healthz || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
