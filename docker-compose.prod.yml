@@ -104,7 +104,7 @@ services:
       [
         "sh",
         "-c",
-        "exec gunicorn Backend.backend:app -k uvicorn.workers.UvicornWorker --bind ${HOST}:${PORT} --workers ${WEB_CONCURRENCY} --timeout ${GUNICORN_TIMEOUT} --graceful-timeout ${GUNICORN_GRACEFUL_TIMEOUT} --keep-alive ${GUNICORN_KEEPALIVE} --access-logfile - --error-logfile - --access-logformat '{\"ts\":\"%(t)s\",\"remote\":\"%(h)s\",\"method\":\"%(m)s\",\"path\":\"%(U)s\",\"query\":\"%(q)s\",\"status\":%(s)s,\"size\":%(B)s,\"referer\":\"%(f)s\",\"agent\":\"%(a)s\",\"request_time_s\":%(D)s}' --log-level ${LOG_LEVEL}",
+        "exec gunicorn Backend.backend:app -k uvicorn.workers.UvicornWorker --bind $${HOST}:$${PORT} --workers $${WEB_CONCURRENCY} --timeout $${GUNICORN_TIMEOUT} --graceful-timeout $${GUNICORN_GRACEFUL_TIMEOUT} --keep-alive $${GUNICORN_KEEPALIVE} --access-logfile - --error-logfile - --access-logformat '{\"ts\":\"%(t)s\",\"remote\":\"%(h)s\",\"method\":\"%(m)s\",\"path\":\"%(U)s\",\"query\":\"%(q)s\",\"status\":%(s)s,\"size\":%(B)s,\"referer\":\"%(f)s\",\"agent\":\"%(a)s\",\"request_time_s\":%(D)s}' --log-level $${LOG_LEVEL}",
       ]
     depends_on:
       db:
