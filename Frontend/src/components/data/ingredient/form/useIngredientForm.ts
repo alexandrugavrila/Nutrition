@@ -186,13 +186,15 @@ const buildRequestPayload = (ingredient: IngredientFormState["ingredient"]): Ing
 
   const normalizeShoppingUnitId = (value: unknown): number | null => {
     if (value === null || value === undefined) return null;
-    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value > 0 ? value : null;
+    }
     if (typeof value === "string") {
       const trimmed = value.trim();
       if (trimmed === "") return null;
       const numeric = Number(trimmed);
       if (Number.isFinite(numeric)) {
-        return numeric;
+        return numeric > 0 ? numeric : null;
       }
     }
     return null;
