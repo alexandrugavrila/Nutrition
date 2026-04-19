@@ -103,6 +103,9 @@ jobs:
       - name: Install frontend dependencies
         working-directory: Frontend
         run: npm ci
+      - name: Frontend dependency audit
+        working-directory: Frontend
+        run: npm audit --package-lock-only
       - name: Frontend lint
         working-directory: Frontend
         run: npm run lint
