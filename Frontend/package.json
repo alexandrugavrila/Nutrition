@@ -14,7 +14,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "openapi-typescript-fetch": "^2.2.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react-dom": "^19.2.5",
     "react-router-dom": "^6.30.3",
     "react-virtuoso": "^4.7.1",
     "react-window": "^1.8.10",
