@@ -3,7 +3,7 @@ psycopg2-binary==2.9.10
 pydantic==2.11.7
 fastapi==0.115.4
 starlette>=0.41,<0.43
-python-multipart==0.0.20
+python-multipart==0.0.26
 uvicorn[standard]==0.29.0
 alembic==1.16.4
 sqlmodel>=0.0.21
