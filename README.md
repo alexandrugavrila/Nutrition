@@ -123,10 +123,103 @@ See [CONTRIBUTING.md](CONTRIBUTING.md#docker-workflows) for detailed contributor
 ## Production Secret Injection Checklist
 
 - Copy `.env.production.example` to `.env.production` for local deployment scaffolding only; do not commit `.env.production`.
+- Copy `.env.publish.example` to `.env.publish` for image publishing credentials/repositories only; do not commit `.env.publish`.
 - Inject `POSTGRES_PASSWORD`, `DATABASE_URL`, `USDA_API_KEY`, and any future API tokens from your deployment platform or secret manager (for example, GitHub Actions secrets, cloud secret stores, Vault, etc.).
+- Inject `CONTAINER_REGISTRY_USERNAME`, `CONTAINER_REGISTRY_TOKEN`, `BACKEND_IMAGE_REPO`, and `FRONTEND_IMAGE_REPO` through environment variables or `.env.publish` when publishing images manually.
 - Keep `.env.production.example` placeholders non-sensitive and rotate any secret that was ever exposed in logs or commit history.
 - Verify `ENVIRONMENT=production` in deployed backend containers so startup validation fails fast if secrets are missing.
 - Never hardcode credentials in Compose files, scripts, docs, or source code.
+
+---
+
+## Image Publishing
+
+The repository now includes a manual publish workflow that mirrors the image
+build commands already used in CI.
+
+### Publish prerequisites
+
+1. Authenticate to the target registry with a token that has push access.
+2. Copy `.env.publish.example` to `.env.publish`, or export equivalent environment variables.
+3. Set:
+   - `CONTAINER_REGISTRY`
+   - `CONTAINER_REGISTRY_USERNAME`
+   - `CONTAINER_REGISTRY_TOKEN`
+   - `BACKEND_IMAGE_REPO`
+   - `FRONTEND_IMAGE_REPO`
+
+The publish scripts read environment variables first, then `.env.publish`, then `.env`.
+
+### Publish a new image tag
+
+Bash:
+
+```bash
+./scripts/prod/publish.sh
+```
+
+PowerShell:
+
+```pwsh
+pwsh ./scripts/prod/publish.ps1
+```
+
+If you do not pass a tag, the script prints the latest 3 local git tags and
+prompts you for the next tag. You can also provide the tag directly:
+
+```bash
+./scripts/prod/publish.sh 1.2.0-alpha
+```
+
+```pwsh
+pwsh ./scripts/prod/publish.ps1 -Tag 1.2.0-alpha
+```
+
+What the publish script does:
+
+1. Reads registry credentials and target repositories from env or `.env.publish`.
+2. Logs into the container registry.
+3. Builds the backend image from `Backend/Dockerfile --target prod`.
+4. Builds the frontend image from `Frontend/Dockerfile`.
+5. Pushes both images with the requested immutable tag.
+6. Prints the matching production deploy command for that tag.
+
+### Optional git-tag linkage
+
+This repo does not currently have a single authoritative runtime version file
+that should be auto-updated during publish. The least fragile initial contract is:
+
+- release version = container tag
+- optional matching git tag = release record
+
+If you want the script to create or push a matching git tag after the images are
+published:
+
+```bash
+./scripts/prod/publish.sh 1.2.0-alpha --create-git-tag --push-git-tag
+```
+
+```pwsh
+pwsh ./scripts/prod/publish.ps1 -Tag 1.2.0-alpha -CreateGitTag -PushGitTag
+```
+
+Recommendation:
+
+- Keep the container tag and git tag identical.
+- Do not auto-mutate `Frontend/package.json` or introduce a backend version file until the app actually needs to display or consume a runtime version.
+- Treat git tags as the release timeline, and container tags as the deployable artifact identifiers.
+
+### Publish then deploy
+
+Once publish succeeds, deploy the same tag on the server:
+
+```bash
+./scripts/prod/deploy.sh 1.2.0-alpha
+```
+
+```pwsh
+pwsh ./scripts/prod/deploy.ps1 -Tag 1.2.0-alpha
+```
 
 ---
 
@@ -296,6 +389,7 @@ For a typical release on a real server:
 - `pwsh ./scripts/env/check.ps1 -Fix`: ensure you are inside the correct worktree with an activated virtualenv (Bash variant available).
 - `pwsh ./scripts/docker/compose.ps1 <up|down|restart>`: manage the per-branch Docker stack.
 - `pwsh ./scripts/db/migrate.ps1` / `./scripts/db/migrate.sh`: explicit migration job for deploy pipelines (run before app traffic).
+- `pwsh ./scripts/prod/publish.ps1 [-Tag <tag>] [-CreateGitTag] [-PushGitTag]` / `./scripts/prod/publish.sh [<tag>] [--create-git-tag] [--push-git-tag]`: build and publish immutable backend/frontend images using registry credentials from env or `.env.publish`.
 - `pwsh ./scripts/prod/backup.ps1 [-Label <label>]` / `./scripts/prod/backup.sh [--label <label>]`: create a production database snapshot plus metadata describing the current Alembic revision and image refs.
 - `pwsh ./scripts/prod/deploy.ps1 -Tag <tag>` / `./scripts/prod/deploy.sh <tag>`: create a pre-deploy snapshot, update production backend/frontend image tags, pull images, run Alembic migrations, refresh the prod stack, and verify the deployed endpoints.
 - `pwsh ./scripts/prod/migrate.ps1` / `./scripts/prod/migrate.sh`: run production Alembic migrations against `docker-compose.prod.yml` without tearing the stack down.
