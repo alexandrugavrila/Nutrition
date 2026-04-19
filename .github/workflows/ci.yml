@@ -115,3 +115,87 @@ jobs:
         working-directory: Frontend
         run: npm run build
 
+  production-smoke:
+    runs-on: ubuntu-latest
+    needs:
+      - backend
+      - frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write CI production env file
+        run: |
+          cat > .env.production <<'EOF'
+          BACKEND_IMAGE=nutrition-backend:ci
+          FRONTEND_IMAGE=nutrition-frontend:ci
+          POSTGRES_IMAGE=postgres:13
+          POSTGRES_USER=nutrition_user
+          POSTGRES_PASSWORD=nutrition_pass
+          POSTGRES_DB=nutrition
+          DATABASE_URL=postgresql://nutrition_user:nutrition_pass@db:5432/nutrition
+          USDA_API_KEY=ci-smoke-test-key
+          CORS_ALLOW_ORIGINS=http://127.0.0.1:8080,http://localhost:8080
+          DB_AUTO_CREATE=false
+          PROD_HTTP_PORT=8080
+          EOF
+      - name: Build immutable application images
+        run: |
+          docker build -f Backend/Dockerfile --target prod -t nutrition-backend:ci .
+          docker build -f Frontend/Dockerfile -t nutrition-frontend:ci .
+      - name: Start production database
+        run: |
+          docker compose --env-file .env.production -f docker-compose.prod.yml up -d db
+      - name: Wait for database readiness
+        run: |
+          for attempt in {1..30}; do
+            if docker compose --env-file .env.production -f docker-compose.prod.yml exec -T db pg_isready -U nutrition_user -d nutrition; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Database did not become ready within 60 seconds." >&2
+          exit 1
+      - name: Run explicit production migrations
+        run: |
+          docker compose --env-file .env.production -f docker-compose.prod.yml run --rm --no-deps backend alembic -c Backend/alembic.ini upgrade head
+      - name: Start production application stack
+        run: |
+          docker compose --env-file .env.production -f docker-compose.prod.yml up -d backend frontend edge
+      - name: Smoke test production endpoints
+        run: |
+          wait_for_url() {
+            local url="$1"
+            local output_file="$2"
+
+            for attempt in {1..60}; do
+              if curl --fail --silent --show-error "$url" > "$output_file"; then
+                return 0
+              fi
+              sleep 2
+            done
+
+            echo "Timed out waiting for $url" >&2
+            return 1
+          }
+
+          wait_for_url "http://127.0.0.1:8080/healthz" /tmp/edge-health.json
+          cat /tmp/edge-health.json
+          grep -q '"status":"ok"' /tmp/edge-health.json
+
+          wait_for_url "http://127.0.0.1:8080/api/health/ready" /tmp/backend-ready.json
+          cat /tmp/backend-ready.json
+          grep -q '"status":"ready"' /tmp/backend-ready.json
+          grep -q '"dependencies":"database"' /tmp/backend-ready.json
+      - name: Show production compose status
+        if: always()
+        run: |
+          docker compose --env-file .env.production -f docker-compose.prod.yml ps
+      - name: Show production compose logs on failure
+        if: failure()
+        run: |
+          docker compose --env-file .env.production -f docker-compose.prod.yml logs --no-color
+      - name: Teardown production stack
+        if: always()
+        run: |
+          docker compose --env-file .env.production -f docker-compose.prod.yml down -v --remove-orphans
+
