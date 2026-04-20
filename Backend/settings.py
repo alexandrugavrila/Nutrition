@@ -9,9 +9,22 @@ from __future__ import annotations
 
 import os
 import warnings
-from urllib.parse import urlparse
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
+from urllib.parse import urlparse
+
+
+def _resolve_environment() -> str:
+    return (
+        os.getenv("ENVIRONMENT")
+        or os.getenv("APP_ENV")
+        or os.getenv("FASTAPI_ENV")
+        or "development"
+    )
+
+
+def _is_production_environment(environment: str) -> bool:
+    return environment.strip().lower() in {"prod", "production"}
 
 
 def _to_bool(value: str | None, default: bool = False) -> bool:
@@ -20,7 +33,10 @@ def _to_bool(value: str | None, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "t", "yes", "y"}
 
 
-def _load_dotenv() -> None:
+def _load_dotenv(*, environment: str) -> None:
+    if _is_production_environment(environment):
+        return
+
     env_path = Path(__file__).resolve().parents[1] / ".env"
     if not env_path.exists():
         warnings.warn(
@@ -68,7 +84,7 @@ class Settings:
 
     @staticmethod
     def _is_production(environment: str) -> bool:
-        return environment.strip().lower() in {"prod", "production"}
+        return _is_production_environment(environment)
 
     @staticmethod
     def _validate_required_production_secrets(
@@ -96,7 +112,9 @@ class Settings:
 
     @staticmethod
     def load() -> "Settings":
-        _load_dotenv()
+        environment = _resolve_environment()
+        _load_dotenv(environment=environment)
+        environment = _resolve_environment()
         db_url = os.getenv("SQLALCHEMY_DATABASE_URI") or os.getenv("DATABASE_URL")
 
         if not db_url:
@@ -126,13 +144,6 @@ class Settings:
                 "USDA_API_KEY is not set. USDA endpoints will not be available.",
                 RuntimeWarning,
             )
-
-        environment = (
-            os.getenv("ENVIRONMENT")
-            or os.getenv("APP_ENV")
-            or os.getenv("FASTAPI_ENV")
-            or "development"
-        )
 
         Settings._validate_required_production_secrets(
             db_url=db_url,

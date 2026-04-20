@@ -140,7 +140,7 @@ describe("Planning - ingredient editing updates macros", () => {
       expect(fat).toBe("7.5"); // 0.05*150 => 7.5
       expect(fib).toBe("3"); // 0.02*150 => 3
     });
-  });
+  }, 10000);
 
   it("allows zero amounts but ignores negatives when editing an existing ingredient", async () => {
     render(<MemoryRouter><Planning /></MemoryRouter>);

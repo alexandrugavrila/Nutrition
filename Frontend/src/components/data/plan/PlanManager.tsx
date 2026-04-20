@@ -14,13 +14,11 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import {
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  ContentCopy as DuplicateIcon,
-  OpenInNew as LoadIcon,
-  Refresh as RefreshIcon,
-} from "@mui/icons-material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import { useNavigate } from "react-router-dom";
 
 import type { PlanRead } from "@/utils/planApi";
@@ -181,7 +179,7 @@ function PlanManager() {
                             disabled={disabled}
                             size="small"
                           >
-                            <LoadIcon fontSize="small" />
+                            <OpenInNewIcon fontSize="small" />
                           </IconButton>
                         </span>
                       </Tooltip>
@@ -205,7 +203,7 @@ function PlanManager() {
                             disabled={disabled}
                             size="small"
                           >
-                            <DuplicateIcon fontSize="small" />
+                            <ContentCopyIcon fontSize="small" />
                           </IconButton>
                         </span>
                       </Tooltip>

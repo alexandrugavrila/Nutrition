@@ -21,7 +21,8 @@ import {
   DialogActions,
   Stack,
 } from "@mui/material";
-import { KeyboardArrowDown, KeyboardArrowRight } from "@mui/icons-material";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 
 import { useData } from "@/contexts/DataContext";
 import { formatCellNumber } from "@/utils/utils";
@@ -249,7 +250,7 @@ function FoodTable({ onFoodDoubleClick, onFoodCtrlClick }: FoodTableProps) {
                   <TableRow
                     onDoubleClick={() => onFoodDoubleClick?.(food)}
                     onClick={(event) => handleFoodClick(event, food)}>
-                    <TableCell>{open[food.id] ? <KeyboardArrowDown /> : <KeyboardArrowRight />}</TableCell>
+                    <TableCell>{open[food.id] ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}</TableCell>
                     <TableCell>{food.name}</TableCell>
                     <TableCell>{formatCellNumber(macros.calories)}</TableCell>
                     <TableCell>{formatCellNumber(macros.protein)}</TableCell>

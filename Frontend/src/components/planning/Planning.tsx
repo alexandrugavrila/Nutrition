@@ -24,15 +24,13 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import {
-  KeyboardArrowDown,
-  KeyboardArrowRight,
-  Add,
-  Edit as EditIcon,
-  Save as SaveIcon,
-  RestartAlt as ResetIcon,
-  ListAlt as ManageIcon,
-} from "@mui/icons-material";
+import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
+import ListAltIcon from "@mui/icons-material/ListAlt";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import SaveIcon from "@mui/icons-material/Save";
 
 import { useLocation, useNavigate } from "react-router-dom";
 import { useData } from "@/contexts/DataContext";
@@ -908,8 +906,10 @@ function Planning() {
       <Stack
         direction={{ xs: "column", md: "row" }}
         spacing={2}
-        alignItems={{ xs: "flex-start", md: "center" }}
-        justifyContent="space-between"
+        sx={{
+          alignItems: { xs: "flex-start", md: "center" },
+          justifyContent: "space-between",
+        }}
       >
         <Box>
           <Typography variant="h4" component="h1">Planning</Typography>
@@ -928,10 +928,10 @@ function Planning() {
             </Typography>
           )}
         </Box>
-        <Stack direction="row" spacing={1} flexWrap="wrap">
+        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
           <Button
             variant="outlined"
-            startIcon={<ResetIcon />}
+            startIcon={<RestartAltIcon />}
             onClick={handleResetPlan}
             disabled={!canResetPlan}
           >
@@ -939,7 +939,7 @@ function Planning() {
           </Button>
           <Button
             variant="outlined"
-            startIcon={<ManageIcon />}
+            startIcon={<ListAltIcon />}
             onClick={handleManagePlans}
           >
             Load or Manage Saved Plans
@@ -984,14 +984,14 @@ function Planning() {
       <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap" }}>
         <Button
           variant="contained"
-          startIcon={<Add />}
+          startIcon={<AddIcon />}
           onClick={() => setIngredientPickerOpen(true)}
         >
           Add Ingredient
         </Button>
         <Button
           variant="contained"
-          startIcon={<Add />}
+          startIcon={<AddIcon />}
           onClick={() => setFoodPickerOpen(true)}
         >
           Add Food
@@ -1024,7 +1024,7 @@ function Planning() {
                 <React.Fragment key={`food-${item.foodId}`}>
                   <TableRow>
                     <TableCell onClick={() => setOpen({ ...open, [index]: !open[index] })}>
-                      {open[index] ? <KeyboardArrowDown /> : <KeyboardArrowRight />}
+                      {open[index] ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}
                     </TableCell>
                     <TableCell>{food ? food.name : ""}</TableCell>
                     <TableCell>
@@ -1311,8 +1311,7 @@ function Planning() {
         <Stack
           direction={{ xs: "column", sm: "row" }}
           spacing={1}
-          alignItems={{ xs: "flex-start", sm: "center" }}
-          sx={{ mb: 1 }}
+          sx={{ mb: 1, alignItems: { xs: "flex-start", sm: "center" } }}
         >
           <Typography variant="h5" component="h2">
             Summary
@@ -1322,7 +1321,7 @@ function Planning() {
               <Checkbox
                 checked={includeFridge}
                 onChange={(event) => setIncludeFridge(event.target.checked)}
-                inputProps={{ "aria-label": "Include fridge inventory" }}
+                slotProps={{ input: { "aria-label": "Include fridge inventory" } }}
               />
             )}
             label="Include fridge inventory"
@@ -1409,7 +1408,7 @@ function Planning() {
           <Button onClick={handleCloseSaveDialog} disabled={saving !== null}>
             Cancel
           </Button>
-          <Stack direction="row" spacing={1} flexWrap="wrap">
+          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
             {activePlan.id !== null && (
               <Button
                 variant="contained"

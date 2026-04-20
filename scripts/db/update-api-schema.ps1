@@ -5,7 +5,7 @@
 #   - Launches the FastAPI backend with uvicorn.
 #   - Waits for the server to become ready.
 #   - Saves Backend/openapi.json.
-#   - Runs openapi-typescript to produce Frontend/src/api-types.ts.
+#   - Runs a pinned openapi-typescript CLI to produce Frontend/src/api-types.ts.
 #
 # Exit codes:
 #   0 = Success
@@ -71,11 +71,7 @@ try {
     Out-Ok "Saved OpenAPI to Backend/openapi.json"
 
     Out-Step "Generating TypeScript types for frontend..."
-    $openapiTypescript = Join-Path -Path $repoRoot -ChildPath "Frontend/node_modules/.bin/openapi-typescript"
-    if (-not (Test-Path $openapiTypescript)) {
-        throw "Missing Frontend/node_modules/.bin/openapi-typescript. Run 'npm install' in Frontend before generating API types."
-    }
-    npx --yes --prefix Frontend openapi-typescript Backend/openapi.json -o Frontend/src/api-types.ts | Out-Null
+    npx --yes --package openapi-typescript@7.13.0 openapi-typescript Backend/openapi.json -o Frontend/src/api-types.ts | Out-Null
     Out-Ok "Generated Frontend/src/api-types.ts"
 }
 catch {

@@ -5,16 +5,10 @@ beforeEach(() => {
   window.sessionStorage.clear();
 });
 
-// Provide a simple fetch mock that handles relative URLs so tests don't
-// hit the network or throw "Invalid URL" errors.
+// Provide a simple fetch mock so tests don't hit the network.
 vi.stubGlobal(
   'fetch',
-  (async (input: RequestInfo | URL) => {
-    if (typeof input === 'string' && input.startsWith('/')) {
-      input = 'http://localhost' + input;
-    } else if (input instanceof Request && input.url.startsWith('/')) {
-      input = new Request('http://localhost' + input.url, input);
-    }
+  (async () => {
     return new Response('[]', {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

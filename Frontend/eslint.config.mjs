@@ -1,5 +1,6 @@
 import js from "@eslint/js";
 import { FlatCompat } from "@eslint/eslintrc";
+import globals from "globals";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,29 +21,22 @@ export default [
       browser: true,
       es2021: true,
       node: true,
-      "vitest-globals/env": true,
     },
     parser: "@typescript-eslint/parser",
     parserOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
-    },
-    plugins: ["react", "react-hooks", "@typescript-eslint", "vitest"],
-    extends: [
-      "eslint:recommended",
-      "plugin:react/recommended",
-      "plugin:react-hooks/recommended",
-      "plugin:@typescript-eslint/recommended",
-      "plugin:vitest-globals/recommended",
-    ],
-    settings: {
-      react: {
-        version: "detect",
+      ecmaFeatures: {
+        jsx: true,
       },
     },
+    plugins: ["react-hooks", "@typescript-eslint"],
+    extends: [
+      "eslint:recommended",
+      "plugin:react-hooks/recommended",
+      "plugin:@typescript-eslint/recommended",
+    ],
     rules: {
-      "react/react-in-jsx-scope": "off",
-      "react/prop-types": "off",
       "react-hooks/refs": "off",
       "react-hooks/set-state-in-effect": "off",
       "@typescript-eslint/no-unused-expressions": [
@@ -55,4 +49,10 @@ export default [
       ],
     },
   }),
+  {
+    files: ["src/**/*.{test,spec}.{js,jsx,ts,tsx}"],
+    languageOptions: {
+      globals: globals.vitest,
+    },
+  },
 ];

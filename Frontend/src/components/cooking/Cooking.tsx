@@ -19,7 +19,8 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import { Add, Remove } from "@mui/icons-material";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
 
 import apiClient from "@/apiClient";
 import type { StoredFoodCreate } from "@/api-extra-types";
@@ -1247,7 +1248,7 @@ function Cooking() {
                                     }
                                     disabled={actualPortions <= 0}
                                   >
-                                    <Remove fontSize="small" />
+                                    <RemoveIcon fontSize="small" />
                                   </IconButton>
                                   <DecimalInput
                                     value={actualPortions}
@@ -1272,7 +1273,7 @@ function Cooking() {
                                       )
                                     }
                                   >
-                                    <Add fontSize="small" />
+                                    <AddIcon fontSize="small" />
                                   </IconButton>
                                   <Box component="span" sx={{ whiteSpace: "nowrap" }}>
                                     portions

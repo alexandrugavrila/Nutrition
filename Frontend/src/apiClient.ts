@@ -27,7 +27,7 @@ class ApiClient {
 
             // Try to parse JSON only when present; fall back to text
             const contentType = response.headers.get("content-type") || "";
-            let parsed: unknown = null;
+            let parsed: unknown;
             try {
               if (contentType.includes("application/json")) {
                 parsed = await response.json();

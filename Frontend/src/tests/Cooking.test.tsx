@@ -167,7 +167,9 @@ describe("Cooking component", () => {
     });
 
     await waitFor(() => {
-      expect(screen.queryByText(/Veggie Chili/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /mark complete/i }),
+      ).not.toBeInTheDocument();
     });
 
     expect(setActualState).toHaveBeenCalled();

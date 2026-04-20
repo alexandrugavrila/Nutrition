@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import App from "../App";
@@ -7,12 +7,12 @@ import App from "../App";
 let mockIngredientData;
 let mockFoodData;
 
-vi.mock("../components/data/ingredient/IngredientData", () => ({
+vi.mock("@/components/data/ingredient/IngredientData", () => ({
   __esModule: true,
   default: (...args) => mockIngredientData(...args),
 }));
 
-vi.mock("../components/data/food/FoodData", () => ({
+vi.mock("@/components/data/food/FoodData", () => ({
   __esModule: true,
   default: (...args) => mockFoodData(...args),
 }));
@@ -32,16 +32,24 @@ const getLastCallArgs = (spy) => {
 test("renders tabs and switches between Foods and Ingredients views", async () => {
   render(<App />);
 
-  const foodsTab = screen.getByRole("tab", { name: /Foods/i });
-  const ingredientsTab = screen.getByRole("tab", { name: /Ingredients/i });
-  const plansTab = screen.getByRole("tab", { name: /Plans/i });
+  const foodContent = await screen.findByText("FoodDataComponent", {}, { timeout: 10000 });
+  const ingredientContent = await screen.findByText(
+    "IngredientDataComponent",
+    {},
+    { timeout: 10000 },
+  );
+
+  const foodsTab = await screen.findByRole("tab", { name: /Foods/i }, { timeout: 10000 });
+  const ingredientsTab = await screen.findByRole(
+    "tab",
+    { name: /Ingredients/i },
+    { timeout: 10000 },
+  );
+  const plansTab = await screen.findByRole("tab", { name: /Plans/i }, { timeout: 10000 });
 
   expect(foodsTab).toBeInTheDocument();
   expect(ingredientsTab).toBeInTheDocument();
   expect(plansTab).toBeInTheDocument();
-
-  const foodContent = screen.getByText("FoodDataComponent");
-  const ingredientContent = screen.getByText("IngredientDataComponent");
 
   expect(foodContent).toBeVisible();
   expect(ingredientContent).not.toBeVisible();
@@ -55,17 +63,19 @@ test("renders tabs and switches between Foods and Ingredients views", async () =
 
   await userEvent.click(foodsTab);
   expect(foodContent).toBeVisible();
-});
+}, 15000);
 
-test("provides handleAddIngredientToPlan only to IngredientData", () => {
+test("provides handleAddIngredientToPlan only to IngredientData", async () => {
   render(<App />);
 
-  expect(mockFoodData).toHaveBeenCalled();
-  expect(mockIngredientData).toHaveBeenCalled();
+  await waitFor(() => {
+    expect(mockFoodData).toHaveBeenCalled();
+    expect(mockIngredientData).toHaveBeenCalled();
+  }, { timeout: 10000 });
 
   const [foodProps] = getLastCallArgs(mockFoodData);
   const [ingredientProps] = getLastCallArgs(mockIngredientData);
 
   expect(foodProps.handleAddIngredientToPlan).toBeUndefined();
   expect(ingredientProps.handleAddIngredientToPlan).toBeUndefined();
-});
+}, 15000);

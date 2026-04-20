@@ -298,7 +298,6 @@ export const useIngredientForm = () => {
         }
         onSaved?.();
       } catch (error) {
-        // eslint-disable-next-line no-console
         console.error("Error saving ingredient:", error);
       } finally {
         endRequest();
@@ -316,14 +315,12 @@ export const useIngredientForm = () => {
       try {
         const response = await fetch(`/api/ingredients/${ingredientId}`, { method: "DELETE" });
         if (!response.ok) {
-          // eslint-disable-next-line no-console
           console.error("Failed to remove ingredient");
         } else {
           setIngredientsNeedsRefetch(true);
           onDeleted?.();
         }
       } catch (error) {
-        // eslint-disable-next-line no-console
         console.error("Error deleting ingredient:", error);
       } finally {
         endRequest();

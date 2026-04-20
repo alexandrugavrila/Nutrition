@@ -327,7 +327,6 @@ function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
     } catch (searchError) {
       setResults([]);
       setError('Unable to load USDA results right now.');
-      // eslint-disable-next-line no-console
       console.error(searchError);
     } finally {
       setIsSearching(false);
@@ -378,7 +377,6 @@ function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
           : 'Unable to load USDA details. Using search results instead.',
       );
       applyUsdaResult(result);
-      // eslint-disable-next-line no-console
       console.error(detailFetchError);
     } finally {
       setIsLoadingDetail(false);

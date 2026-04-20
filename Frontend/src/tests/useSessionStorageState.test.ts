@@ -59,7 +59,6 @@ afterEach(() => {
       ...originalSessionStorageDescriptor,
     });
   } else {
-    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     delete (window as { sessionStorage?: Storage }).sessionStorage;
   }
 });

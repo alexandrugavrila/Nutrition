@@ -26,6 +26,7 @@ const DecimalInput: React.FC<DecimalInputProps> = ({
   onBlur,
   ...textFieldProps
 }) => {
+  const { inputProps, slotProps, ...restTextFieldProps } = textFieldProps;
   const [inputValue, setInputValue] = useState<string>(() =>
     formatDecimal(value, decimalPlaces),
   );
@@ -84,9 +85,16 @@ const DecimalInput: React.FC<DecimalInputProps> = ({
 
   return (
     <TextField
-      {...textFieldProps}
+      {...restTextFieldProps}
       type="number"
-      inputMode="decimal"
+      slotProps={{
+        ...slotProps,
+        htmlInput: {
+          ...(slotProps?.htmlInput ?? {}),
+          ...(inputProps ?? {}),
+          inputMode: "decimal",
+        },
+      }}
       value={inputValue}
       onChange={handleChange}
       onFocus={(event) => {

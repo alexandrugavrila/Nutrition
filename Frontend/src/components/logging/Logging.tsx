@@ -27,7 +27,7 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { Add } from "@mui/icons-material";
+import AddIcon from "@mui/icons-material/Add";
 
 import apiClient from "@/apiClient";
 import { useData } from "@/contexts/DataContext";
@@ -863,7 +863,7 @@ function Logging() {
           type="date"
           value={selectedDate}
           onChange={(event) => setSelectedDate(event.target.value)}
-          InputLabelProps={{ shrink: true }}
+          slotProps={{ inputLabel: { shrink: true } }}
           fullWidth
         />
       </Box>
@@ -871,7 +871,7 @@ function Logging() {
       <Stack
         direction={{ xs: "column", md: "row" }}
         spacing={3}
-        alignItems="flex-start"
+        sx={{ alignItems: { xs: "stretch", md: "flex-start" } }}
       >
         <Card sx={{ flex: 1, minWidth: 0 }}>
           <CardHeader
@@ -952,7 +952,10 @@ function Logging() {
                             </Typography>
                             <Grid container spacing={2}>
                               {summaryMetrics.map((metric) => (
-                                <Grid item xs={6} sm={4} md={3} lg={2} key={metric.label}>
+                                <Grid
+                                  key={metric.label}
+                                  size={{ xs: 6, sm: 4, md: 3, lg: 2 }}
+                                >
                                   <Typography
                                     variant="caption"
                                     color="text.secondary"
@@ -1041,7 +1044,7 @@ function Logging() {
             />
             <CardContent>
               {hydrating ? (
-                <Stack alignItems="center" justifyContent="center" sx={{ py: 4 }}>
+                <Stack sx={{ py: 4, alignItems: "center", justifyContent: "center" }}>
                   <CircularProgress aria-label="Loading quick log data" />
                 </Stack>
               ) : (
@@ -1049,11 +1052,11 @@ function Logging() {
                   <Stack
                     direction={{ xs: "column", sm: "row" }}
                     spacing={1.5}
-                    alignItems={{ xs: "stretch", sm: "center" }}
+                    sx={{ alignItems: { xs: "stretch", sm: "center" } }}
                   >
                     <Button
                       variant={activeLogType === "ingredient" ? "contained" : "outlined"}
-                      startIcon={<Add />}
+                      startIcon={<AddIcon />}
                       onClick={() => {
                         setActiveLogType("ingredient");
                         setIngredientPickerOpen(true);
@@ -1064,7 +1067,7 @@ function Logging() {
                     </Button>
                     <Button
                       variant={activeLogType === "food" ? "contained" : "outlined"}
-                      startIcon={<Add />}
+                      startIcon={<AddIcon />}
                       onClick={() => {
                         setActiveLogType("food");
                         setFoodPickerOpen(true);
@@ -1123,7 +1126,7 @@ function Logging() {
                           <TextField
                             label="Quantity"
                             type="number"
-                            inputProps={{ min: 0, step: "any" }}
+                            slotProps={{ htmlInput: { min: 0, step: "any" } }}
                             fullWidth
                             value={ingredientLog.quantity}
                             onChange={(event) =>
@@ -1176,7 +1179,7 @@ function Logging() {
                         <TextField
                           label="Servings"
                           type="number"
-                          inputProps={{ min: 0, step: "any" }}
+                          slotProps={{ htmlInput: { min: 0, step: "any" } }}
                           fullWidth
                           value={foodLog.portions}
                           onChange={(event) =>
@@ -1227,7 +1230,7 @@ function Logging() {
             />
             <CardContent>
               {hydrating ? (
-                <Stack alignItems="center" justifyContent="center" sx={{ py: 4 }}>
+                <Stack sx={{ py: 4, alignItems: "center", justifyContent: "center" }}>
                   <CircularProgress aria-label="Loading fridge inventory" />
                 </Stack>
               ) : groupedInventory.length === 0 ? (
@@ -1294,9 +1297,11 @@ function Logging() {
                                   <TextField
                                     type="text"
                                     size="small"
-                                    inputProps={{
-                                      inputMode: "decimal",
-                                      "aria-label": `Portions to log for ${displayName}`,
+                                    slotProps={{
+                                      htmlInput: {
+                                        inputMode: "decimal",
+                                        "aria-label": `Portions to log for ${displayName}`,
+                                      },
                                     }}
                                     value={value}
                                     onChange={(event) =>
@@ -1313,7 +1318,11 @@ function Logging() {
                                   />
                                 </TableCell>
                                 <TableCell align="right">
-                                  <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                  <Stack
+                                    direction="row"
+                                    spacing={1}
+                                    sx={{ justifyContent: "flex-end" }}
+                                  >
                                     <Button
                                       variant="contained"
                                       size="small"

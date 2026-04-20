@@ -619,10 +619,12 @@ function Shopping() {
                           color="primary"
                           checked={!isExcluded}
                           onChange={() => toggleItemExclusion(itemKey)}
-                          inputProps={{
-                            "aria-label": isExcluded
-                              ? `Mark ${item.name} as needed`
-                              : `Mark ${item.name} as already have`,
+                          slotProps={{
+                            input: {
+                              "aria-label": isExcluded
+                                ? `Mark ${item.name} as needed`
+                                : `Mark ${item.name} as already have`,
+                            },
                           }}
                         />
                       </Tooltip>
