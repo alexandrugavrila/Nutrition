@@ -1,81 +1,63 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { vi } from "vitest";
+import { beforeEach, test, vi } from "vitest";
+
 import App from "../App";
 
-let mockIngredientData;
-let mockFoodData;
-
-vi.mock("@/components/data/ingredient/IngredientData", () => ({
+vi.mock("@/components/data/DataPage", () => ({
   __esModule: true,
-  default: (...args) => mockIngredientData(...args),
+  default: () => <div>DataPageComponent</div>,
 }));
 
-vi.mock("@/components/data/food/FoodData", () => ({
+vi.mock("@/components/planning/Planning", () => ({
   __esModule: true,
-  default: (...args) => mockFoodData(...args),
+  default: () => <div>PlanningComponent</div>,
 }));
 
-mockIngredientData = vi.fn(() => <div>IngredientDataComponent</div>);
-mockFoodData = vi.fn(() => <div>FoodDataComponent</div>);
+vi.mock("@/components/shopping/Shopping", () => ({
+  __esModule: true,
+  default: () => <div>ShoppingComponent</div>,
+}));
+
+vi.mock("@/components/cooking/Cooking", () => ({
+  __esModule: true,
+  default: () => <div>CookingComponent</div>,
+}));
+
+vi.mock("@/components/logging/Logging", () => ({
+  __esModule: true,
+  default: () => <div>LoggingComponent</div>,
+}));
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  window.history.pushState({}, "", "/");
 });
 
-const getLastCallArgs = (spy) => {
-  const calls = spy.mock.calls;
-  return calls[calls.length - 1] ?? [];
-};
-
-test("renders tabs and switches between Foods and Ingredients views", async () => {
+test("renders the data page on the default route", async () => {
   render(<App />);
 
-  const foodContent = await screen.findByText("FoodDataComponent", {}, { timeout: 10000 });
-  const ingredientContent = await screen.findByText(
-    "IngredientDataComponent",
-    {},
-    { timeout: 10000 },
-  );
+  expect(await screen.findByText("DataPageComponent")).toBeVisible();
+  expect(screen.getByRole("button", { name: /open drawer/i })).toBeInTheDocument();
+});
 
-  const foodsTab = await screen.findByRole("tab", { name: /Foods/i }, { timeout: 10000 });
-  const ingredientsTab = await screen.findByRole(
-    "tab",
-    { name: /Ingredients/i },
-    { timeout: 10000 },
-  );
-  const plansTab = await screen.findByRole("tab", { name: /Plans/i }, { timeout: 10000 });
-
-  expect(foodsTab).toBeInTheDocument();
-  expect(ingredientsTab).toBeInTheDocument();
-  expect(plansTab).toBeInTheDocument();
-
-  expect(foodContent).toBeVisible();
-  expect(ingredientContent).not.toBeVisible();
-
-  await userEvent.click(ingredientsTab);
-  expect(ingredientContent).toBeVisible();
-  expect(foodContent).not.toBeVisible();
-
-  await userEvent.click(plansTab);
-  expect(ingredientContent).not.toBeVisible();
-
-  await userEvent.click(foodsTab);
-  expect(foodContent).toBeVisible();
-}, 15000);
-
-test("provides handleAddIngredientToPlan only to IngredientData", async () => {
+test("switches routes from the navigation drawer", async () => {
   render(<App />);
 
-  await waitFor(() => {
-    expect(mockFoodData).toHaveBeenCalled();
-    expect(mockIngredientData).toHaveBeenCalled();
-  }, { timeout: 10000 });
+  expect(await screen.findByText("DataPageComponent")).toBeVisible();
 
-  const [foodProps] = getLastCallArgs(mockFoodData);
-  const [ingredientProps] = getLastCallArgs(mockIngredientData);
+  await userEvent.click(screen.getByRole("button", { name: /open drawer/i }));
+  await userEvent.click(screen.getByRole("link", { name: /^Planning$/i }));
+  expect(await screen.findByText("PlanningComponent")).toBeVisible();
 
-  expect(foodProps.handleAddIngredientToPlan).toBeUndefined();
-  expect(ingredientProps.handleAddIngredientToPlan).toBeUndefined();
-}, 15000);
+  await userEvent.click(screen.getByRole("link", { name: /^Logging$/i }));
+  expect(await screen.findByText("LoggingComponent")).toBeVisible();
+});
+
+test("renders the current route on initial load", async () => {
+  window.history.pushState({}, "", "/cooking");
+
+  render(<App />);
+
+  expect(await screen.findByText("CookingComponent")).toBeVisible();
+});
