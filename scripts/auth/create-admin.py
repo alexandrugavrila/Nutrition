@@ -14,6 +14,7 @@ from Backend.auth.passwords import hash_password
 from Backend.auth.sessions import normalize_email
 from Backend.db import engine
 from Backend.models import User
+from Backend.services.onboarding import seed_user_starter_data
 
 
 def parse_args() -> argparse.Namespace:
@@ -31,7 +32,14 @@ def main() -> int:
     with Session(engine) as session:
         existing = session.exec(select(User).where(User.email == email)).one_or_none()
         if existing is not None:
+            summary = seed_user_starter_data(session, existing)
+            session.commit()
             print(f"Admin user already exists for {email}.")
+            print(
+                "Seeded starter data: "
+                f"{summary['ingredients']} ingredients, "
+                f"{summary['foods']} foods, {summary['plans']} plans."
+            )
             return 0
 
         user = User(
@@ -41,10 +49,17 @@ def main() -> int:
             is_admin=True,
         )
         session.add(user)
+        session.flush()
+        summary = seed_user_starter_data(session, user)
         session.commit()
         session.refresh(user)
 
     print(f"Created admin user {user.email} ({user.id}).")
+    print(
+        "Seeded starter data: "
+        f"{summary['ingredients']} ingredients, "
+        f"{summary['foods']} foods, {summary['plans']} plans."
+    )
     return 0
 
 

@@ -107,6 +107,11 @@ def test_trim_food_payload_includes_multiple_gram_backed_usda_units() -> None:
                     "gramWeight": 109,
                 },
                 {
+                    "amount": 1,
+                    "measureUnit": {"name": "RACC", "abbreviation": "RACC"},
+                    "gramWeight": 140,
+                },
+                {
                     "portionDescription": "1 tbsp",
                     "gramWeight": 8.5,
                 },
@@ -216,9 +221,9 @@ def test_trim_food_payload_uses_usda_energy_variants_for_calories() -> None:
         {
             "calories": 0.52,
             "protein": 0.0026,
-            "fat": None,
-            "carbohydrates": None,
-            "fiber": None,
+            "fat": 0,
+            "carbohydrates": 0,
+            "fiber": 0,
         }
     )
 
@@ -240,12 +245,49 @@ def test_trim_food_payload_ignores_non_kilocalorie_energy_variants() -> None:
     )
 
     assert payload["nutrition"] == {
-        "calories": None,
-        "protein": None,
-        "fat": None,
-        "carbohydrates": None,
-        "fiber": None,
+        "calories": 0,
+        "protein": 0,
+        "fat": 0,
+        "carbohydrates": 0,
+        "fiber": 0,
     }
+
+
+def test_trim_food_payload_uses_newer_foundation_macro_variants() -> None:
+    payload = _trim_food_payload(
+        {
+            "fdcId": 557,
+            "description": "Oats sample",
+            "dataType": "Foundation",
+            "foodNutrients": [
+                {
+                    "nutrientName": "Total fat (NLEA)",
+                    "value": 5.89,
+                    "nutrient": {"id": 1085, "number": "1085", "unitName": "g"},
+                },
+                {
+                    "nutrientName": "Carbohydrate, by summation",
+                    "value": 68.7,
+                    "nutrient": {"id": 1050, "number": "1050", "unitName": "g"},
+                },
+                {
+                    "nutrientName": "Total dietary fiber (AOAC 2011.25)",
+                    "value": 10.4,
+                    "nutrient": {"id": 2033, "number": "2033", "unitName": "g"},
+                },
+            ],
+        }
+    )
+
+    assert payload["nutrition"] == pytest.approx(
+        {
+            "calories": 0,
+            "protein": 0,
+            "fat": 0.0589,
+            "carbohydrates": 0.687,
+            "fiber": 0.104,
+        }
+    )
 
 
 class _MockUsdaResponse:

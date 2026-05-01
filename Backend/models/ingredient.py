@@ -33,7 +33,7 @@ class Ingredient(SQLModel, table=True):
             index=True,
         ),
     )
-    name: str = Field(sa_column=Column(String(100), nullable=False))
+    name: str = Field(sa_column=Column(String(255), nullable=False))
     nutrition: Optional[Nutrition] = Relationship(
         back_populates="ingredient",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},

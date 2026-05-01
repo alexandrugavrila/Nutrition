@@ -1,6 +1,11 @@
+import json
+import zipfile
+from pathlib import Path
+
 from sqlmodel import Session, select
 
-from Backend.commands.sync_usda_foundation import sync_usda_foundation
+from Backend.commands.convert_usda_foundation_manifest import main as convert_manifest_main
+from Backend.commands.sync_usda_foundation import _load_payload, sync_usda_foundation
 from Backend.models import Food, FoodIngredient, Ingredient, IngredientSource
 
 
@@ -93,3 +98,47 @@ def test_usda_sync_preserves_referenced_units(engine) -> None:
         assert summary["updated"] == 1
         assert food.ingredients[0].unit_id == unit.id
         assert any(existing_unit.id == unit.id for existing_unit in ingredient.units)
+
+
+def test_usda_sync_loads_zipped_json(tmp_path) -> None:
+    archive_path = tmp_path / "foundation.zip"
+    expected = _food_payload(400, "Zipped Food")
+    with zipfile.ZipFile(archive_path, "w") as archive:
+        archive.writestr("FoodData_Central_foundation_food_json.json", json.dumps(expected))
+
+    assert _load_payload(str(archive_path)) == expected
+
+
+def test_usda_manifest_converter_writes_usda_ingredients(tmp_path, monkeypatch) -> None:
+    archive_path = tmp_path / "foundation.zip"
+    manifest_path = tmp_path / "starter.json"
+    expected = _food_payload(500, "Manifest Food")
+    with zipfile.ZipFile(archive_path, "w") as archive:
+        archive.writestr("FoodData_Central_foundation_food_json.json", json.dumps(expected))
+    manifest_path.write_text(
+        json.dumps({"version": 1, "catalog_ingredients": [{"slug": "old"}]}),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "convert-usda",
+            "--input",
+            str(archive_path),
+            "--manifest",
+            str(manifest_path),
+        ],
+    )
+
+    assert convert_manifest_main() == 0
+    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    assert "catalog_ingredients" not in manifest
+    assert manifest["usda_ingredients"] == [
+        {
+            "slug": "usda-500",
+            "name": "Manifest Food",
+            "source": "usda",
+            "source_id": "500",
+        }
+    ]

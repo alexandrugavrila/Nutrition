@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import os
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -28,13 +30,42 @@ from Backend.routes.usda import _trim_food_payload
 SOURCE = "usda"
 
 
+def _load_json_from_zip_bytes(raw: bytes, location: str) -> Any:
+    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+        json_names = [
+            name
+            for name in archive.namelist()
+            if name.lower().endswith(".json") and not name.endswith("/")
+        ]
+        if not json_names:
+            raise ValueError(f"No JSON file found inside {location}.")
+        if len(json_names) > 1:
+            foundation_names = [
+                name for name in json_names if "foundation" in name.lower()
+            ]
+            if len(foundation_names) == 1:
+                json_names = foundation_names
+            else:
+                raise ValueError(
+                    f"Multiple JSON files found inside {location}; provide an unzipped JSON file."
+                )
+        with archive.open(json_names[0]) as payload_file:
+            return json.load(payload_file)
+
+
 def _load_payload(location: str) -> Any:
     parsed = urlparse(location)
     if parsed.scheme in {"http", "https"}:
         response = httpx.get(location, timeout=120.0)
         response.raise_for_status()
+        content_type = response.headers.get("content-type", "")
+        if location.lower().endswith(".zip") or "zip" in content_type.lower():
+            return _load_json_from_zip_bytes(response.content, location)
         return response.json()
-    with Path(location).open("r", encoding="utf-8") as payload_file:
+    path = Path(location)
+    if path.suffix.lower() == ".zip":
+        return _load_json_from_zip_bytes(path.read_bytes(), location)
+    with path.open("r", encoding="utf-8") as payload_file:
         return json.load(payload_file)
 
 
@@ -184,7 +215,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input",
         default=os.environ.get("USDA_FOUNDATION_FOODS_JSON"),
-        help="Path or URL for a USDA Foundation Foods JSON download.",
+        help="Path or URL for a USDA Foundation Foods JSON or ZIP download.",
     )
     parser.add_argument(
         "--mark-stale",
@@ -202,6 +233,7 @@ def main() -> int:
         )
 
     payload = _load_payload(args.input)
+    final_summary: dict[str, Any]
     with Session(engine) as session:
         run = CatalogSyncRun(source=SOURCE, status="running", summary={})
         session.add(run)
@@ -214,16 +246,18 @@ def main() -> int:
             run.completed_at = datetime.now(timezone.utc)
             session.add(run)
             session.commit()
+            final_summary = summary
         except Exception as exc:
             session.rollback()
+            final_summary = {"error": str(exc)}
             run.status = "failed"
-            run.summary = {"error": str(exc)}
+            run.summary = final_summary
             run.completed_at = datetime.now(timezone.utc)
             session.add(run)
             session.commit()
             raise
 
-    print(json.dumps(run.summary, sort_keys=True))
+    print(json.dumps(final_summary, sort_keys=True))
     return 0
 
 

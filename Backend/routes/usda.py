@@ -15,15 +15,21 @@ _MACRO_NAMES = {
     "energy": "calories",
     "protein": "protein",
     "total lipid (fat)": "fat",
+    "total fat (nlea)": "fat",
     "carbohydrate, by difference": "carbohydrates",
+    "carbohydrate, by summation": "carbohydrates",
     "fiber, total dietary": "fiber",
+    "total dietary fiber (aoac 2011.25)": "fiber",
 }
 _MACRO_NUTRIENT_IDS = {
     1008: "calories",
     1003: "protein",
     1004: "fat",
+    1085: "fat",
     1005: "carbohydrates",
+    1050: "carbohydrates",
     1079: "fiber",
+    2033: "fiber",
     2047: "calories",
     2048: "calories",
 }
@@ -223,6 +229,19 @@ def _build_portion_unit_name(portion: dict[str, Any]) -> str | None:
     return modifier or measure_name or None
 
 
+def _is_racc_portion(portion: dict[str, Any]) -> bool:
+    measure_unit = portion.get("measureUnit") or {}
+    candidates = [
+        measure_unit.get("name"),
+        measure_unit.get("abbreviation"),
+        portion.get("measureUnitName"),
+        portion.get("measureUnitAbbreviation"),
+        portion.get("portionDescription"),
+        portion.get("modifier"),
+    ]
+    return any(str(candidate).strip().lower() == "racc" for candidate in candidates if candidate)
+
+
 def _build_default_unit(food: dict[str, Any]) -> tuple[str, float] | None:
     serving_size = _coerce_float(food.get("servingSize"))
     serving_size_unit = food.get("servingSizeUnit")
@@ -291,6 +310,8 @@ def _extract_food_units(food: dict[str, Any]) -> list[dict[str, Any]]:
 
     for key in ("foodPortions", "foodMeasures"):
         for portion in food.get(key, []) or []:
+            if _is_racc_portion(portion):
+                continue
             grams = _coerce_float(portion.get("gramWeight"))
             name = _build_portion_unit_name(portion)
             _add_usda_unit(units, seen, name=name, grams=grams)
@@ -379,7 +400,10 @@ def _normalize_nutrients_per_gram(
         return None
 
     return UsdaNutrition(
-        **{key: (value / 100.0 if value is not None else None) for key, value in nutrients.items()}
+        **{
+            key: ((value or 0.0) / 100.0)
+            for key, value in nutrients.items()
+        }
     )
 
 

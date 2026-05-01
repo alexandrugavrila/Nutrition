@@ -148,6 +148,28 @@ def test_admin_created_user_receives_starter_dataset(client: TestClient, engine)
         assert [item.label for item in plans] == ["Starter Day"]
 
 
+def test_admin_created_admin_receives_starter_dataset(client: TestClient, engine) -> None:
+    response = client.post(
+        "/api/auth/users",
+        json={
+            "email": "starter-admin@example.com",
+            "password": "Password123!",
+            "display_name": "Starter Admin",
+            "is_admin": True,
+        },
+    )
+    assert response.status_code == 201
+    user_id = response.json()["id"]
+
+    with Session(engine) as session:
+        ingredients = session.exec(select(Ingredient).where(Ingredient.user_id == user_id)).all()
+        foods = session.exec(select(Food).where(Food.user_id == user_id)).all()
+        plans = session.exec(select(Plan).where(Plan.user_id == user_id)).all()
+        assert [item.name for item in ingredients] == ["Starter Oats"]
+        assert [item.name for item in foods] == ["Starter Oats Bowl"]
+        assert [item.label for item in plans] == ["Starter Day"]
+
+
 def test_stored_food_ignores_client_supplied_user_id(client: TestClient, engine) -> None:
     with Session(engine) as session:
         ingredient = Ingredient(

@@ -172,8 +172,7 @@ def create_user(
     db.add(user)
     try:
         db.flush()
-        if not user.is_admin:
-            seed_user_starter_data(db, user)
+        seed_user_starter_data(db, user)
         db.commit()
     except IntegrityError as exc:
         db.rollback()

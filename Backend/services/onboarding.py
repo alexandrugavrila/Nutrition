@@ -113,10 +113,27 @@ def seed_user_starter_data(
 
     manifest = manifest or load_starter_manifest()
     ingredients_by_slug: dict[str, Ingredient] = {}
+    ingredient_definitions_by_slug: dict[str, dict[str, Any]] = {
+        definition["slug"]: definition
+        for definition in [
+            *manifest.get("usda_ingredients", []),
+            *manifest.get("catalog_ingredients", []),
+            *manifest.get("ingredients", []),
+        ]
+    }
     foods_by_slug: dict[str, Food] = {}
     summary = {"ingredients": 0, "foods": 0, "plans": 0}
 
-    for definition in manifest.get("ingredients", []):
+    def resolve_ingredient_definition(slug: str) -> Ingredient:
+        existing = ingredients_by_slug.get(slug)
+        if existing is not None:
+            return existing
+        definition = ingredient_definitions_by_slug.get(slug)
+        if definition is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Starter dataset references an unknown ingredient.",
+            )
         source = definition.get("source")
         source_id = definition.get("source_id")
         if source and source_id:
@@ -127,6 +144,7 @@ def seed_user_starter_data(
             if before is None:
                 summary["ingredients"] += 1
         ingredients_by_slug[definition["slug"]] = ingredient
+        return ingredient
 
     for definition in manifest.get("foods", []):
         existing_food = _existing_food(session, user, definition["name"])
@@ -136,8 +154,11 @@ def seed_user_starter_data(
 
         food = Food(name=definition["name"], user_id=user.id)
         for item in definition.get("ingredients", []):
-            ingredient = ingredients_by_slug.get(item.get("ingredient_slug"))
-            if ingredient is None and item.get("source") and item.get("source_id"):
+            ingredient_slug = item.get("ingredient_slug")
+            ingredient = None
+            if ingredient_slug:
+                ingredient = resolve_ingredient_definition(ingredient_slug)
+            elif item.get("source") and item.get("source_id"):
                 ingredient = _resolve_sourced_ingredient(
                     session, item["source"], str(item["source_id"])
                 )
