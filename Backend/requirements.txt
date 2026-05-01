@@ -9,4 +9,4 @@ alembic==1.16.4
 sqlmodel>=0.0.21
 pytest==8.4.1
 httpx>=0.24,<1.0
-gunicorn==22.0.0
+gunicorn==25.3.0
