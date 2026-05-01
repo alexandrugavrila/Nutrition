@@ -13,7 +13,7 @@ This repository contains a full-stack nutrition planning and tracking applicatio
 - The default branch (`main`) must remain in the primary clone.
 - Feature branches belong in sibling worktrees named `nutrition-<sanitized-branch>`.
 - Before making changes, run `pwsh ./scripts/repo/check.ps1` (or `./scripts/repo/check.sh`) to fetch, prune, and audit worktrees.
-- Use `pwsh ./scripts/switch-worktree-branch.ps1 <branch>` to create or jump to the correct worktree (PowerShell is available cross-platform).
+- Use `pwsh ./scripts/switch-worktree-branch.ps1 <branch> -CopyEnv` to create or jump to the correct worktree and copy the current `.env` when the target worktree does not already have one (PowerShell is available cross-platform).
 - Verify the shell is in the correct worktree with an active virtualenv: `pwsh ./scripts/env/check.ps1 -Fix` or `./scripts/env/check.sh --fix`.
 - Activate dependencies when needed via `pwsh ./scripts/env/activate-venv.ps1` or `source ./scripts/env/activate-venv.sh`.
 

@@ -58,10 +58,10 @@ Recommended flow when starting or updating a branch:
 3. Create or jump into the branch worktree:
 
    ```pwsh
-   pwsh ./scripts/switch-worktree-branch.ps1 feature/my-feature
+   pwsh ./scripts/switch-worktree-branch.ps1 feature/my-feature -CopyEnv
    ```
 
-   The script fetches remote refs, creates local tracking branches for any remote-only branches, then creates `nutrition-feature-my-feature` under the worktree parent (default: parent of the primary clone; override with `NUTRITION_WORKTREE_PARENT`) if needed, checks out the branch there, and optionally opens VS Code. Pass `-SkipVSCode` to stay in the terminal or `-NewVSCodeWindow` for a new window.
+   The script fetches remote refs, creates local tracking branches for any remote-only branches, then creates `nutrition-feature-my-feature` under the worktree parent (default: parent of the primary clone; override with `NUTRITION_WORKTREE_PARENT`) if needed, checks out the branch there, and optionally opens VS Code. Prefer `-CopyEnv` when creating or reopening worktrees so the current `.env` is copied into the target when needed. Pass `-SkipVSCode` to stay in the terminal or `-NewVSCodeWindow` for a new window.
 
 4. Verify the environment:
 
@@ -345,6 +345,7 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
 - `scripts/switch-worktree-branch.ps1`
   - Purpose: fetch remote refs, create local tracking branches for remote-only branches, then interactively pick a local branch, jump to its dedicated worktree (creating it if needed), optionally open VS Code, optionally start Docker Compose, and always activate the virtualenv.
   - Flags/parameters: `-Branch`, `-SkipVSCode`, `-NewVSCodeWindow`, `-CopyEnv` (copies the current worktree `.env` into the target when missing), `-StartWorkspaceStack`, and `-Data <test|prod>` (required with `-StartWorkspaceStack`).
+  - Recommended usage: `pwsh ./scripts/switch-worktree-branch.ps1 <branch> -CopyEnv`.
   - Call graph: invokes `scripts/env/activate-venv.ps1` and `scripts/docker/compose.ps1` when the corresponding switches are selected.
 
 ### Repository maintenance
