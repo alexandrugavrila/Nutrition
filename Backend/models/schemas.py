@@ -152,6 +152,51 @@ class PlanRead(SQLModel):
     updated_at: datetime
 
 
+class LoginRequest(SQLModel):
+    """Credentials required to create a session."""
+
+    email: str
+    password: str
+
+
+class UserCreate(SQLModel):
+    """Payload for an admin-created user account."""
+
+    email: str
+    password: str
+    display_name: str
+    is_admin: bool = False
+
+
+class UserRead(SQLModel):
+    """Safe user representation returned to clients."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    email: str
+    display_name: str
+    is_active: bool
+    is_admin: bool
+    last_login_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ChangePasswordRequest(SQLModel):
+    """Payload for changing the current user's password."""
+
+    current_password: str
+    new_password: str
+
+
+class AuthStatus(SQLModel):
+    """Current authentication state returned by auth endpoints."""
+
+    authenticated: bool
+    user: Optional[UserRead] = None
+
+
 class StoredFoodBase(SQLModel):
     """Common fields shared by stored food payloads."""
 
@@ -287,6 +332,11 @@ __all__ = [
     "PlanCreate",
     "PlanUpdate",
     "PlanRead",
+    "LoginRequest",
+    "UserCreate",
+    "UserRead",
+    "ChangePasswordRequest",
+    "AuthStatus",
     "StoredFoodCreate",
     "StoredFoodRead",
     "StoredFoodConsume",

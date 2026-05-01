@@ -14,6 +14,7 @@ from Backend.routes import (
     logs_router,
     usda_router,
     health_router,
+    auth_router,
 )
 from Backend.settings import settings
 
@@ -46,6 +47,7 @@ app.include_router(stored_food_router, prefix="/api")
 app.include_router(logs_router, prefix="/api")
 app.include_router(usda_router, prefix="/api")
 app.include_router(health_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 
 
 __all__ = ["app"]

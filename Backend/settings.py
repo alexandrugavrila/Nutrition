@@ -82,6 +82,11 @@ class Settings:
     # Runtime environment name (e.g. development/test/production).
     environment: str
 
+    # Auth/session settings.
+    session_cookie_name: str
+    session_ttl_days: int
+    session_secure_cookie: bool
+
     @staticmethod
     def _is_production(environment: str) -> bool:
         return _is_production_environment(environment)
@@ -145,6 +150,13 @@ class Settings:
                 RuntimeWarning,
             )
 
+        session_cookie_name = os.getenv("SESSION_COOKIE_NAME", "nutrition_session")
+        session_ttl_days = int(os.getenv("SESSION_TTL_DAYS", "14"))
+        session_secure_cookie = _to_bool(
+            os.getenv("SESSION_SECURE_COOKIE"),
+            default=Settings._is_production(environment),
+        )
+
         Settings._validate_required_production_secrets(
             db_url=db_url,
             usda_api_key=usda_api_key,
@@ -157,6 +169,9 @@ class Settings:
             allow_origins=origins,
             usda_api_key=usda_api_key,
             environment=environment,
+            session_cookie_name=session_cookie_name,
+            session_ttl_days=session_ttl_days,
+            session_secure_cookie=session_secure_cookie,
         )
 
 

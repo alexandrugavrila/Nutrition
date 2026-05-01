@@ -12,6 +12,8 @@ from .food_tag import FoodTagLink
 from .plan import Plan
 from .daily_log_entry import DailyLogEntry
 from .stored_food import StoredFood
+from .user import User
+from .auth_session import AuthSession
 from .schemas import (
     NutritionCreate,
     IngredientUnitCreate,
@@ -26,6 +28,11 @@ from .schemas import (
     PlanCreate,
     PlanUpdate,
     PlanRead,
+    LoginRequest,
+    UserCreate,
+    UserRead,
+    ChangePasswordRequest,
+    AuthStatus,
     StoredFoodCreate,
     StoredFoodRead,
     StoredFoodConsume,
@@ -48,6 +55,8 @@ __all__ = [
     "Plan",
     "DailyLogEntry",
     "StoredFood",
+    "User",
+    "AuthSession",
     "NutritionCreate",
     "IngredientUnitCreate",
     "FoodIngredientCreate",
@@ -61,6 +70,11 @@ __all__ = [
     "PlanCreate",
     "PlanUpdate",
     "PlanRead",
+    "LoginRequest",
+    "UserCreate",
+    "UserRead",
+    "ChangePasswordRequest",
+    "AuthStatus",
     "StoredFoodCreate",
     "StoredFoodRead",
     "StoredFoodConsume",

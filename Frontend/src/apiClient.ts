@@ -19,6 +19,7 @@ class ApiClient {
             const { body } = options;
             const response = await fetch(url, {
               method: method.toUpperCase(),
+              credentials: "include",
               headers: body
                 ? { "Content-Type": "application/json" }
                 : undefined,
