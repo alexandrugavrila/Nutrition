@@ -1,5 +1,5 @@
 sqlalchemy>=2.0.37
-psycopg2-binary==2.9.11
+psycopg2-binary==2.9.12
 pydantic==2.13.2
 fastapi==0.136.0
 starlette>=0.46,<1.1
