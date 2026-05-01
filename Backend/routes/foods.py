@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, SQLModel
 from sqlalchemy.orm import selectinload
 
-from sqlalchemy import delete
+from sqlalchemy import or_
+from ..auth.dependencies import get_current_user
 from ..db import get_db
 from ..models import (
     Food,
@@ -12,11 +13,64 @@ from ..models import (
     Ingredient,
     FoodIngredient,
     IngredientUnit,
+    User,
 )
-from ..models.schemas import FoodCreate, FoodRead, FoodUpdate
+from ..models.schemas import FoodCreate, FoodIngredientCreate, FoodRead, FoodUpdate
 from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(prefix="/foods", tags=["foods"])
+
+
+FOOD_LOAD_OPTIONS = [
+    selectinload(Food.ingredients)
+    .selectinload(FoodIngredient.ingredient)
+    .selectinload(Ingredient.nutrition),
+    selectinload(Food.ingredients)
+    .selectinload(FoodIngredient.ingredient)
+    .selectinload(Ingredient.units),
+    selectinload(Food.ingredients).selectinload(FoodIngredient.unit),
+    selectinload(Food.tags),
+]
+
+
+def _get_owned_food(db: Session, food_id: int, current_user: User) -> Optional[Food]:
+    visibility = Food.user_id == current_user.id
+    if current_user.is_admin:
+        visibility = or_(visibility, Food.user_id.is_(None))
+    statement = (
+        select(Food)
+        .options(*FOOD_LOAD_OPTIONS)
+        .where(Food.id == food_id)
+        .where(visibility)
+    )
+    return db.exec(statement).one_or_none()
+
+
+def _get_accessible_ingredient(
+    db: Session, ingredient_id: Optional[int], current_user: User
+) -> Optional[Ingredient]:
+    if ingredient_id is None:
+        return None
+    statement = select(Ingredient).where(Ingredient.id == ingredient_id).where(
+        (Ingredient.user_id.is_(None)) | (Ingredient.user_id == current_user.id)
+    )
+    return db.exec(statement).one_or_none()
+
+
+def _validate_food_ingredients(
+    db: Session, food_ingredients: List[FoodIngredientCreate], current_user: User
+) -> None:
+    for item in food_ingredients:
+        ingredient = _get_accessible_ingredient(db, item.ingredient_id, current_user)
+        if ingredient is None:
+            raise HTTPException(status_code=400, detail="Ingredient is not available.")
+        if item.unit_id not in (None, 0):
+            unit = db.get(IngredientUnit, item.unit_id)
+            if unit is None or unit.ingredient_id != item.ingredient_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Ingredient unit must belong to the referenced ingredient.",
+                )
 
 
 def _lookup_base_unit_id(db: Session, ingredient_id: int) -> Optional[int]:
@@ -92,9 +146,15 @@ def _normalize_unit_id(
 
 
 @router.get("/", response_model=List[FoodRead])
-def get_all_foods(db: Session = Depends(get_db)) -> List[FoodRead]:
+def get_all_foods(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> List[FoodRead]:
     """Return all foods."""
-    foods = db.exec(select(Food)).all()
+    visibility = Food.user_id == current_user.id
+    if current_user.is_admin:
+        visibility = or_(visibility, Food.user_id.is_(None))
+    foods = db.exec(select(Food).options(*FOOD_LOAD_OPTIONS).where(visibility)).all()
     return [FoodRead.model_validate(f) for f in foods]
 
 
@@ -132,17 +192,26 @@ def add_possible_food_tag(
 
 
 @router.get("/{food_id}", response_model=FoodRead)
-def get_food(food_id: int, db: Session = Depends(get_db)) -> FoodRead:
+def get_food(
+    food_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> FoodRead:
     """Retrieve a single food by ID."""
-    food = db.get(Food, food_id)
+    food = _get_owned_food(db, food_id, current_user)
     if not food:
         raise HTTPException(status_code=404, detail="Food not found")
     return FoodRead.model_validate(food)
 
 
 @router.post("/", response_model=FoodRead, status_code=201)
-def add_food(food: FoodCreate, db: Session = Depends(get_db)) -> FoodRead:
+def add_food(
+    food: FoodCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> FoodRead:
     """Create a new food."""
+    _validate_food_ingredients(db, food.ingredients, current_user)
     # Normalize unit_id values: map the synthetic 0 placeholder to a real DB unit id
     normalized_ingredients = []
     unit_cache: Dict[int, Optional[int]] = {}
@@ -159,41 +228,33 @@ def add_food(food: FoodCreate, db: Session = Depends(get_db)) -> FoodRead:
     food_obj = Food.from_create(
         FoodCreate(name=food.name, ingredients=normalized_ingredients, tags=food.tags)
     )
+    food_obj.user_id = current_user.id
     if food.tags:
         food_obj.tags = [db.get(PossibleFoodTag, t.id) for t in food.tags if t.id]
     db.add(food_obj)
     db.commit()
 
-    statement = (
-        select(Food)
-        .options(
-            selectinload(Food.ingredients)
-            .selectinload(FoodIngredient.ingredient)
-            .selectinload(Ingredient.nutrition),
-            selectinload(Food.ingredients)
-            .selectinload(FoodIngredient.ingredient)
-            .selectinload(Ingredient.units),
-            selectinload(Food.ingredients).selectinload(FoodIngredient.unit),
-            selectinload(Food.tags),
-        )
-        .where(Food.id == food_obj.id)
-    )
+    statement = select(Food).options(*FOOD_LOAD_OPTIONS).where(Food.id == food_obj.id)
     food_obj = db.exec(statement).one()
     return FoodRead.model_validate(food_obj)
 
 
 @router.put("/{food_id}", response_model=FoodRead)
 def update_food(
-    food_id: int, food_data: FoodUpdate, db: Session = Depends(get_db)
+    food_id: int,
+    food_data: FoodUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> FoodRead:
     """Update an existing food."""
-    food = db.get(Food, food_id)
+    food = _get_owned_food(db, food_id, current_user)
     if not food:
         raise HTTPException(status_code=404, detail="Food not found")
+    _validate_food_ingredients(db, food_data.ingredients, current_user)
 
     food.name = food_data.name
-    db.exec(delete(FoodIngredient).where(FoodIngredient.food_id == food_id))
-    food.ingredients = []
+    food.ingredients.clear()
+    db.flush()
     unit_cache: Dict[int, Optional[int]] = {}
     for fi_data in food_data.ingredients:
         fi_payload = fi_data.model_dump()
@@ -218,28 +279,19 @@ def update_food(
     db.add(food)
     db.commit()
 
-    statement = (
-        select(Food)
-        .options(
-            selectinload(Food.ingredients)
-            .selectinload(FoodIngredient.ingredient)
-            .selectinload(Ingredient.nutrition),
-            selectinload(Food.ingredients)
-            .selectinload(FoodIngredient.ingredient)
-            .selectinload(Ingredient.units),
-            selectinload(Food.ingredients).selectinload(FoodIngredient.unit),
-            selectinload(Food.tags),
-        )
-        .where(Food.id == food.id)
-    )
+    statement = select(Food).options(*FOOD_LOAD_OPTIONS).where(Food.id == food.id)
     food = db.exec(statement).one()
     return FoodRead.model_validate(food)
 
 
 @router.delete("/{food_id}")
-def delete_food(food_id: int, db: Session = Depends(get_db)) -> dict:
+def delete_food(
+    food_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
     """Delete a food."""
-    food = db.get(Food, food_id)
+    food = _get_owned_food(db, food_id, current_user)
     if not food:
         raise HTTPException(status_code=404, detail="Food not found")
     db.delete(food)

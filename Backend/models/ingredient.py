@@ -1,7 +1,7 @@
 from typing import List, Optional, TYPE_CHECKING
 
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import Column, String
+from sqlalchemy import Column, ForeignKey, String, UniqueConstraint
 
 from .ingredient_unit import IngredientUnit
 from .ingredient_source import IngredientSource
@@ -19,9 +19,21 @@ class Ingredient(SQLModel, table=True):
     """Core ingredient information."""
 
     __tablename__ = "ingredients"
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_ingredients_user_id_name"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(sa_column=Column(String(100), unique=True, nullable=False))
+    user_id: Optional[str] = Field(
+        default=None,
+        sa_column=Column(
+            String(36),
+            ForeignKey("users.id", ondelete="CASCADE"),
+            nullable=True,
+            index=True,
+        ),
+    )
+    name: str = Field(sa_column=Column(String(100), nullable=False))
     nutrition: Optional[Nutrition] = Relationship(
         back_populates="ingredient",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},

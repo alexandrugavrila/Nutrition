@@ -25,6 +25,7 @@ from Backend.models import (
     UserRead,
 )
 from Backend.settings import settings
+from Backend.services.onboarding import seed_user_starter_data
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -170,6 +171,9 @@ def create_user(
     )
     db.add(user)
     try:
+        db.flush()
+        if not user.is_admin:
+            seed_user_starter_data(db, user)
         db.commit()
     except IntegrityError as exc:
         db.rollback()

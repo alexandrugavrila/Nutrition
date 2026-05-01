@@ -111,8 +111,6 @@ const planItemKey = (item: PlanItem, index: number): string => {
   return `ingredient:${index}:${String(item.ingredientId ?? "")}`;
 };
 
-const DEFAULT_COOKING_USER_ID = "demo-user";
-
 const foodIngredientKey = (
   planIndex: number,
   ingredientId: unknown,
@@ -942,7 +940,6 @@ function Cooking() {
 
         const payload: StoredFoodCreate = {
           label: food.name ?? null,
-          user_id: DEFAULT_COOKING_USER_ID,
           food_id: numericFoodId,
           ingredient_id: null,
           prepared_portions: actualPortions,
@@ -1038,7 +1035,6 @@ function Cooking() {
 
         const payload: StoredFoodCreate = {
           label,
-          user_id: DEFAULT_COOKING_USER_ID,
           food_id: null,
           ingredient_id: numericIngredientId,
           prepared_portions: normalizedPortions,

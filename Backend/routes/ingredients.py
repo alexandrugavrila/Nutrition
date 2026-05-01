@@ -1,11 +1,13 @@
 from typing import List, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from ..db import get_db
+from ..auth.dependencies import get_current_user
 from ..models import (
     Ingredient,
     IngredientShoppingUnit,
@@ -13,6 +15,7 @@ from ..models import (
     IngredientSource,
     Nutrition,
     PossibleIngredientTag,
+    User,
 )
 from ..models.schemas import (
     IngredientCreate,
@@ -87,6 +90,34 @@ def _find_source_mapping(
         IngredientSource.source_id == source_id,
     )
     return db.exec(statement).one_or_none()
+
+
+def _visible_ingredient_clause(current_user: User):
+    return or_(Ingredient.user_id.is_(None), Ingredient.user_id == current_user.id)
+
+
+def _load_visible_ingredient(
+    db: Session, ingredient_id: int, current_user: User
+) -> Optional[Ingredient]:
+    statement = (
+        select(Ingredient)
+        .options(*INGREDIENT_LOAD_OPTIONS)
+        .where(Ingredient.id == ingredient_id)
+        .where(_visible_ingredient_clause(current_user))
+    )
+    return db.exec(statement).one_or_none()
+
+
+def _ensure_can_modify_ingredient(ingredient: Ingredient, current_user: User) -> None:
+    if ingredient.user_id is None:
+        if current_user.is_admin:
+            return
+        raise HTTPException(
+            status_code=403,
+            detail="Global sourced ingredients can only be changed by an admin or catalog sync.",
+        )
+    if ingredient.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Ingredient not found")
 
 
 def ingredient_to_read(ingredient: Ingredient) -> IngredientRead:
@@ -257,9 +288,16 @@ def apply_shopping_unit_selection(
 
 
 @router.get("/", response_model=List[IngredientRead])
-def get_all_ingredients(db: Session = Depends(get_db)) -> List[IngredientRead]:
+def get_all_ingredients(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> List[IngredientRead]:
     """Return all ingredients."""
-    statement = select(Ingredient).options(*INGREDIENT_LOAD_OPTIONS)
+    statement = (
+        select(Ingredient)
+        .options(*INGREDIENT_LOAD_OPTIONS)
+        .where(_visible_ingredient_clause(current_user))
+    )
     ingredients = db.exec(statement).all()
     return [ingredient_to_read(ing) for ing in ingredients]
 
@@ -293,12 +331,13 @@ def add_possible_tag(tag: TagCreate, db: Session = Depends(get_db)) -> PossibleI
 
 
 @router.get("/{ingredient_id}", response_model=IngredientRead)
-def get_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> IngredientRead:
+def get_ingredient(
+    ingredient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> IngredientRead:
     """Retrieve a single ingredient by ID."""
-    statement = select(Ingredient).options(*INGREDIENT_LOAD_OPTIONS).where(
-        Ingredient.id == ingredient_id
-    )
-    ingredient = db.exec(statement).one_or_none()
+    ingredient = _load_visible_ingredient(db, ingredient_id, current_user)
     if not ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
     return ingredient_to_read(ingredient)
@@ -306,7 +345,9 @@ def get_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> Ingredi
 
 @router.post("/", response_model=IngredientRead, status_code=201)
 def add_ingredient(
-    ingredient: IngredientCreate, db: Session = Depends(get_db)
+    ingredient: IngredientCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> IngredientRead:
     """Create a new ingredient."""
     source, source_id = _normalize_source_fields(
@@ -325,6 +366,7 @@ def add_ingredient(
                 return ingredient_to_read(existing)
 
     ingredient_obj = Ingredient.from_create(ingredient)
+    ingredient_obj.user_id = None if source and source_id else current_user.id
     # Force inclusion of base unit 'g' with grams == 1
     ensure_g_unit_present(ingredient_obj)
     if ingredient.tags:
@@ -352,8 +394,11 @@ def add_ingredient(
             select(Ingredient)
             .options(*INGREDIENT_LOAD_OPTIONS)
             .where(Ingredient.name == ingredient_obj.name)
+            .where(Ingredient.user_id == ingredient_obj.user_id)
         )
-        existing = db.exec(statement).one()
+        existing = db.exec(statement).one_or_none()
+        if existing is None:
+            raise HTTPException(status_code=400, detail="Unable to create ingredient.")
         if source and source_id:
             existing_source = _find_source_mapping(db, source, source_id)
             if existing_source and existing_source.ingredient_id != existing.id:
@@ -387,6 +432,7 @@ def update_ingredient(
     ingredient_id: int,
     ingredient_data: IngredientUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> IngredientRead:
     """Update an existing ingredient.
 
@@ -396,12 +442,10 @@ def update_ingredient(
     the payload are left unchanged.
     """
     # Load ingredient with related collections for safe updates
-    statement = select(Ingredient).options(*INGREDIENT_LOAD_OPTIONS).where(
-        Ingredient.id == ingredient_id
-    )
-    ingredient = db.exec(statement).one_or_none()
+    ingredient = _load_visible_ingredient(db, ingredient_id, current_user)
     if not ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
+    _ensure_can_modify_ingredient(ingredient, current_user)
 
     payload_fields = ingredient_data.model_dump(exclude_unset=True)
 
@@ -419,6 +463,11 @@ def update_ingredient(
         desired_source, desired_source_id = _normalize_source_fields(
             desired_source, desired_source_id
         )
+        if ingredient.user_id is not None and desired_source and desired_source_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Private ingredients cannot be linked to sourced catalog records.",
+            )
         if desired_source and desired_source_id:
             conflict = _find_source_mapping(db, desired_source, desired_source_id)
             if conflict and conflict.ingredient_id != ingredient.id:
@@ -519,11 +568,16 @@ def update_ingredient(
 
 
 @router.delete("/{ingredient_id}")
-def delete_ingredient(ingredient_id: int, db: Session = Depends(get_db)) -> dict:
+def delete_ingredient(
+    ingredient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
     """Delete an ingredient."""
-    ingredient = db.get(Ingredient, ingredient_id)
+    ingredient = _load_visible_ingredient(db, ingredient_id, current_user)
     if not ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
+    _ensure_can_modify_ingredient(ingredient, current_user)
     db.delete(ingredient)
     db.commit()
     return {"message": "Ingredient deleted successfully"}

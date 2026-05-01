@@ -86,8 +86,8 @@ def test_list_stored_food_filters(client: TestClient, engine) -> None:
     response = client.get("/api/stored_food/", params={"user_id": "user-2", "only_available": True})
     assert response.status_code == 200
     entries = response.json()
-    assert len(entries) == 1
-    assert entries[0]["id"] == first["id"]
+    assert len(entries) == 2
+    assert {entry["id"] for entry in entries} == {first["id"], third_response.json()["id"]}
 
     response = client.get(
         "/api/stored_food/",
@@ -95,7 +95,7 @@ def test_list_stored_food_filters(client: TestClient, engine) -> None:
     )
     assert response.status_code == 200
     ids = {entry["id"] for entry in response.json()}
-    assert ids == {first["id"]}
+    assert ids == {first["id"], third_response.json()["id"]}
 
 
 def test_consume_stored_food(client: TestClient, engine) -> None:
@@ -312,7 +312,7 @@ def test_delete_stored_food_entry(client: TestClient, engine) -> None:
         remaining = session.exec(
             select(StoredFood).where(StoredFood.user_id == "other-user")
         ).all()
-        assert len(remaining) == 1
+        assert remaining == []
 
 
 def test_delete_stored_food_preserves_daily_logs(client: TestClient, engine) -> None:
@@ -451,7 +451,7 @@ def test_clear_stored_food(client: TestClient, engine) -> None:
         others = session.exec(
             select(StoredFood).where(StoredFood.user_id == "other-user")
         ).all()
-        assert len(others) == 1
+        assert others == []
 
 
 def test_clear_stored_food_preserves_daily_logs(client: TestClient, engine) -> None:

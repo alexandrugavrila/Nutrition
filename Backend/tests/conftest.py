@@ -11,8 +11,10 @@ from sqlmodel import Session, SQLModel, create_engine
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from Backend import models  # noqa: F401  ensure models imported for metadata
+from Backend.auth.passwords import hash_password
 from Backend.backend import app
 from Backend.db import get_db
+from Backend.models import User
 
 # Ensure tests load python_multipart instead of the deprecated multipart alias.
 sys.modules["multipart"] = python_multipart
@@ -47,3 +49,34 @@ def client_fixture(engine) -> Iterator[TestClient]:
     with TestClient(app) as client:
         yield client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def authenticate_non_auth_route_tests(request, client: TestClient, engine) -> Iterator[None]:
+    """Authenticate legacy route tests while leaving auth tests to exercise cookies."""
+
+    if request.path.name == "test_auth.py":
+        yield
+        return
+
+    with Session(engine) as session:
+        existing = session.get(User, "test-user")
+        if existing is None:
+            session.add(
+                User(
+                    id="test-user",
+                    email="test-user@example.com",
+                    password_hash=hash_password("Password123!"),
+                    display_name="Test User",
+                    is_admin=True,
+                )
+            )
+            session.commit()
+
+    response = client.post(
+        "/api/auth/login",
+        json={"email": "test-user@example.com", "password": "Password123!"},
+    )
+    assert response.status_code == 200
+    yield
+    client.cookies.clear()

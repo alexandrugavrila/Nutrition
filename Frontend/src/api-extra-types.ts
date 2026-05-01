@@ -6,7 +6,6 @@
 
 export interface StoredFoodBase {
   label?: string | null;
-  user_id: string;
   food_id?: number | null;
   ingredient_id?: number | null;
   prepared_portions: number;
@@ -24,6 +23,7 @@ export interface StoredFoodCreate extends StoredFoodBase {
 
 export interface StoredFoodRead extends StoredFoodBase {
   id: number;
+  user_id: string;
   remaining_portions: number;
   is_finished: boolean;
   prepared_at: string;

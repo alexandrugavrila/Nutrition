@@ -175,6 +175,7 @@ Required `.env.production` values (defaults shown where applicable):
 | `POSTGRES_DB` | Yes | — | Database name for Postgres container init. |
 | `DATABASE_URL` | Yes | — | Backend SQLAlchemy connection string. |
 | `USDA_API_KEY` | Yes | — | Required for USDA endpoints. |
+| `USDA_FOUNDATION_FOODS_JSON` | Maintenance only | — | File path or URL consumed by the `usda-sync` Compose profile. |
 | `CORS_ALLOW_ORIGINS` | Yes | — | Comma-separated origins (`https://app.example.com`). Keep this tight in production. |
 | `DB_AUTO_CREATE` | No | `false` | Leave false when running migrations separately. |
 | `EDGE_IMAGE` | No | `nginx:1.27-alpine` | Edge proxy image override. |
@@ -195,6 +196,10 @@ Runtime controls in production compose:
   - Edge: `GET /healthz` over HTTPS, proxied to backend readiness.
 - Resource guardrails are enabled with CPU/memory limits + reservations and conservative `ulimit` defaults (`nofile`, `nproc`) for each service.
 - All services emit logs to stdout/stderr and Compose applies `json-file` log rotation (`max-size`, `max-file`, non-blocking mode).
+- `usda-sync` is a maintenance profile one-shot for USDA Foundation Foods ingestion:
+  ```bash
+  docker compose --env-file .env.production -f docker-compose.prod.yml --profile maintenance run --rm usda-sync
+  ```
 
 Deployment secret checklist:
 
@@ -308,6 +313,17 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
   - Flags: accepts additional pytest arguments (pass-through). Both variants honour `-h|--help`.
   - Call graph: loads helpers from `scripts/lib/venv.*`, `scripts/lib/branch-env.*`, and `scripts/lib/compose-utils.*`; always shells into `scripts/docker/compose.ps1|.sh` (`up ...` to start, `down ...` to tear down), then runs `npm --prefix Frontend run e2e:install` followed by `npm --prefix Frontend run e2e`.
 
+### Authentication and starter data
+
+- `scripts/auth/create-admin.ps1` / `scripts/auth/create-admin.sh`
+  - Purpose: create or update an admin account from the command line.
+  - Flags: see `-h|--help`; both variants wrap `scripts/auth/create-admin.py`.
+
+- `scripts/auth/seed-starter-data.ps1` / `scripts/auth/seed-starter-data.sh`
+  - Purpose: backfill the versioned onboarding starter manifest for an existing non-admin user.
+  - Flags: `--user-id <id>` or `--email <email>`; both variants wrap `scripts/auth/seed-starter-data.py`.
+  - Behavior: seeds private starter ingredients, foods, and plans idempotently. Sourced manifest ingredients point at global catalog rows by source/source id instead of creating per-user copies.
+
 ### Docker stack management
 
 - `scripts/docker/compose.ps1` / `scripts/docker/compose.sh`
@@ -327,7 +343,8 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
 - `docker-compose.prod.yml`
   - Purpose: production runtime stack using prebuilt immutable images only (no host bind mounts), with an edge TLS proxy, runtime health probes, resource guardrails, and bounded log rotation.
   - Entry point: `docker compose --env-file .env.production -f docker-compose.prod.yml up -d`.
-  - Requirements: `.env.production` must define critical runtime variables (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, database credentials, `DATABASE_URL`, `USDA_API_KEY`, `CORS_ALLOW_ORIGINS`), plus edge TLS certificate mount inputs (`EDGE_TLS_CERTS_DIR`) or Compose exits immediately via `${VAR:?error}` guards where configured.
+  - Maintenance entry point: `docker compose --env-file .env.production -f docker-compose.prod.yml --profile maintenance run --rm usda-sync`.
+  - Requirements: `.env.production` must define critical runtime variables (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, database credentials, `DATABASE_URL`, `USDA_API_KEY`, `CORS_ALLOW_ORIGINS`), plus edge TLS certificate mount inputs (`EDGE_TLS_CERTS_DIR`) or Compose exits immediately via `${VAR:?error}` guards where configured. The `usda-sync` profile additionally requires `USDA_FOUNDATION_FOODS_JSON`.
 
 ### Environment and worktree helpers
 

@@ -106,8 +106,6 @@ const computePortionMacros = (item: CookedBatch, portions: number): MacroTotals 
   fiber: item.per_portion_fiber * portions,
 });
 
-const DEFAULT_LOGGING_USER_ID = "demo-user";
-
 type IngredientLogFormState = {
   ingredientId: string;
   unitId: string;
@@ -229,11 +227,6 @@ function Logging() {
     });
     return map;
   }, [foods]);
-
-  const defaultUserId = useMemo(() => {
-    const candidate = fridgeInventory.find((item) => item.user_id)?.user_id;
-    return candidate ?? DEFAULT_LOGGING_USER_ID;
-  }, [fridgeInventory]);
 
   const selectedIngredient = useMemo(() => {
     if (!ingredientLog.ingredientId) {
@@ -522,7 +515,6 @@ function Logging() {
         const logRequest = apiClient.path("/api/logs/").method("post").create();
         const { data: rawLog } = (await logRequest({
           body: {
-            user_id: item.user_id,
             log_date: selectedDate,
             stored_food_id: item.id,
             portions_consumed: portions,
@@ -614,7 +606,6 @@ function Logging() {
       const request = apiClient.path("/api/logs/").method("post").create();
       const { data: rawLog } = (await request({
         body: {
-          user_id: defaultUserId,
           log_date: selectedDate,
           ingredient_id: selectedIngredient.id,
           stored_food_id: null,
@@ -654,7 +645,6 @@ function Logging() {
   }, [
     selectedIngredient,
     canSubmitIngredientLog,
-    defaultUserId,
     selectedDate,
     ingredientGrams,
     ingredientMacros,
@@ -691,7 +681,6 @@ function Logging() {
       const request = apiClient.path("/api/logs/").method("post").create();
       const { data: rawLog } = (await request({
         body: {
-          user_id: defaultUserId,
           log_date: selectedDate,
           food_id: selectedFood.id,
           stored_food_id: null,
@@ -729,7 +718,6 @@ function Logging() {
   }, [
     selectedFood,
     canSubmitFoodLog,
-    defaultUserId,
     selectedDate,
     foodPortionValue,
     foodLogMacros,

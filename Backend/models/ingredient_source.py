@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
-from sqlalchemy import Column, String, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, String, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:  # pragma: no cover - only for type checking
@@ -26,5 +27,14 @@ class IngredientSource(SQLModel, table=True):
     )
     source: str = Field(sa_column=Column(String(50), nullable=False))
     source_id: str = Field(sa_column=Column(String(100), nullable=False))
+    payload_hash: Optional[str] = Field(
+        default=None, sa_column=Column(String(64), nullable=True)
+    )
+    last_synced_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    is_stale: bool = Field(
+        default=False, sa_column=Column(Boolean, nullable=False, server_default="false")
+    )
 
     ingredient: Optional["Ingredient"] = Relationship(back_populates="sources")

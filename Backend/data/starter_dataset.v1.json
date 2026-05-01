@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "ingredients": [
+    {
+      "slug": "starter-oats",
+      "name": "Starter Oats",
+      "nutrition": {
+        "calories": 3.89,
+        "fat": 0.069,
+        "carbohydrates": 0.663,
+        "protein": 0.169,
+        "fiber": 0.106
+      },
+      "units": [
+        { "name": "g", "grams": 1 },
+        { "name": "cup", "grams": 80 }
+      ]
+    }
+  ],
+  "foods": [
+    {
+      "slug": "starter-oats-bowl",
+      "name": "Starter Oats Bowl",
+      "ingredients": [
+        {
+          "ingredient_slug": "starter-oats",
+          "unit_name": "g",
+          "unit_quantity": 80
+        }
+      ]
+    }
+  ],
+  "plans": [
+    {
+      "label": "Starter Day",
+      "days": 1,
+      "targetMacros": {
+        "calories": 2000,
+        "protein": 150,
+        "carbs": 250,
+        "fat": 70,
+        "fiber": 30
+      },
+      "items": [
+        {
+          "type": "food",
+          "food_slug": "starter-oats-bowl",
+          "portions": 1,
+          "overrides": {}
+        }
+      ]
+    }
+  ]
+}

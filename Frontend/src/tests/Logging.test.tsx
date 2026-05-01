@@ -178,7 +178,6 @@ describe("Logging component", () => {
 
     logHandler = vi.fn(async (options = {}) => {
       expect(options?.body).toMatchObject({
-        user_id: fridgeItem.user_id,
         log_date: today,
         stored_food_id: fridgeItem.id,
         portions_consumed: 1.5,
@@ -272,7 +271,6 @@ describe("Logging component", () => {
 
     logHandler = vi.fn(async (options = {}) => {
       expect(options?.body).toMatchObject({
-        user_id: "demo-user",
         log_date: today,
         ingredient_id: standaloneIngredient.id,
         stored_food_id: null,
@@ -384,7 +382,6 @@ describe("Logging component", () => {
     logHandler = vi.fn(async (options = {}) => {
       const payload = options?.body as Record<string, unknown>;
       expect(payload).toMatchObject({
-        user_id: "demo-user",
         log_date: today,
         food_id: standaloneFood.id,
         stored_food_id: null,

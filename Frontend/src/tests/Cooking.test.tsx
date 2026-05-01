@@ -154,7 +154,6 @@ describe("Cooking component", () => {
     const parsedBody = JSON.parse((requestInit as RequestInit).body as string);
     expect(parsedBody).toEqual({
       label: "Veggie Chili",
-      user_id: "demo-user",
       food_id: 1,
       ingredient_id: null,
       prepared_portions: 2,
@@ -244,7 +243,6 @@ describe("Cooking component", () => {
     const parsedBody = JSON.parse((requestInit as RequestInit).body as string);
     expect(parsedBody).toEqual({
       label: "Protein Shake (5 bottle)",
-      user_id: "demo-user",
       food_id: null,
       ingredient_id: 201,
       prepared_portions: 5,

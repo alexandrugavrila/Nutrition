@@ -91,6 +91,7 @@ class IngredientRead(SQLModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    user_id: Optional[str] = None
     name: str
     source: Optional[str] = None
     source_id: Optional[str] = None
@@ -121,6 +122,7 @@ class FoodRead(SQLModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    user_id: Optional[str] = None
     name: str
     ingredients: List[FoodIngredient] = Field(default_factory=list)
     tags: List[PossibleFoodTag] = Field(default_factory=list)
@@ -146,6 +148,7 @@ class PlanRead(SQLModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    user_id: Optional[str] = None
     label: str
     payload: Dict[str, Any]
     created_at: datetime
@@ -201,7 +204,6 @@ class StoredFoodBase(SQLModel):
     """Common fields shared by stored food payloads."""
 
     label: Optional[str] = None
-    user_id: str
     food_id: Optional[int] = None
     ingredient_id: Optional[int] = None
     prepared_portions: float
@@ -245,6 +247,7 @@ class StoredFoodRead(StoredFoodBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    user_id: str
     remaining_portions: float
     is_finished: bool
     prepared_at: datetime
@@ -261,7 +264,6 @@ class StoredFoodConsume(SQLModel):
 class DailyLogEntryBase(SQLModel):
     """Shared fields for daily log entry payloads."""
 
-    user_id: str
     log_date: date
     stored_food_id: Optional[int] = None
     ingredient_id: Optional[int] = None
@@ -314,6 +316,7 @@ class DailyLogEntryRead(DailyLogEntryBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    user_id: str
     created_at: datetime
 
 
