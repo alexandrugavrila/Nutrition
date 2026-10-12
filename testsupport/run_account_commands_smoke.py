@@ -1,0 +1,51 @@
+"""Build and validate packaged account commands using an isolated, disposable DB."""
+from pathlib import Path
+import subprocess
+from uuid import uuid4
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def main():
+    project = "nutrition-accounts-" + uuid4().hex[:12]
+    image = project + ":phase3"
+    compose = ["docker", "compose", "-p", project, "-f", str(ROOT / "testsupport/docker-compose.e2e.yml")]
+    def run(args, **kwargs):
+        return subprocess.run(args, cwd=ROOT, check=True, text=True, **kwargs)
+    started = False
+    try:
+        run(["docker", "build", "-f", "Backend/Dockerfile", "--target", "prod", "-t", image, "."])
+        started = True
+        run(compose + ["up", "-d", "--wait"])
+        base = ["docker", "run", "--rm", "-i", "--network", project + "_default",
+                "-e", "DATABASE_URL=postgresql://nutrition_test:disposable-test-only@db:5432/nutrition_test",
+                "-e", "ENVIRONMENT=production", "-e", "DB_AUTO_CREATE=false", image, "python"]
+        run(base + ["-m", "alembic", "-c", "Backend/alembic.ini", "upgrade", "head"])
+        run(base + ["-m", "alembic", "-c", "Backend/alembic.ini", "check"])
+        admin = ["-m", "Backend.commands.create_admin", "--email", "admin@example.com", "--display-name", "Admin", "--password-stdin"]
+        run(base + admin, input="initial-password\n")
+        run(base + admin, input="")  # no password or mutation on repeat
+        run(base + ["-c", "from Backend.db import engine; from Backend.models import *; from sqlmodel import Session,select; s=Session(engine); assert len(s.exec(select(User)).all())==1; assert not s.exec(select(Ingredient)).all(); assert not s.exec(select(Food)).all(); assert not s.exec(select(Plan)).all()"])
+        seed = ["-m", "Backend.commands.seed_starter_data", "--email", "admin@example.com"]
+        run(base + seed)
+        run(base + seed)
+        for action in ("deactivate", "activate", "reset-password"):
+            run(base + ["-c", "from Backend.db import engine; from Backend.models import User; from Backend.auth.sessions import create_auth_session; from sqlmodel import Session,select; s=Session(engine); create_auth_session(s,s.exec(select(User)).one(),ttl_days=1); s.commit()"])
+            command = ["-m", "Backend.commands.manage_account", action, "--email", "admin@example.com"]
+            if action == "reset-password":
+                command += ["--password-stdin"]
+            run(base + command, input="replacement-password\n")
+            run(base + ["-c", "from Backend.db import engine; from Backend.models import AuthSession; from sqlmodel import Session,select; s=Session(engine); assert not s.exec(select(AuthSession)).all()"])
+        run(base + ["-c", "from Backend.db import engine; from Backend.models import User; from Backend.auth.passwords import verify_password; from sqlmodel import Session,select; s=Session(engine); u=s.exec(select(User)).one(); assert u.is_active and verify_password('replacement-password',u.password_hash); u.is_admin=False; s.add(u); s.commit()"])
+        result = subprocess.run(base + admin, cwd=ROOT, input="", text=True, capture_output=True)
+        assert result.returncode == 1 and "non-admin" in result.stderr
+        run(["docker", "image", "inspect", "--format", "{{.Id}}", image])
+        print("Production account command smoke passed (no mounts, no USDA key).")
+    finally:
+        if started:
+            run(compose + ["down", "--volumes", "--remove-orphans"])
+        subprocess.run(["docker", "image", "rm", image], cwd=ROOT, check=False)
+
+
+if __name__ == "__main__":
+    main()

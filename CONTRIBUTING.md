@@ -225,7 +225,7 @@ Required `.env.production` values (defaults shown where applicable):
 | `POSTGRES_PASSWORD` | Yes | — | DB password for Postgres container init. |
 | `POSTGRES_DB` | Yes | — | Database name for Postgres container init. |
 | `DATABASE_URL` | Yes | — | Backend SQLAlchemy connection string. |
-| `USDA_API_KEY` | Yes | — | Required for USDA endpoints. |
+| `USDA_API_KEY` | No | — | Required for USDA endpoints. |
 | `USDA_FOUNDATION_FOODS_JSON` | Maintenance only | — | File path or URL consumed by the `usda-sync` Compose profile. |
 | `CORS_ALLOW_ORIGINS` | Yes | — | Comma-separated origins (`https://app.example.com`). Keep this tight in production. |
 | `DB_AUTO_CREATE` | No | `false` | Leave false when running migrations separately. |
@@ -381,14 +381,46 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
 
 ### Authentication and starter data
 
-- `scripts/auth/create-admin.ps1` / `scripts/auth/create-admin.sh`
-  - Purpose: create or update an admin account from the command line.
-  - Flags: see `-h|--help`; both variants wrap `scripts/auth/create-admin.py`.
+Account creation and bootstrap create empty accounts, without starter data or a USDA key.
+Apply migrations before using the commands. Set `DATABASE_URL` explicitly; these commands
+never start containers, restore data, create tables, or select a branch database for you.
+Activate the intended Python environment before using the script wrappers.
 
-- `scripts/auth/seed-starter-data.ps1` / `scripts/auth/seed-starter-data.sh`
-  - Purpose: backfill the versioned onboarding starter manifest for an existing non-admin user.
-  - Flags: `--user-id <id>` or `--email <email>`; both variants wrap `scripts/auth/seed-starter-data.py`.
-  - Behavior: seeds private starter ingredients, foods, and plans idempotently. Sourced manifest ingredients point at global catalog rows by source/source id instead of creating per-user copies.
+- `scripts/auth/create-admin.ps1` / `.sh` wrap `Backend.commands.create_admin`.
+  Flags: `--email <email> --display-name <name> [--password-stdin]`.
+  Hidden password entry with confirmation is the default. Plaintext `--password` is no longer supported.
+  An existing administrator is unchanged (including disabled status); a non-admin email fails.
+- `scripts/auth/manage-account.ps1` / `.sh` wrap `Backend.commands.manage_account`.
+  Subcommands: `reset-password`, `activate`, `deactivate`. Select exactly one of
+  `--email <email>` or `--user-id <id>`. Password reset accepts `--password-stdin`.
+  Every operation revokes all sessions in the same transaction as the account change.
+- `scripts/auth/seed-starter-data.ps1` / `.sh` wrap `Backend.commands.seed_starter_data`.
+  Select exactly one of `--email <email>` or `--user-id <id>`; optional `--manifest <path>`.
+  Seeding is explicit and transactional. Missing referenced catalog data rolls back the
+  entire seed. A durable per-user version marker prevents repeat seeding after edits or
+  deletions. Changing a completed manifest requires a new version. Existing matching names
+  are reused without overwriting them. Old installations are not marked seeded automatically.
+
+Both shell variants accept the Python CLI flags above verbatim. The legacy `.py` paths
+also delegate to these packaged modules. Production needs no source bind mount:
+
+```sh
+docker compose --env-file .env.production -f docker-compose.prod.yml run --rm backend python -m Backend.commands.create_admin --email admin@example.com --display-name Administrator
+docker compose --env-file .env.production -f docker-compose.prod.yml run --rm backend python -m Backend.commands.manage_account deactivate --email user@example.com
+docker compose --env-file .env.production -f docker-compose.prod.yml run --rm backend python -m Backend.commands.seed_starter_data --email user@example.com
+```
+
+For automation, deliver one password line from a secret manager over stdin and use
+`run --rm -T ... --password-stdin`. Never put passwords in command arguments or shell history.
+The `--manifest` path, if used in Docker, must be container-visible; mount custom manifests read-only.
+USDA endpoints remain unavailable without `USDA_API_KEY`; accounts and local starter data work.
+
+Run `python -m testsupport.run_account_commands_smoke` for production-image bootstrap,
+repeat/collision checks, explicit seeding, and account/session maintenance against a unique
+tmpfs PostgreSQL database. It builds the production target, uses no source mounts, runs
+migrations and a drift check, and removes its containers and test image. The production-smoke
+CI job runs this check too.
+
 
 ### Docker stack management
 
@@ -410,7 +442,7 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
   - Purpose: production runtime stack using prebuilt immutable images only (no host bind mounts), with an edge TLS proxy, runtime health probes, resource guardrails, and bounded log rotation.
   - Entry point: `docker compose --env-file .env.production -f docker-compose.prod.yml up -d`.
   - Maintenance entry point: `docker compose --env-file .env.production -f docker-compose.prod.yml --profile maintenance run --rm usda-sync`.
-  - Requirements: `.env.production` must define critical runtime variables (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, database credentials, `DATABASE_URL`, `USDA_API_KEY`, `CORS_ALLOW_ORIGINS`), plus edge TLS certificate mount inputs (`EDGE_TLS_CERTS_DIR`) or Compose exits immediately via `${VAR:?error}` guards where configured. Foundation input is validated by the `usda-sync` command when invoked, not during Compose interpolation.
+  - Requirements: `.env.production` must define critical runtime variables (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, database credentials, `DATABASE_URL`, `CORS_ALLOW_ORIGINS`), plus edge TLS certificate mount inputs (`EDGE_TLS_CERTS_DIR`) or Compose exits immediately via `${VAR:?error}` guards where configured. Foundation input is validated by the `usda-sync` command when invoked, not during Compose interpolation.
 
 ### Environment and worktree helpers
 

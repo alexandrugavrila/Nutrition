@@ -110,10 +110,6 @@ class Settings:
                 "SQLite is not supported when ENVIRONMENT is production. Use a managed PostgreSQL DATABASE_URL."
             )
 
-        if not usda_api_key:
-            raise RuntimeError(
-                "USDA_API_KEY is required when ENVIRONMENT is production."
-            )
 
     @staticmethod
     def load() -> "Settings":

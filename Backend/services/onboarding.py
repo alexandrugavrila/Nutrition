@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,7 @@ from Backend.models import (
     Nutrition,
     Plan,
     User,
+    UserStarterSeed,
 )
 
 
@@ -65,6 +67,8 @@ def _resolve_sourced_ingredient(
             status_code=500,
             detail=f"Starter dataset references missing source {source}:{source_id}.",
         )
+    if source_row.ingredient.user_id is not None:
+        raise ValueError("Starter source must reference a shared catalog ingredient.")
     return source_row.ingredient
 
 
@@ -97,13 +101,15 @@ def _unit_id_for_ingredient(ingredient: Ingredient, unit_name: str | None) -> in
         for unit in units:
             if (unit.name or "").strip().lower() == normalized:
                 return unit.id
+    if unit_name:
+        raise ValueError(f"Starter ingredient is missing requested unit {unit_name}.")
     for unit in units:
         if unit.name == "g":
             return unit.id
     return units[0].id if units else None
 
 
-def seed_user_starter_data(
+def _seed_user_starter_data(
     session: Session,
     user: User,
     *,
@@ -211,4 +217,28 @@ def seed_user_starter_data(
         )
         summary["plans"] += 1
 
+    return summary
+
+
+def seed_user_starter_data(session: Session, user: User, *, manifest=None) -> dict[str, int]:
+    """Seed atomically, without committing the caller's transaction.
+
+    Serialize by account on PostgreSQL. A completed version is immutable, even
+    if its generated content has since been renamed or deleted.
+    """
+    manifest = load_starter_manifest() if manifest is None else manifest
+    version = manifest.get("version")
+    if type(version) is not int or version < 1:
+        raise ValueError("Starter manifest requires a positive integer version.")
+    digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    with session.begin_nested():
+        session.exec(select(User).where(User.id == user.id).with_for_update()).one()
+        marker = session.get(UserStarterSeed, (user.id, version))
+        if marker:
+            if marker.manifest_hash != digest:
+                raise ValueError("Starter manifest changed without a new version.")
+            return {"ingredients": 0, "foods": 0, "plans": 0}
+        summary = _seed_user_starter_data(session, user, manifest=manifest)
+        session.add(UserStarterSeed(user_id=user.id, manifest_version=version, manifest_hash=digest))
+        session.flush()
     return summary

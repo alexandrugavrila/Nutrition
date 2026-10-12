@@ -197,6 +197,8 @@ jobs:
           cat /tmp/backend-ready.json
           grep -q '"status":"ready"' /tmp/backend-ready.json
           grep -q '"dependencies":"database"' /tmp/backend-ready.json
+      - name: Verify packaged account operations on a disposable database
+        run: python3 -m testsupport.run_account_commands_smoke
       - name: Show production compose status
         if: always()
         run: |

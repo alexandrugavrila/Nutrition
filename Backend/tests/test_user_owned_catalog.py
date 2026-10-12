@@ -126,7 +126,7 @@ def test_foods_can_reference_global_and_owner_private_ingredients(
     assert forbidden.status_code == 400
 
 
-def test_admin_created_user_receives_starter_dataset(admin_client: TestClient, engine) -> None:
+def test_admin_created_user_starts_empty(admin_client: TestClient, engine) -> None:
     response = admin_client.post(
         "/api/auth/users",
         json={
@@ -143,12 +143,12 @@ def test_admin_created_user_receives_starter_dataset(admin_client: TestClient, e
         ingredients = session.exec(select(Ingredient).where(Ingredient.user_id == user_id)).all()
         foods = session.exec(select(Food).where(Food.user_id == user_id)).all()
         plans = session.exec(select(Plan).where(Plan.user_id == user_id)).all()
-        assert [item.name for item in ingredients] == ["Starter Oats"]
-        assert [item.name for item in foods] == ["Starter Oats Bowl"]
-        assert [item.label for item in plans] == ["Starter Day"]
+        assert [item.name for item in ingredients] == []
+        assert [item.name for item in foods] == []
+        assert [item.label for item in plans] == []
 
 
-def test_admin_created_admin_receives_starter_dataset(admin_client: TestClient, engine) -> None:
+def test_admin_created_admin_starts_empty(admin_client: TestClient, engine) -> None:
     response = admin_client.post(
         "/api/auth/users",
         json={
@@ -165,9 +165,9 @@ def test_admin_created_admin_receives_starter_dataset(admin_client: TestClient, 
         ingredients = session.exec(select(Ingredient).where(Ingredient.user_id == user_id)).all()
         foods = session.exec(select(Food).where(Food.user_id == user_id)).all()
         plans = session.exec(select(Plan).where(Plan.user_id == user_id)).all()
-        assert [item.name for item in ingredients] == ["Starter Oats"]
-        assert [item.name for item in foods] == ["Starter Oats Bowl"]
-        assert [item.label for item in plans] == ["Starter Day"]
+        assert [item.name for item in ingredients] == []
+        assert [item.name for item in foods] == []
+        assert [item.label for item in plans] == []
 
 
 def test_stored_food_ignores_client_supplied_user_id(admin_client: TestClient, engine) -> None:

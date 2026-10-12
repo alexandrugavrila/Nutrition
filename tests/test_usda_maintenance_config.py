@@ -19,7 +19,6 @@ SYNTHETIC_ENV = {
     "POSTGRES_DB": "config_test",
     "DATABASE_URL": "sqlite://",
     "SQLALCHEMY_DATABASE_URI": "sqlite://",
-    "USDA_API_KEY": "synthetic-only",
     "CORS_ALLOW_ORIGINS": "http://localhost",
     "ENVIRONMENT": "test",
     "DB_AUTO_CREATE": "false",
@@ -56,6 +55,7 @@ def compose_config(tmp_path, source=None, maintenance=False):
 def test_default_services_do_not_require_foundation_input(tmp_path):
     config = compose_config(tmp_path)
     assert set(config["services"]) == {"db", "backend", "frontend", "edge"}
+    assert config["services"]["backend"]["environment"]["USDA_API_KEY"] == ""
 
 
 @pytest.mark.parametrize("source", [None, "", "/input/Foundation Foods.json",

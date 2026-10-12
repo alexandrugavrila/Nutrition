@@ -86,7 +86,7 @@ services:
       - .env.production
     environment:
       DATABASE_URL: "${DATABASE_URL:?DATABASE_URL is required}"
-      USDA_API_KEY: "${USDA_API_KEY:?USDA_API_KEY is required}"
+      USDA_API_KEY: "${USDA_API_KEY:-}"
       CORS_ALLOW_ORIGINS: "${CORS_ALLOW_ORIGINS:?CORS_ALLOW_ORIGINS is required}"
       DB_AUTO_CREATE: "${DB_AUTO_CREATE:-false}"
       ENVIRONMENT: "${ENVIRONMENT:-production}"
@@ -143,7 +143,7 @@ services:
       - .env.production
     environment:
       DATABASE_URL: "${DATABASE_URL:?DATABASE_URL is required}"
-      USDA_API_KEY: "${USDA_API_KEY:?USDA_API_KEY is required}"
+      USDA_API_KEY: "${USDA_API_KEY:-}"
       USDA_FOUNDATION_FOODS_JSON: "${USDA_FOUNDATION_FOODS_JSON:-}"
       ENVIRONMENT: "${ENVIRONMENT:-production}"
       ALEMBIC_CONFIG: /app/Backend/alembic.ini

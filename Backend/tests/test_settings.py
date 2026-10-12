@@ -41,15 +41,14 @@ def test_db_auto_create_can_be_overridden(monkeypatch):
     assert settings.db_auto_create is False
 
 
-def test_production_requires_usda_api_key(monkeypatch):
+def test_production_allows_missing_usda_api_key(monkeypatch):
     monkeypatch.setenv(
         "DATABASE_URL", "postgresql://nutrition_user:secret@db:5432/nutrition"
     )
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.delenv("USDA_API_KEY", raising=False)
 
-    with pytest.raises(RuntimeError, match="USDA_API_KEY is required"):
-        _reload_settings()
+    assert _reload_settings().usda_api_key is None
 
 
 def test_production_requires_database_password(monkeypatch):

@@ -1,3 +1,4 @@
+from .user_starter_seed import UserStarterSeed
 from .ingredient import Ingredient
 from .ingredient_source import IngredientSource
 from .catalog_sync_run import CatalogSyncRun
@@ -42,6 +43,7 @@ from .schemas import (
 )
 
 __all__ = [
+    "UserStarterSeed",
     "Ingredient",
     "IngredientUnit",
     "IngredientShoppingUnit",
