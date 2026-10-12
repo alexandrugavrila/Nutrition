@@ -28,7 +28,7 @@ def test_ingredient_endpoints(admin_client: TestClient, engine, case: str) -> No
     with Session(engine) as session:
         if case in {"list", "get", "put", "delete"}:
             tag = PossibleIngredientTag(name="Spicy")
-            ingredient = Ingredient(name="Pepper", units=[], tags=[tag])
+            ingredient = Ingredient(user_id="test-user", name="Pepper", units=[], tags=[tag])
             session.add(tag)
             session.add(ingredient)
             session.commit()
@@ -98,6 +98,7 @@ def test_food_endpoints(admin_client: TestClient, engine, case: str) -> None:
     with Session(engine) as session:
         if case in {"list", "get", "put", "delete"}:
             ingredient = Ingredient(
+                user_id="test-user",
                 name="Rice",
                 units=[IngredientUnit(name="g", grams=1)],
             )
@@ -107,9 +108,11 @@ def test_food_endpoints(admin_client: TestClient, engine, case: str) -> None:
             ingredient_id = ingredient.id
             unit_id = ingredient.units[0].id
             food = Food(
+                user_id="test-user",
                 name="Rice Bowl",
                 ingredients=[
                     FoodIngredient(
+            user_id="test-user",
                         ingredient_id=ingredient_id,
                         unit_id=unit_id,
                         unit_quantity=100,
@@ -122,6 +125,7 @@ def test_food_endpoints(admin_client: TestClient, engine, case: str) -> None:
             food_id = food.id
         elif case == "post":
             ingredient = Ingredient(
+                user_id="test-user",
                 name="Beans",
                 units=[IngredientUnit(name="g", grams=1)],
             )
@@ -193,6 +197,7 @@ def test_food_create_with_synthetic_unit_id_resolves_to_real_unit(
 
     with Session(engine) as session:
         ingredient = Ingredient(
+            user_id="test-user",
             name="Synthetic Unit Ingredient",
             units=[
                 IngredientUnit(name="g", grams=1),
@@ -245,6 +250,7 @@ def test_food_update_with_synthetic_unit_id_preserves_other_fields(
 
     with Session(engine) as session:
         ingredient = Ingredient(
+            user_id="test-user",
             name="Existing Ingredient",
             units=[IngredientUnit(name="g", grams=1)],
         )
@@ -255,9 +261,11 @@ def test_food_update_with_synthetic_unit_id_preserves_other_fields(
         canonical_unit_id = ingredient.units[0].id
 
         food = Food(
+            user_id="test-user",
             name="Original Food",
             ingredients=[
                 FoodIngredient(
+            user_id="test-user",
                     ingredient_id=ingredient_id,
                     unit_id=canonical_unit_id,
                     unit_quantity=1.0,

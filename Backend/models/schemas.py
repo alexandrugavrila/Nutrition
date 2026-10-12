@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import ConfigDict, model_validator
 from sqlmodel import SQLModel, Field
@@ -92,6 +92,8 @@ class IngredientRead(SQLModel):
 
     id: int
     user_id: Optional[str] = None
+    is_shared: bool = False
+    provenance_status: Literal["unverified", "verified", "rejected"] = "unverified"
     name: str
     source: Optional[str] = None
     source_id: Optional[str] = None
@@ -247,6 +249,7 @@ class StoredFoodRead(StoredFoodBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    owner_user_id: Optional[str] = None
     user_id: str
     remaining_portions: float
     is_finished: bool
@@ -316,6 +319,7 @@ class DailyLogEntryRead(DailyLogEntryBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    owner_user_id: Optional[str] = None
     user_id: str
     created_at: datetime
 

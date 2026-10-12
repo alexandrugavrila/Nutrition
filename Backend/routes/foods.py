@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, SQLModel
 from sqlalchemy.orm import selectinload
 
-from sqlalchemy import or_
 from ..auth.dependencies import get_current_user
+from ..services.visibility import visible_ingredient_clause
 from ..db import get_db
 from ..models import (
     Food,
@@ -35,8 +35,6 @@ FOOD_LOAD_OPTIONS = [
 
 def _get_owned_food(db: Session, food_id: int, current_user: User) -> Optional[Food]:
     visibility = Food.user_id == current_user.id
-    if current_user.is_admin:
-        visibility = or_(visibility, Food.user_id.is_(None))
     statement = (
         select(Food)
         .options(*FOOD_LOAD_OPTIONS)
@@ -52,7 +50,7 @@ def _get_accessible_ingredient(
     if ingredient_id is None:
         return None
     statement = select(Ingredient).where(Ingredient.id == ingredient_id).where(
-        (Ingredient.user_id.is_(None)) | (Ingredient.user_id == current_user.id)
+        visible_ingredient_clause(current_user.id)
     )
     return db.exec(statement).one_or_none()
 
@@ -152,8 +150,6 @@ def get_all_foods(
 ) -> List[FoodRead]:
     """Return all foods."""
     visibility = Food.user_id == current_user.id
-    if current_user.is_admin:
-        visibility = or_(visibility, Food.user_id.is_(None))
     foods = db.exec(select(Food).options(*FOOD_LOAD_OPTIONS).where(visibility)).all()
     return [FoodRead.model_validate(f) for f in foods]
 

@@ -601,6 +601,8 @@ export interface components {
             fiber: number;
             /** Id */
             id: number;
+            /** Owner User Id */
+            owner_user_id?: string | null;
             /** User Id */
             user_id: string;
             /**
@@ -709,6 +711,17 @@ export interface components {
             id: number;
             /** User Id */
             user_id?: string | null;
+            /**
+             * Is Shared
+             * @default false
+             */
+            is_shared: boolean;
+            /**
+             * Provenance Status
+             * @default unverified
+             * @enum {string}
+             */
+            provenance_status: "unverified" | "verified" | "rejected";
             /** Name */
             name: string;
             /** Source */
@@ -969,6 +982,8 @@ export interface components {
             per_portion_fiber: number;
             /** Id */
             id: number;
+            /** Owner User Id */
+            owner_user_id?: string | null;
             /** User Id */
             user_id: string;
             /** Remaining Portions */

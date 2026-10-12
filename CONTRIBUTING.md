@@ -379,6 +379,45 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
   - The Python runner creates a uniquely named Compose project from `testsupport/docker-compose.e2e.yml`, with PostgreSQL data in tmpfs and a random loopback port. It starts API/Vite child processes on temporary ports and always terminates them and removes only its own Compose project.
   - `testsupport.seed_accounts` creates two ordinary test accounts directly, avoiding production bootstrap/onboarding dependencies. It refuses existing accounts and requires the database guard described below.
 
+### Ownership expansion and adoption checkpoint
+
+`b42d8f0a315c` is the **pre-adoption expansion checkpoint**, following
+`a31c7e9f204b`. It is integration-only. Keep application writers stopped through
+expansion, the forthcoming adoption operation, and final ownership constraints.
+Do not deploy this intermediate application/schema as a finished account cutover.
+
+- Every existing ingredient starts with `is_shared=false`; every source mapping
+  starts `unverified`, including records with existing payload hashes.
+- Logs/stored food retain legacy `user_id` strings and gain nullable `owner_user_id`
+  foreign keys. Existing rows stay unassigned until adoption; new API writes populate
+  the authenticated owner. Reads use the foreign key, never a matching legacy string.
+- Shared visibility requires an explicit shared flag, no owner, and a verified
+  provider mapping. Unclassified rows are hidden from users and administrators.
+  Ordinary sourced ingredient creation currently remains personal and unverified;
+  the identifier-only trusted import interface is delivered in Phase 6.
+- `user_ingredient_preferences` uses `(user_id, ingredient_id)` as its key and a
+  composite foreign key to require a unit of that ingredient. No row means no override.
+  The existing ingredient-level default is preserved. Preference APIs and resolution
+  are implemented in Phase 6; adoption copies legacy personal choices in Phase 5.
+- `ownership_adoptions` records a completed mapping/version, owner, report and hash.
+  `ingredient_provenance_history` preserves personal provenance separately when
+  adoption releases a canonical mapping. Both remain empty during expansion.
+- Source verification stores status, timestamp, artifact checksum, normalization
+  version, and optional import-run reference. Sync runs can record artifact identity.
+  These fields do not automatically trust existing source strings or hashes.
+
+Run `python -m testsupport.run_schema_expansion` to rehearse a fresh installation
+and populated upgrades from `d3f0b1c2e7ad`, `b6a1f2c3d4e5`, `6b2f8f8d9c11`,
+`8c9d0e1f2a3b`, `91b4c6d8e2f0`, and `a31c7e9f204b`. It creates a unique tmpfs
+PostgreSQL stack, validates the complete migration graph and model drift, compares
+all existing column values/IDs/references, and cleans up its own resources. The
+backend CI job runs this rehearsal. An actual deployed revision must be identified
+and rehearsed before deployment; the synthetic fixtures are not a production restore.
+
+No migration stamping or `create_all` is used for these PostgreSQL checks. Existing
+migration files remain unchanged. An Alembic downgrade discards expansion metadata;
+use the roadmap's matched backup/image recovery procedure for a failed cutover.
+
 ### Authentication and starter data
 
 Account creation and bootstrap create empty accounts, without starter data or a USDA key.

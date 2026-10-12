@@ -10,6 +10,7 @@ from sqlalchemy import delete
 from sqlmodel import Session, select
 
 from ..auth.dependencies import get_current_user
+from ..services.visibility import visible_ingredient_clause
 from ..db import get_db
 from ..models import (
     DailyLogEntry,
@@ -26,15 +27,13 @@ router = APIRouter(prefix="/logs", tags=["logs"])
 
 def _ingredient_available(db: Session, ingredient_id: int, current_user: User) -> bool:
     statement = select(Ingredient).where(Ingredient.id == ingredient_id).where(
-        (Ingredient.user_id.is_(None)) | (Ingredient.user_id == current_user.id)
+        visible_ingredient_clause(current_user.id)
     )
     return db.exec(statement).one_or_none() is not None
 
 
 def _food_available(db: Session, food_id: int, current_user: User) -> bool:
     visibility = Food.user_id == current_user.id
-    if current_user.is_admin:
-        visibility = (Food.user_id == current_user.id) | (Food.user_id.is_(None))
     statement = select(Food).where(Food.id == food_id).where(visibility)
     return db.exec(statement).one_or_none() is not None
 
@@ -43,7 +42,7 @@ def _stored_food_available(db: Session, stored_food_id: int, current_user: User)
     statement = (
         select(StoredFood)
         .where(StoredFood.id == stored_food_id)
-        .where(StoredFood.user_id == current_user.id)
+        .where(StoredFood.owner_user_id == current_user.id)
     )
     return db.exec(statement).one_or_none() is not None
 
@@ -59,7 +58,7 @@ def list_daily_logs(
     statement = (
         select(DailyLogEntry)
         .where(DailyLogEntry.log_date == log_date)
-        .where(DailyLogEntry.user_id == current_user.id)
+        .where(DailyLogEntry.owner_user_id == current_user.id)
     )
     statement = statement.order_by(DailyLogEntry.created_at, DailyLogEntry.id)
     results = db.exec(statement).all()
@@ -84,7 +83,7 @@ def create_daily_log(
         if not _food_available(db, payload.food_id, current_user):
             raise HTTPException(status_code=404, detail="Food not found")
 
-    entry = DailyLogEntry(**payload.model_dump(), user_id=current_user.id)
+    entry = DailyLogEntry(**payload.model_dump(), user_id=current_user.id, owner_user_id=current_user.id)
     db.add(entry)
     db.commit()
     db.refresh(entry)
@@ -104,7 +103,7 @@ def delete_daily_log(
     entry = db.exec(
         select(DailyLogEntry)
         .where(DailyLogEntry.id == entry_id)
-        .where(DailyLogEntry.user_id == current_user.id)
+        .where(DailyLogEntry.owner_user_id == current_user.id)
     ).one_or_none()
     if entry is None:
         raise HTTPException(status_code=404, detail="Daily log entry not found")
@@ -121,7 +120,7 @@ def clear_daily_logs(
 ) -> None:
     """Remove daily log entries for a user, optionally filtered by day."""
 
-    statement = delete(DailyLogEntry).where(DailyLogEntry.user_id == current_user.id)
+    statement = delete(DailyLogEntry).where(DailyLogEntry.owner_user_id == current_user.id)
     if log_date is not None:
         statement = statement.where(DailyLogEntry.log_date == log_date)
 

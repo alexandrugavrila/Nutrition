@@ -1,7 +1,7 @@
 from typing import List, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_
+from ..services.visibility import visible_ingredient_clause
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
@@ -93,7 +93,7 @@ def _find_source_mapping(
 
 
 def _visible_ingredient_clause(current_user: User):
-    return or_(Ingredient.user_id.is_(None), Ingredient.user_id == current_user.id)
+    return visible_ingredient_clause(current_user.id)
 
 
 def _load_visible_ingredient(
@@ -142,6 +142,10 @@ def ingredient_to_read(ingredient: Ingredient) -> IngredientRead:
     payload = {
         "id": ingredient.id,
         "name": ingredient.name,
+        "user_id": ingredient.user_id,
+        "is_shared": ingredient.is_shared,
+        "provenance_status": next((row.verification_status for row in ingredient.sources
+                                   if row.source == source and row.source_id == source_id), "unverified"),
         "source": source,
         "source_id": source_id,
         "nutrition": ingredient.nutrition,
@@ -363,10 +367,13 @@ def add_ingredient(
             )
             existing = db.exec(statement).one_or_none()
             if existing:
-                return ingredient_to_read(existing)
+                visible = _load_visible_ingredient(db, existing.id, current_user)
+                if visible is None:
+                    raise HTTPException(status_code=409, detail="Source identifier is unavailable pending catalog verification.")
+                return ingredient_to_read(visible)
 
     ingredient_obj = Ingredient.from_create(ingredient)
-    ingredient_obj.user_id = None if source and source_id else current_user.id
+    ingredient_obj.user_id = current_user.id
     # Force inclusion of base unit 'g' with grams == 1
     ensure_g_unit_present(ingredient_obj)
     if ingredient.tags:
@@ -408,7 +415,10 @@ def add_ingredient(
                     .where(Ingredient.id == existing_source.ingredient_id)
                 )
                 existing = db.exec(statement).one()
-                return ingredient_to_read(existing)
+                visible = _load_visible_ingredient(db, existing.id, current_user)
+                if visible is None:
+                    raise HTTPException(status_code=409, detail="Source identifier is unavailable pending catalog verification.")
+                return ingredient_to_read(visible)
             if not existing_source:
                 existing.sources.append(
                     IngredientSource(source=source, source_id=source_id)

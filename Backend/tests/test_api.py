@@ -99,6 +99,7 @@ def test_update_ingredient_rejects_invalid_shopping_units(
 
     with Session(engine) as session:
         ingredient = Ingredient(
+            user_id="test-user",
             name="Bulk Sugar",
             units=[
                 IngredientUnit(name="cup", grams=200.0),

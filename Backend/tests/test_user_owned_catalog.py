@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
@@ -40,8 +41,8 @@ def test_global_and_private_ingredients_are_scoped(anonymous_client: TestClient,
     with Session(engine) as session:
         user_a = _create_user(session, "a@example.com", "user-a")
         user_b = _create_user(session, "b@example.com", "user-b")
-        global_ing = Ingredient(name="USDA Banana", user_id=None)
-        global_ing.sources.append(IngredientSource(source="usda", source_id="123"))
+        global_ing = Ingredient(name="USDA Banana", user_id=None, is_shared=True)
+        global_ing.sources.append(IngredientSource(source="usda", source_id="123", verification_status="verified", verified_at=datetime.now(timezone.utc), artifact_sha256="a" * 64, normalization_version="test-v1"))
         private_a = Ingredient(name="Private Spice", user_id=user_a.id)
         private_b = Ingredient(name="Private Spice", user_id=user_b.id)
         session.add_all([global_ing, private_a, private_b])
@@ -69,7 +70,8 @@ def test_foods_can_reference_global_and_owner_private_ingredients(
         user_b = _create_user(session, "food-b@example.com", "food-user-b")
         global_ing = Ingredient(
             name="Global Rice",
-            user_id=None,
+            user_id=None, is_shared=True,
+            sources=[IngredientSource(source="usda", source_id="rice", verification_status="verified", verified_at=datetime.now(timezone.utc), artifact_sha256="a" * 64, normalization_version="test-v1")],
             units=[IngredientUnit(name="g", grams=1)],
         )
         private_a = Ingredient(
@@ -173,8 +175,8 @@ def test_admin_created_admin_starts_empty(admin_client: TestClient, engine) -> N
 def test_stored_food_ignores_client_supplied_user_id(admin_client: TestClient, engine) -> None:
     with Session(engine) as session:
         ingredient = Ingredient(
-            name="Shared Lentils",
-            user_id=None,
+            name="Personal Lentils",
+            user_id="test-user",
             units=[IngredientUnit(name="g", grams=1)],
         )
         session.add(ingredient)

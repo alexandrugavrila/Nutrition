@@ -39,6 +39,8 @@ class StoredFood(SQLModel, table=True):
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
+    # Legacy identity retained verbatim until explicit adoption.
+    owner_user_id: Optional[str] = Field(default=None, sa_column=Column(String(36), ForeignKey("users.id"), nullable=True, index=True))
     user_id: str = Field(sa_column=Column(String(255), nullable=False, index=True))
     label: Optional[str] = Field(
         default=None, sa_column=Column(String(255), nullable=True)

@@ -67,7 +67,8 @@ def _resolve_sourced_ingredient(
             status_code=500,
             detail=f"Starter dataset references missing source {source}:{source_id}.",
         )
-    if source_row.ingredient.user_id is not None:
+    if (not source_row.ingredient.is_shared or source_row.ingredient.user_id is not None
+            or source_row.verification_status != "verified"):
         raise ValueError("Starter source must reference a shared catalog ingredient.")
     return source_row.ingredient
 

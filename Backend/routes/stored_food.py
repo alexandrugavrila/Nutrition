@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 from sqlalchemy import delete, func, inspect
 from sqlalchemy.exc import SQLAlchemyError
 
+from ..services.visibility import visible_ingredient_clause
 from ..db import get_db
 from ..auth.dependencies import get_current_user
 from ..models import (
@@ -40,7 +41,7 @@ def _apply_filters(
 ):
     """Apply list filters to the stored food select statement."""
 
-    statement = statement.where(StoredFood.user_id == user_id)
+    statement = statement.where(StoredFood.owner_user_id == user_id)
     if only_available:
         statement = statement.where(StoredFood.remaining_portions > 0)
     if day:
@@ -69,15 +70,13 @@ def _stored_food_table_available(db: Session) -> bool:
 
 def _ingredient_available(db: Session, ingredient_id: int, current_user: User) -> bool:
     statement = select(Ingredient).where(Ingredient.id == ingredient_id).where(
-        (Ingredient.user_id.is_(None)) | (Ingredient.user_id == current_user.id)
+        visible_ingredient_clause(current_user.id)
     )
     return db.exec(statement).one_or_none() is not None
 
 
 def _food_available(db: Session, food_id: int, current_user: User) -> bool:
     visibility = Food.user_id == current_user.id
-    if current_user.is_admin:
-        visibility = (Food.user_id == current_user.id) | (Food.user_id.is_(None))
     statement = select(Food).where(Food.id == food_id).where(visibility)
     return db.exec(statement).one_or_none() is not None
 
@@ -88,7 +87,7 @@ def _get_owned_stored_food(
     statement = (
         select(StoredFood)
         .where(StoredFood.id == stored_food_id)
-        .where(StoredFood.user_id == current_user.id)
+        .where(StoredFood.owner_user_id == current_user.id)
     )
     return db.exec(statement).one_or_none()
 
@@ -129,6 +128,7 @@ def create_stored_food(
     stored_food = StoredFood(
         **data,
         user_id=current_user.id,
+        owner_user_id=current_user.id,
         prepared_at=prepared_at,
         remaining_portions=max(0.0, float(remaining)),
     )
@@ -252,7 +252,7 @@ def clear_stored_food(
         return
 
     stored_food_items = db.exec(
-        select(StoredFood).where(StoredFood.user_id == current_user.id)
+        select(StoredFood).where(StoredFood.owner_user_id == current_user.id)
     ).all()
 
     for stored_food in stored_food_items:
@@ -268,6 +268,6 @@ def clear_stored_food(
                 entry.ingredient_id = stored_food.ingredient_id
                 entry.food_id = None
 
-    statement = delete(StoredFood).where(StoredFood.user_id == current_user.id)
+    statement = delete(StoredFood).where(StoredFood.owner_user_id == current_user.id)
     db.exec(statement)
     db.commit()

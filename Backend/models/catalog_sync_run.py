@@ -15,6 +15,9 @@ class CatalogSyncRun(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     source: str = Field(sa_column=Column(String(50), nullable=False, index=True))
+    artifact_sha256: Optional[str] = Field(default=None, sa_column=Column(String(64), nullable=True))
+    artifact_uri: Optional[str] = Field(default=None, sa_column=Column(String(2048), nullable=True))
+    normalization_version: Optional[str] = Field(default=None, sa_column=Column(String(50), nullable=True))
     status: str = Field(sa_column=Column(String(30), nullable=False))
     summary: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     started_at: datetime = Field(

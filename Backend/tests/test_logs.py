@@ -7,7 +7,7 @@ from Backend.models import DailyLogEntry, Ingredient, StoredFood
 
 
 def _create_ingredient(session: Session, name: str = "Ingredient") -> Ingredient:
-    ingredient = Ingredient(name=name)
+    ingredient = Ingredient(name=name, user_id="test-user")
     session.add(ingredient)
     session.commit()
     session.refresh(ingredient)

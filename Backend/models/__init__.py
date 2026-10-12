@@ -1,3 +1,6 @@
+from .ingredient_provenance_history import IngredientProvenanceHistory
+from .ownership_adoption import OwnershipAdoption
+from .user_ingredient_preference import UserIngredientPreference
 from .user_starter_seed import UserStarterSeed
 from .ingredient import Ingredient
 from .ingredient_source import IngredientSource
@@ -43,6 +46,9 @@ from .schemas import (
 )
 
 __all__ = [
+    "IngredientProvenanceHistory",
+    "OwnershipAdoption",
+    "UserIngredientPreference",
     "UserStarterSeed",
     "Ingredient",
     "IngredientUnit",
