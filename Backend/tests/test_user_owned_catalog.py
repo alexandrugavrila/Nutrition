@@ -36,7 +36,7 @@ def _login(client: TestClient, email: str) -> None:
     assert response.status_code == 200
 
 
-def test_global_and_private_ingredients_are_scoped(client: TestClient, engine) -> None:
+def test_global_and_private_ingredients_are_scoped(anonymous_client: TestClient, engine) -> None:
     with Session(engine) as session:
         user_a = _create_user(session, "a@example.com", "user-a")
         user_b = _create_user(session, "b@example.com", "user-b")
@@ -47,14 +47,14 @@ def test_global_and_private_ingredients_are_scoped(client: TestClient, engine) -
         session.add_all([global_ing, private_a, private_b])
         session.commit()
 
-    _login(client, "a@example.com")
-    response = client.get("/api/ingredients/")
+    _login(anonymous_client, "a@example.com")
+    response = anonymous_client.get("/api/ingredients/")
     assert response.status_code == 200
     names = [item["name"] for item in response.json()]
     assert "USDA Banana" in names
     assert names.count("Private Spice") == 1
 
-    create_response = client.post(
+    create_response = anonymous_client.post(
         "/api/ingredients/",
         json={"name": "Private Spice", "nutrition": None, "units": [], "tags": []},
     )
@@ -62,7 +62,7 @@ def test_global_and_private_ingredients_are_scoped(client: TestClient, engine) -
 
 
 def test_foods_can_reference_global_and_owner_private_ingredients(
-    client: TestClient, engine
+    anonymous_client: TestClient, engine
 ) -> None:
     with Session(engine) as session:
         user_a = _create_user(session, "food-a@example.com", "food-user-a")
@@ -91,8 +91,8 @@ def test_foods_can_reference_global_and_owner_private_ingredients(
         private_b_id = private_b.id
         private_b_unit_id = private_b.units[0].id
 
-    _login(client, "food-a@example.com")
-    response = client.post(
+    _login(anonymous_client, "food-a@example.com")
+    response = anonymous_client.post(
         "/api/foods/",
         json={
             "name": "Rice Bowl",
@@ -109,7 +109,7 @@ def test_foods_can_reference_global_and_owner_private_ingredients(
     )
     assert response.status_code == 201
 
-    forbidden = client.post(
+    forbidden = anonymous_client.post(
         "/api/foods/",
         json={
             "name": "Other Sauce Bowl",
@@ -126,8 +126,8 @@ def test_foods_can_reference_global_and_owner_private_ingredients(
     assert forbidden.status_code == 400
 
 
-def test_admin_created_user_receives_starter_dataset(client: TestClient, engine) -> None:
-    response = client.post(
+def test_admin_created_user_receives_starter_dataset(admin_client: TestClient, engine) -> None:
+    response = admin_client.post(
         "/api/auth/users",
         json={
             "email": "starter@example.com",
@@ -148,8 +148,8 @@ def test_admin_created_user_receives_starter_dataset(client: TestClient, engine)
         assert [item.label for item in plans] == ["Starter Day"]
 
 
-def test_admin_created_admin_receives_starter_dataset(client: TestClient, engine) -> None:
-    response = client.post(
+def test_admin_created_admin_receives_starter_dataset(admin_client: TestClient, engine) -> None:
+    response = admin_client.post(
         "/api/auth/users",
         json={
             "email": "starter-admin@example.com",
@@ -170,7 +170,7 @@ def test_admin_created_admin_receives_starter_dataset(client: TestClient, engine
         assert [item.label for item in plans] == ["Starter Day"]
 
 
-def test_stored_food_ignores_client_supplied_user_id(client: TestClient, engine) -> None:
+def test_stored_food_ignores_client_supplied_user_id(admin_client: TestClient, engine) -> None:
     with Session(engine) as session:
         ingredient = Ingredient(
             name="Shared Lentils",
@@ -181,7 +181,7 @@ def test_stored_food_ignores_client_supplied_user_id(client: TestClient, engine)
         session.commit()
         ingredient_id = ingredient.id
 
-    response = client.post(
+    response = admin_client.post(
         "/api/stored_food/",
         json={
             "user_id": "spoofed-user",

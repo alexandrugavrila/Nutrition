@@ -29,11 +29,11 @@ def _create_user(
     return user
 
 
-def test_login_returns_200_and_sets_cookie(client: TestClient, engine) -> None:
+def test_login_returns_200_and_sets_cookie(anonymous_client: TestClient, engine) -> None:
     with Session(engine) as session:
         _create_user(session)
 
-    response = client.post(
+    response = anonymous_client.post(
         "/api/auth/login",
         json={"email": "user@example.com", "password": "Password123!"},
     )
@@ -45,61 +45,61 @@ def test_login_returns_200_and_sets_cookie(client: TestClient, engine) -> None:
     assert settings.session_cookie_name in response.cookies
 
 
-def test_login_rejects_unknown_email(client: TestClient) -> None:
-    response = client.post(
+def test_login_rejects_unknown_email(anonymous_client: TestClient) -> None:
+    response = anonymous_client.post(
         "/api/auth/login",
         json={"email": "missing@example.com", "password": "Password123!"},
     )
     assert response.status_code == 401
 
 
-def test_login_rejects_bad_password(client: TestClient, engine) -> None:
+def test_login_rejects_bad_password(anonymous_client: TestClient, engine) -> None:
     with Session(engine) as session:
         _create_user(session)
 
-    response = client.post(
+    response = anonymous_client.post(
         "/api/auth/login",
         json={"email": "user@example.com", "password": "wrong"},
     )
     assert response.status_code == 401
 
 
-def test_me_requires_session(client: TestClient) -> None:
-    response = client.get("/api/auth/me")
+def test_me_requires_session(anonymous_client: TestClient) -> None:
+    response = anonymous_client.get("/api/auth/me")
     assert response.status_code == 401
 
 
-def test_me_returns_current_user_when_authenticated(client: TestClient, engine) -> None:
+def test_me_returns_current_user_when_authenticated(anonymous_client: TestClient, engine) -> None:
     with Session(engine) as session:
         _create_user(session)
 
-    login_response = client.post(
+    login_response = anonymous_client.post(
         "/api/auth/login",
         json={"email": "user@example.com", "password": "Password123!"},
     )
     assert login_response.status_code == 200
 
-    response = client.get("/api/auth/me")
+    response = anonymous_client.get("/api/auth/me")
     assert response.status_code == 200
     body = response.json()
     assert body["authenticated"] is True
     assert body["user"]["display_name"] == "Test User"
 
 
-def test_logout_clears_session(client: TestClient, engine) -> None:
+def test_logout_clears_session(anonymous_client: TestClient, engine) -> None:
     with Session(engine) as session:
         _create_user(session)
 
-    login_response = client.post(
+    login_response = anonymous_client.post(
         "/api/auth/login",
         json={"email": "user@example.com", "password": "Password123!"},
     )
     token = login_response.cookies.get(settings.session_cookie_name)
     assert token is not None
 
-    response = client.post("/api/auth/logout")
+    response = anonymous_client.post("/api/auth/logout")
     assert response.status_code == 204
-    assert client.cookies.get(settings.session_cookie_name) is None
+    assert anonymous_client.cookies.get(settings.session_cookie_name) is None
 
     with Session(engine) as session:
         auth_session = session.exec(
@@ -108,7 +108,7 @@ def test_logout_clears_session(client: TestClient, engine) -> None:
         assert auth_session is None
 
 
-def test_expired_session_rejected(client: TestClient, engine) -> None:
+def test_expired_session_rejected(anonymous_client: TestClient, engine) -> None:
     with Session(engine) as session:
         user = _create_user(session)
         expired = AuthSession(
@@ -119,22 +119,22 @@ def test_expired_session_rejected(client: TestClient, engine) -> None:
         session.add(expired)
         session.commit()
 
-    client.cookies.set(settings.session_cookie_name, "expired-token")
-    response = client.get("/api/auth/me")
+    anonymous_client.cookies.set(settings.session_cookie_name, "expired-token")
+    response = anonymous_client.get("/api/auth/me")
     assert response.status_code == 401
 
 
 def test_change_password_rejects_wrong_current_password(
-    client: TestClient, engine
+    anonymous_client: TestClient, engine
 ) -> None:
     with Session(engine) as session:
         _create_user(session)
 
-    client.post(
+    anonymous_client.post(
         "/api/auth/login",
         json={"email": "user@example.com", "password": "Password123!"},
     )
-    response = client.post(
+    response = anonymous_client.post(
         "/api/auth/change-password",
         json={"current_password": "wrong", "new_password": "NewPassword123!"},
     )
@@ -142,16 +142,16 @@ def test_change_password_rejects_wrong_current_password(
 
 
 def test_change_password_accepts_correct_current_password(
-    client: TestClient, engine
+    anonymous_client: TestClient, engine
 ) -> None:
     with Session(engine) as session:
         _create_user(session)
 
-    client.post(
+    anonymous_client.post(
         "/api/auth/login",
         json={"email": "user@example.com", "password": "Password123!"},
     )
-    response = client.post(
+    response = anonymous_client.post(
         "/api/auth/change-password",
         json={
             "current_password": "Password123!",
@@ -160,22 +160,22 @@ def test_change_password_accepts_correct_current_password(
     )
     assert response.status_code == 204
 
-    relogin = client.post(
+    relogin = anonymous_client.post(
         "/api/auth/login",
         json={"email": "user@example.com", "password": "NewPassword123!"},
     )
     assert relogin.status_code == 200
 
 
-def test_admin_can_create_user(client: TestClient, engine) -> None:
+def test_admin_can_create_user(anonymous_client: TestClient, engine) -> None:
     with Session(engine) as session:
         _create_user(session, email="admin@example.com", is_admin=True)
 
-    client.post(
+    anonymous_client.post(
         "/api/auth/login",
         json={"email": "admin@example.com", "password": "Password123!"},
     )
-    response = client.post(
+    response = anonymous_client.post(
         "/api/auth/users",
         json={
             "email": "new@example.com",
@@ -188,15 +188,15 @@ def test_admin_can_create_user(client: TestClient, engine) -> None:
     assert response.json()["email"] == "new@example.com"
 
 
-def test_non_admin_cannot_create_user(client: TestClient, engine) -> None:
+def test_non_admin_cannot_create_user(anonymous_client: TestClient, engine) -> None:
     with Session(engine) as session:
         _create_user(session, email="user2@example.com")
 
-    client.post(
+    anonymous_client.post(
         "/api/auth/login",
         json={"email": "user2@example.com", "password": "Password123!"},
     )
-    response = client.post(
+    response = anonymous_client.post(
         "/api/auth/users",
         json={
             "email": "new@example.com",

@@ -22,10 +22,10 @@ def sample_payload() -> Dict[str, Any]:
     }
 
 
-def test_create_and_get_plan(client):
+def test_create_and_get_plan(user_a_client):
     payload = {"label": "Weekday", "payload": sample_payload()}
 
-    create_response = client.post("/api/plans/", json=payload)
+    create_response = user_a_client.post("/api/plans/", json=payload)
     assert create_response.status_code == 201
     created = create_response.json()
 
@@ -33,22 +33,22 @@ def test_create_and_get_plan(client):
     assert created["payload"]["days"] == 2
     plan_id = created["id"]
 
-    get_response = client.get(f"/api/plans/{plan_id}")
+    get_response = user_a_client.get(f"/api/plans/{plan_id}")
     assert get_response.status_code == 200
     fetched = get_response.json()
     assert fetched["label"] == "Weekday"
     assert fetched["payload"] == created["payload"]
 
 
-def test_update_plan(client):
-    create_response = client.post(
+def test_update_plan(user_a_client):
+    create_response = user_a_client.post(
         "/api/plans/", json={"label": "Original", "payload": sample_payload()}
     )
     plan_id = create_response.json()["id"]
 
     updated_payload = sample_payload()
     updated_payload["days"] = 3
-    update_response = client.put(
+    update_response = user_a_client.put(
         f"/api/plans/{plan_id}", json={"label": "Updated", "payload": updated_payload}
     )
     assert update_response.status_code == 200
@@ -57,35 +57,35 @@ def test_update_plan(client):
     assert updated["payload"]["days"] == 3
 
 
-def test_delete_plan(client):
-    create_response = client.post(
+def test_delete_plan(user_a_client):
+    create_response = user_a_client.post(
         "/api/plans/", json={"label": "To Delete", "payload": sample_payload()}
     )
     plan_id = create_response.json()["id"]
 
-    delete_response = client.delete(f"/api/plans/{plan_id}")
+    delete_response = user_a_client.delete(f"/api/plans/{plan_id}")
     assert delete_response.status_code == 204
 
-    get_response = client.get(f"/api/plans/{plan_id}")
+    get_response = user_a_client.get(f"/api/plans/{plan_id}")
     assert get_response.status_code == 404
 
 
-def test_list_plans(client):
-    plan_a = client.post("/api/plans/", json={"label": "Plan A", "payload": sample_payload()})
-    plan_b = client.post("/api/plans/", json={"label": "Plan B", "payload": sample_payload()})
+def test_list_plans(user_a_client):
+    plan_a = user_a_client.post("/api/plans/", json={"label": "Plan A", "payload": sample_payload()})
+    plan_b = user_a_client.post("/api/plans/", json={"label": "Plan B", "payload": sample_payload()})
 
     plan_a_id = plan_a.json()["id"]
     plan_b_id = plan_b.json()["id"]
 
     updated_payload = sample_payload()
     updated_payload["days"] = 3
-    update_response = client.put(
+    update_response = user_a_client.put(
         f"/api/plans/{plan_a_id}",
         json={"label": "Plan A Updated", "payload": updated_payload},
     )
     assert update_response.status_code == 200
 
-    list_response = client.get("/api/plans/")
+    list_response = user_a_client.get("/api/plans/")
     assert list_response.status_code == 200
     data = list_response.json()
     assert len(data) == 2

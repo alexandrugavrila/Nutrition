@@ -25,17 +25,24 @@ This guide covers developer setup, branching, Docker workflows, API and migratio
 
 ---
 
-## Branching & Worktrees
+## Branching, Integration, and Releases
 
-Branch naming pattern: `<type>/<slug>` where `type` is one of `feature`, `bugfix`, `refactor`, or `housekeeping`.
+The repository uses two long-lived branches with distinct responsibilities:
+
+- `development` is the integration branch. Every feature, bugfix, refactor, housekeeping, and dependency branch starts from the latest `origin/development` and merges back into `development` through a pull request.
+- `main` is the release branch. It advances only when `development` is promoted for a release with a history-preserving merge commit.
+
+Branch naming pattern: `<type>/<slug>` where `type` is one of `feature`, `bugfix`, `refactor`, or `housekeeping`. There are no direct-to-`main` working branches or hotfix exceptions; change this policy explicitly before using a different flow.
 
 Recommended clone layout:
 
 ```pwsh
-git clone <repo-url> C:\_Code\Nutrition\nutrition-main
+git clone <repo-url> C:\Workspace\projects\apps\nutrition-tracker\nutrition-main
 ```
 
 You can use any parent directory; the key is that the primary clone sits in its own folder so worktrees can be siblings. To override the parent directory used by scripts, set `NUTRITION_WORKTREE_PARENT` before running them.
+
+### Start a working branch
 
 Recommended flow when starting or updating a branch:
 
@@ -49,10 +56,11 @@ Recommended flow when starting or updating a branch:
 
    The command runs `sync-branches` (fetch, prune, create local tracking branches), `audit-worktrees` (ensures every branch maps to exactly one worktree, the default branch stays in the primary clone, and no worktree is detached), and `audit-container-sets` (flags Docker Compose projects for branches that no longer exist).
 
-2. Create or switch to the branch in Git:
+2. Update the local integration branch without rewriting it:
 
    ```pwsh
-   git switch -c feature/my-feature   # or git switch feature/my-feature
+   git -C ../nutrition-development fetch origin
+   git -C ../nutrition-development merge --ff-only origin/development
    ```
 
 3. Create or jump into the branch worktree:
@@ -61,7 +69,7 @@ Recommended flow when starting or updating a branch:
    pwsh ./scripts/switch-worktree-branch.ps1 feature/my-feature -CopyEnv
    ```
 
-   The script fetches remote refs, creates local tracking branches for any remote-only branches, then creates `nutrition-feature-my-feature` under the worktree parent (default: parent of the primary clone; override with `NUTRITION_WORKTREE_PARENT`) if needed, checks out the branch there, and optionally opens VS Code. Prefer `-CopyEnv` when creating or reopening worktrees so the current `.env` is copied into the target when needed. Pass `-SkipVSCode` to stay in the terminal or `-NewVSCodeWindow` for a new window.
+   For a new branch, the helper always uses the latest `origin/development` as its base, even when invoked from `nutrition-main`. Existing local or remote branches retain their existing ancestry. The script creates `nutrition-feature-my-feature` under the worktree parent (default: parent of the primary clone; override with `NUTRITION_WORKTREE_PARENT`), pushes a new branch with its upstream, and optionally opens VS Code. Pass `-SkipVSCode` to stay in the terminal or `-NewVSCodeWindow` for a new window.
 
 4. Verify the environment:
 
@@ -77,6 +85,8 @@ Worktree conventions:
 
 - `main` (or the repository's default branch) remains in the original clone (the "primary root").
 
+- `development` lives in `nutrition-development` and remains the sole integration target for working branches.
+
 - Every other branch should live in a dedicated directory named `nutrition-<sanitized-branch>` under the worktree parent (defaults to the parent of the primary clone). You can override the parent directory by setting `NUTRITION_WORKTREE_PARENT` before running the helpers.
 
 - The helpers error out on detached HEADs or mismatched worktree locations to avoid running the wrong stack.
@@ -87,6 +97,47 @@ Other repo utilities:
 - `pwsh ./scripts/repo/audit-worktrees.ps1`: report orphaned or misconfigured worktrees without fetching.
 - `pwsh ./scripts/repo/audit-container-sets.ps1`: flag Docker Compose projects whose branches no longer exist.
 - Bash equivalents for both commands live next to the PowerShell versions.
+
+### Integrate working branches
+
+1. Bring `origin/development` into the working branch and resolve conflicts there; never rewrite a shared branch after review has begun.
+2. Open the pull request with the working branch as the head and `development` as the base.
+3. Require green branch-policy, backend, frontend, migration/schema, and applicable smoke checks before merging.
+4. Do not open a working-branch pull request directly against `main`. Dependabot is configured to target `development` under the same rule.
+
+### Promote a release to `main`
+
+1. Pause merges to `development` while the release PR is open so the promoted commit remains unambiguous.
+2. Confirm `development` is green and contains every intended release change.
+3. Open a pull request with `development` as the head and `main` as the base.
+4. Merge with GitHub's **Create a merge commit** option. Do not squash, rebase, reset, force-push, or fast-forward `main`; the release commit must preserve both parents.
+5. Update the primary clone and verify the release topology:
+
+   ```pwsh
+   git -C ../nutrition-main fetch origin
+   git -C ../nutrition-main merge --ff-only origin/main
+   git -C ../nutrition-main merge-base --is-ancestor origin/development HEAD
+   git -C ../nutrition-main status --short --branch
+   ```
+
+6. From that clean `main` merge commit, create/push the release tag and publish matching images. Release identifiers must use `vMAJOR.MINOR.PATCH` with an optional pre-release suffix, such as `v1.3.0` or `v1.3.0-rc.1`:
+
+   ```pwsh
+   pwsh ./scripts/prod/publish.ps1 -Tag <version>
+   # Bash: ./scripts/prod/publish.sh <version>
+   ```
+
+   The publish helper refuses non-`main`, dirty, stale, non-merge, or development-missing release sources. It checks the exact tag on `origin` before building, builds both images, pushes the annotated Git tag to reserve the release identifier, and then pushes both images. A matching remote tag is accepted for a retry; a conflicting tag is rejected before Docker runs.
+
+7. Synchronize `development` to the release commit before resuming work:
+
+   ```pwsh
+   git -C ../nutrition-development fetch origin
+   git -C ../nutrition-development merge --ff-only origin/main
+   git -C ../nutrition-development push origin development
+   ```
+
+   With the release freeze still in effect, this is a non-destructive fast-forward performed only by the designated release manager or release-automation identity through the narrowly scoped `development` ruleset bypass. Ordinary work never uses that bypass. If `development` advanced unexpectedly, do not reset or bypass protection; merge `main` back through a reviewed `main` → `development` synchronization PR.
 
 ---
 
@@ -322,9 +373,11 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
     - Always sources `scripts/lib/venv.ps1|.sh` to ensure the virtual environment is active.
 
 - `scripts/tests/run-e2e-tests.ps1` / `scripts/tests/run-e2e-tests.sh`
-  - Purpose: spin up a branch-isolated Docker Compose test stack, wait for the backend and frontend to become healthy, then execute both `pytest -m e2e` against `Backend/tests/test_e2e_api.py` and the Playwright browser suite under `Frontend/e2e/`.
-  - Flags: accepts additional pytest arguments (pass-through). Both variants honour `-h|--help`.
-  - Call graph: loads helpers from `scripts/lib/venv.*`, `scripts/lib/branch-env.*`, and `scripts/lib/compose-utils.*`; always shells into `scripts/docker/compose.ps1|.sh` (`up ...` to start, `down ...` to tear down), then runs `npm --prefix Frontend run e2e:install` followed by `npm --prefix Frontend run e2e`.
+  - Purpose: run migration-built PostgreSQL tests and authenticated API/browser E2E on disposable infrastructure.
+  - Parameters: additional pytest arguments apply to the API E2E invocation.
+  - Call graph: loads `scripts/lib/venv.*`, installs Playwright Chromium, then invokes `python -m testsupport.run_e2e`.
+  - The Python runner creates a uniquely named Compose project from `testsupport/docker-compose.e2e.yml`, with PostgreSQL data in tmpfs and a random loopback port. It starts API/Vite child processes on temporary ports and always terminates them and removes only its own Compose project.
+  - `testsupport.seed_accounts` creates two ordinary test accounts directly, avoiding production bootstrap/onboarding dependencies. It refuses existing accounts and requires the database guard described below.
 
 ### Authentication and starter data
 
@@ -373,12 +426,17 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
   - Call graph: relies on `scripts/lib/branch-env.*` and `scripts/lib/worktree.sh`; PowerShell version can invoke `scripts/env/activate-venv.ps1` during fixes.
 
 - `scripts/switch-worktree-branch.ps1`
-  - Purpose: fetch remote refs, create local tracking branches for remote-only branches, then interactively pick a local branch, jump to its dedicated worktree (creating it if needed), optionally open VS Code, optionally start Docker Compose, and always activate the virtualenv.
+  - Purpose: fetch remote refs, create new working branches from the latest `origin/development`, create local tracking branches for remote-only branches, then interactively pick a branch, jump to its dedicated worktree (creating it if needed), optionally open VS Code, optionally start Docker Compose, and always activate the virtualenv.
   - Flags/parameters: `-Branch`, `-SkipVSCode`, `-NewVSCodeWindow`, `-CopyEnv` (copies the current worktree `.env` into the target when missing), `-StartWorkspaceStack`, and `-Data <test|prod>` (required with `-StartWorkspaceStack`).
   - Recommended usage: `pwsh ./scripts/switch-worktree-branch.ps1 <branch> -CopyEnv`.
   - Call graph: invokes `scripts/env/activate-venv.ps1` and `scripts/docker/compose.ps1` when the corresponding switches are selected.
 
 ### Repository maintenance
+
+- `scripts/repo/check_branch_policy.py`
+  - Purpose: enforce pull-request targets, verify that a `main` update is a two-parent release merge whose second parent is the exact `origin/development` tip, and verify that standard `vMAJOR.MINOR.PATCH[-prerelease]` release tags point at the current `origin/main` commit.
+  - Commands: `pull-request --base <branch> --head <branch>`, `main-push [--head <sha>]`, and `release-tag [--head <sha>] [--tag <tag>]`.
+  - Call graph: `.github/workflows/branch-policy.yml` invokes the matching command for pull requests, pushes to `main`, and tag pushes.
 
 - `scripts/repo/check.ps1` / `scripts/repo/check.sh`
   - Purpose: one-stop repository hygiene command; optionally skip stages.
@@ -391,6 +449,12 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
       - Bash flags: `--no-fetch`, `--yes`, `--dry-run`, `-h|--help`.
     - Runs `scripts/repo/audit-worktrees.ps1|.sh` (no flags) to validate branch↔worktree mappings and naming conventions; prompts before removing orphans.
     - Runs `scripts/repo/audit-container-sets.ps1|.sh` (no flags, honours `$CONTAINER_SET_PREFIX`) to locate Compose stacks without matching branches; prompts before removal and exits non-zero if unresolved stacks remain.
+
+- `scripts/prod/publish.ps1` / `scripts/prod/publish.sh`
+  - Purpose: validate the release source and version, create or verify the matching annotated Git tag locally and on `origin`, and publish immutable backend/frontend images.
+  - Release-source requirements: clean `main`, `HEAD == origin/main`, exactly two parents, `origin/development` as the second parent, and a `vMAJOR.MINOR.PATCH[-prerelease]` tag. Local and remote tags must resolve to `HEAD`.
+  - Flags: `-Tag` / positional tag. The older create/push-tag switches remain accepted for compatibility but are unnecessary because local and remote tag publication is mandatory.
+  - Call graph: loads `scripts/lib/publish-utils.ps1|.sh`, validates local and remote Git state, builds both Dockerfiles, pushes/verifies the Git tag on `origin`, and then pushes both images.
 
 ### Database management
 
@@ -474,7 +538,15 @@ pwsh ./scripts/tests/run-e2e-tests.ps1
 ./scripts/tests/run-e2e-tests.sh
 ```
 
-The e2e runners launch a temporary stack on the `TEST_*` ports, run both the API and browser suites against that stack, and clean up after completion.
+Install backend requirements and run `npm --prefix Frontend ci` first. The runners require Docker Compose, Node, and Playwright Chromium. They create a fresh PostgreSQL database, apply Alembic migrations, seed two ordinary accounts, run real cookie-authenticated API/browser tests, and clean up on failure or success. They never restore application backups or seed production CSVs.
+
+Backend tests use in-memory SQLite by default and **ignore ordinary `DATABASE_URL`**. For PostgreSQL validation, set `TEST_DATABASE_URL` to a PostgreSQL database whose name ends in `_test` and set `TEST_DATABASE_CONFIRM` to that exact name. URL query options are rejected. Tests create and migrate a unique schema, clear only its tables between tests, and drop only that schema afterward. Do not use a shared application database for testing.
+
+API fixtures are explicit: `anonymous_client`, `admin_client`, `user_a_client`, and `user_b_client`. The remaining admin-based legacy tests deliberately exercise existing ownerless catalog fixtures; they do not establish ordinary-user authorization. No fixture logs in every test automatically.
+
+The required runner sets `E2E_REQUIRED=1`; absent configuration, failed readiness, or failed login is an error. An ordinary unit-only run may skip the live E2E module when no port is configured. Direct API/browser invocation requires `DEV_BACKEND_PORT`, `PLAYWRIGHT_BASE_URL`, `E2E_EMAIL`, `E2E_OTHER_EMAIL`, and `E2E_PASSWORD` from a disposable test setup. Never use production credentials.
+
+`python -m testsupport.run_e2e` is also the cross-platform CI entry point. It applies migrations to newly created test infrastructure only; it is not a production deployment or upgrade-rehearsal command.
 
 Additional tooling:
 
@@ -533,7 +605,19 @@ Additional tooling:
 
 ## Continuous Integration (GitHub Actions)
 
-The workflow contains a **backend** job and a **frontend** job.
+The CI workflow contains **backend**, **frontend**, **authenticated-e2e**, and **production-smoke** jobs. A separate **branch-policy** workflow enforces integration and release topology. Authenticated E2E uses the disposable runner described above, requires successful API/browser execution, and uploads browser failure artifacts. Add `authenticated-e2e` to required checks using `.github/BRANCH_PROTECTION.md`; editing the workflow does not change GitHub rulesets automatically.
+
+The backend job audits `Backend/requirements.txt` with `pip-audit` in a separate tool environment, including resolved transitive dependencies. Known vulnerabilities fail CI. The frontend job audits its committed npm lockfile. Run both audits when updating dependencies; passing application tests alone is not a security audit. Keep fixed release tags immutable and publish dependency fixes under a new release tag.
+
+### Branch-policy job
+
+- Working and dependency pull requests must target `development` and use an approved branch prefix.
+- Their head commit must contain the current `development` tip, so stale or incorrectly based branches must be non-destructively updated before merge.
+- Pull requests targeting `main` must come from `development`.
+- A push to `main` must be a two-parent merge commit whose second parent is the exact `origin/development` tip.
+- A pushed release tag must match `vMAJOR.MINOR.PATCH[-prerelease]` and point at the current `origin/main` commit.
+- GitHub branch protection should require this `branch-policy` check on `main` and `development`; the repository workflow supplies the check, while the protection setting is configured in GitHub.
+- The exact ruleset and activation order are recorded in [`.github/BRANCH_PROTECTION.md`](.github/BRANCH_PROTECTION.md). Activate it only after the named checks exist on the default branch.
 
 ### Backend job
 
@@ -544,7 +628,7 @@ The workflow contains a **backend** job and a **frontend** job.
 - Runs `scripts/db/check-migration-drift.sh`; fails if migrations are missing.
 - Runs Alembic migrations against the service database.
 - Executes `scripts/db/update-api-schema.sh` to regenerate OpenAPI + TS types; fails if diffs remain.
-- Runs `./scripts/run-tests.sh --sync` (unit + frontend tests).
+- Runs backend tests with `pytest` after migration and generated-schema gates pass.
 - Cleans the database schema on exit.
 
 ### Frontend job
@@ -552,6 +636,12 @@ The workflow contains a **backend** job and a **frontend** job.
 - Installs Node 20.
 - Caches npm modules.
 - Runs `npm --prefix Frontend run lint` and `npm --prefix Frontend run build`.
+
+### Production-smoke job
+
+- Builds the production backend and frontend images.
+- Starts the production Compose database, runs explicit Alembic migrations, and starts the application stack.
+- Verifies edge and database-aware backend readiness endpoints before teardown.
 
 ---
 
