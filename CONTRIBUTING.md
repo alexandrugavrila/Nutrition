@@ -200,6 +200,19 @@ Runtime controls in production compose:
   ```bash
   docker compose --env-file .env.production -f docker-compose.prod.yml --profile maintenance run --rm usda-sync
   ```
+  `USDA_FOUNDATION_FOODS_JSON` is optional when configuring or starting the normal
+  production stack. The sync command requires it (or `--input`) only when invoked;
+  missing input exits with an error before loading data or opening a database session.
+  A URL is fetched by the container. A file path must exist **inside the container**;
+  setting this variable to a host path does not mount that file. For a local dataset,
+  mount its directory read-only and pass the container path (replace the host path):
+  ```bash
+  docker compose --env-file .env.production -f docker-compose.prod.yml --profile maintenance run --rm --volume "/absolute/host/usda:/input:ro" --env USDA_FOUNDATION_FOODS_JSON=/input/foundation.json usda-sync
+  ```
+  In PowerShell, use a quoted absolute host path such as
+  `"C:/datasets/usda:/input:ro"` for the same `--volume` option.
+  Run the database-free configuration/command regression tests with
+  `python -m pytest tests/test_usda_maintenance_config.py -q` (Docker Compose required).
 
 Deployment secret checklist:
 
@@ -344,7 +357,7 @@ The repository keeps Bash and PowerShell twins for every contributor-facing scri
   - Purpose: production runtime stack using prebuilt immutable images only (no host bind mounts), with an edge TLS proxy, runtime health probes, resource guardrails, and bounded log rotation.
   - Entry point: `docker compose --env-file .env.production -f docker-compose.prod.yml up -d`.
   - Maintenance entry point: `docker compose --env-file .env.production -f docker-compose.prod.yml --profile maintenance run --rm usda-sync`.
-  - Requirements: `.env.production` must define critical runtime variables (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, database credentials, `DATABASE_URL`, `USDA_API_KEY`, `CORS_ALLOW_ORIGINS`), plus edge TLS certificate mount inputs (`EDGE_TLS_CERTS_DIR`) or Compose exits immediately via `${VAR:?error}` guards where configured. The `usda-sync` profile additionally requires `USDA_FOUNDATION_FOODS_JSON`.
+  - Requirements: `.env.production` must define critical runtime variables (`BACKEND_IMAGE`, `FRONTEND_IMAGE`, database credentials, `DATABASE_URL`, `USDA_API_KEY`, `CORS_ALLOW_ORIGINS`), plus edge TLS certificate mount inputs (`EDGE_TLS_CERTS_DIR`) or Compose exits immediately via `${VAR:?error}` guards where configured. Foundation input is validated by the `usda-sync` command when invoked, not during Compose interpolation.
 
 ### Environment and worktree helpers
 
