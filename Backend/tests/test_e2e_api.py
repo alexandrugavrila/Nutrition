@@ -17,7 +17,7 @@ BASE_URL = f"http://127.0.0.1:{_port}/api"
 def api_client():
     email = os.environ["E2E_EMAIL"]
     password = os.environ["E2E_PASSWORD"]
-    with httpx.Client(follow_redirects=True, timeout=15) as client:
+    with httpx.Client(follow_redirects=True, timeout=15, headers={"Origin":BASE_URL.removesuffix("/api")}) as client:
         client.get(f"{BASE_URL}/health/ready").raise_for_status()
         response = client.post(f"{BASE_URL}/auth/login", json={"email": email, "password": password})
         assert response.status_code == 200
@@ -198,7 +198,7 @@ class TestFoodRoutes:
 
 @pytest.mark.e2e
 def test_live_login_isolation_and_logout(api_client):
-    with httpx.Client(follow_redirects=True, timeout=15) as other:
+    with httpx.Client(follow_redirects=True, timeout=15, headers={"Origin":BASE_URL.removesuffix("/api")}) as other:
         assert other.get(f"{BASE_URL}/plans/").status_code == 401
         assert other.post(f"{BASE_URL}/auth/login", json={
             "email": os.environ["E2E_OTHER_EMAIL"], "password": os.environ["E2E_PASSWORD"]

@@ -62,7 +62,7 @@ def populate(connection):
 
 def main():
     graph = ScriptDirectory.from_config(Config(str(ROOT / "Backend/alembic.ini")))
-    assert graph.get_heads() == ["c53e9a1b426d"]
+    assert graph.get_heads() == ["d64f0b2c537e"]
     # Traverse the complete graph, including the users revision's merge parents.
     assert {revision.revision for revision in graph.walk_revisions()} >= set(STARTS) - {"base"}
     project = "nutrition-expansion-" + uuid4().hex[:12]

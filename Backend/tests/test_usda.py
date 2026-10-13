@@ -316,13 +316,13 @@ class _MockAsyncClient:
         return _MockUsdaResponse({"foods": []})
 
 
-def test_search_foods_defaults_to_foundation_data_type(anonymous_client, monkeypatch) -> None:
+def test_search_foods_defaults_to_foundation_data_type(user_a_client, monkeypatch) -> None:
     mock_client = _MockAsyncClient()
 
     monkeypatch.setattr(usda_routes, "settings", SimpleNamespace(usda_api_key="test-key"))
     monkeypatch.setattr(usda_routes.httpx, "AsyncClient", lambda *args, **kwargs: mock_client)
 
-    response = anonymous_client.get("/api/usda/search", params={"query": "banana"})
+    response = user_a_client.get("/api/usda/search", params={"query": "banana"})
 
     assert response.status_code == 200
     assert mock_client.calls == [
@@ -338,13 +338,13 @@ def test_search_foods_defaults_to_foundation_data_type(anonymous_client, monkeyp
     ]
 
 
-def test_search_foods_forwards_single_selected_data_type(anonymous_client, monkeypatch) -> None:
+def test_search_foods_forwards_single_selected_data_type(user_a_client, monkeypatch) -> None:
     mock_client = _MockAsyncClient()
 
     monkeypatch.setattr(usda_routes, "settings", SimpleNamespace(usda_api_key="test-key"))
     monkeypatch.setattr(usda_routes.httpx, "AsyncClient", lambda *args, **kwargs: mock_client)
 
-    response = anonymous_client.get(
+    response = user_a_client.get(
         "/api/usda/search",
         params=[("query", "banana"), ("data_types", "Branded")],
     )
@@ -363,13 +363,13 @@ def test_search_foods_forwards_single_selected_data_type(anonymous_client, monke
     ]
 
 
-def test_search_foods_forwards_multiple_selected_data_types(anonymous_client, monkeypatch) -> None:
+def test_search_foods_forwards_multiple_selected_data_types(user_a_client, monkeypatch) -> None:
     mock_client = _MockAsyncClient()
 
     monkeypatch.setattr(usda_routes, "settings", SimpleNamespace(usda_api_key="test-key"))
     monkeypatch.setattr(usda_routes.httpx, "AsyncClient", lambda *args, **kwargs: mock_client)
 
-    response = anonymous_client.get(
+    response = user_a_client.get(
         "/api/usda/search",
         params=[
             ("query", "banana"),
@@ -393,8 +393,8 @@ def test_search_foods_forwards_multiple_selected_data_types(anonymous_client, mo
     ]
 
 
-def test_search_foods_rejects_unknown_data_types(anonymous_client) -> None:
-    response = anonymous_client.get(
+def test_search_foods_rejects_unknown_data_types(user_a_client) -> None:
+    response = user_a_client.get(
         "/api/usda/search",
         params=[("query", "banana"), ("data_types", "Totally Unknown")],
     )

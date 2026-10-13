@@ -46,6 +46,9 @@ def test_global_and_private_ingredients_are_scoped(anonymous_client: TestClient,
         private_a = Ingredient(name="Private Spice", user_id=user_a.id)
         private_b = Ingredient(name="Private Spice", user_id=user_b.id)
         session.add_all([global_ing, private_a, private_b])
+        session.flush()
+        from Backend.models import CatalogSelection
+        session.add(CatalogSelection(user_id=user_a.id, ingredient_id=global_ing.id))
         session.commit()
 
     _login(anonymous_client, "a@example.com")
@@ -59,7 +62,7 @@ def test_global_and_private_ingredients_are_scoped(anonymous_client: TestClient,
         "/api/ingredients/",
         json={"name": "Private Spice", "nutrition": None, "units": [], "tags": []},
     )
-    assert create_response.status_code in (200, 201, 400)
+    assert create_response.status_code == 409
 
 
 def test_foods_can_reference_global_and_owner_private_ingredients(
@@ -85,6 +88,9 @@ def test_foods_can_reference_global_and_owner_private_ingredients(
             units=[IngredientUnit(name="g", grams=1)],
         )
         session.add_all([global_ing, private_a, private_b])
+        session.flush()
+        from Backend.models import CatalogSelection
+        session.add(CatalogSelection(user_id=user_a.id, ingredient_id=global_ing.id))
         session.commit()
         global_id = global_ing.id
         global_unit_id = global_ing.units[0].id
@@ -125,7 +131,7 @@ def test_foods_can_reference_global_and_owner_private_ingredients(
             "tags": [],
         },
     )
-    assert forbidden.status_code == 400
+    assert forbidden.status_code == 404
 
 
 def test_admin_created_user_starts_empty(admin_client: TestClient, engine) -> None:

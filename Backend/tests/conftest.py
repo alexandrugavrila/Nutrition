@@ -86,7 +86,7 @@ def client_fixture(engine) -> Iterator[TestClient]:
             yield session
 
     app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as client:
+    with TestClient(app, headers={"Origin":"http://testserver"}) as client:
         yield client
     app.dependency_overrides.clear()
 
@@ -107,7 +107,7 @@ def account_client(engine):
             with Session(engine) as session:
                 yield session
         app.dependency_overrides[get_db] = override_get_db
-        client = TestClient(app)
+        client = TestClient(app, headers={"Origin":"http://testserver"})
         clients.append(client)
         response = client.post("/api/auth/login", json={"email": f"{user_id}@example.com", "password": "Password123!"})
         assert response.status_code == 200

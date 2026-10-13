@@ -61,6 +61,15 @@ class TagRef(SQLModel):
 class IngredientCreate(SQLModel):
     """Schema for creating an ingredient."""
 
+    @model_validator(mode="before")
+    @classmethod
+    def reject_catalog_claims(cls, value):
+        if isinstance(value, dict):
+            protected = {"is_shared", "verification_status", "provenance_status", "artifact_sha256", "import_run_id", "user_id", "sources", "verified_at", "normalization_version", "payload_hash", "last_synced_at", "is_stale", "owner_user_id"}
+            if protected.intersection(value) or value.get("source") not in (None, "", "manual") or value.get("source_id") not in (None, ""):
+                raise ValueError("Provider provenance and ownership are server-managed; use USDA import or a personal copy.")
+        return value
+
     name: str
     source: Optional[str] = None
     source_id: Optional[str] = None
@@ -73,6 +82,15 @@ class IngredientCreate(SQLModel):
 
 class IngredientUpdate(SQLModel):
     """Schema for updating an ingredient."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_catalog_claims(cls, value):
+        if isinstance(value, dict):
+            protected = {"is_shared", "verification_status", "provenance_status", "artifact_sha256", "import_run_id", "user_id", "sources", "verified_at", "normalization_version", "payload_hash", "last_synced_at", "is_stale", "owner_user_id"}
+            if protected.intersection(value) or value.get("source") not in (None, "", "manual") or value.get("source_id") not in (None, ""):
+                raise ValueError("Provider provenance and ownership are server-managed; use USDA import or a personal copy.")
+        return value
 
     name: str
     source: Optional[str] = None
@@ -160,8 +178,8 @@ class PlanRead(SQLModel):
 class LoginRequest(SQLModel):
     """Credentials required to create a session."""
 
-    email: str
-    password: str
+    email: str = Field(max_length=255)
+    password: str = Field(min_length=1, max_length=1024)
 
 
 class UserCreate(SQLModel):

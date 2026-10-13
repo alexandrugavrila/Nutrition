@@ -29,11 +29,21 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Enable very permissive CORS so the frontend can communicate with the API
-# during development.
+from starlette.responses import JSONResponse
+from Backend.auth.security import trusted_origin
+
+
+@app.middleware("http")
+async def validate_cookie_origin(request, call_next):
+    if not trusted_origin(request, settings):
+        return JSONResponse({"detail": "Untrusted or missing request origin."}, status_code=403)
+    return await call_next(request)
+
+
+# Credentialed cross-origin reads require explicit origins; wildcard is never trusted.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allow_origins,
+    allow_origins=[origin for origin in settings.allow_origins if origin != "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

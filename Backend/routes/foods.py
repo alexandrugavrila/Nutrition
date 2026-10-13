@@ -35,12 +35,7 @@ FOOD_LOAD_OPTIONS = [
 
 def _get_owned_food(db: Session, food_id: int, current_user: User) -> Optional[Food]:
     visibility = Food.user_id == current_user.id
-    statement = (
-        select(Food)
-        .options(*FOOD_LOAD_OPTIONS)
-        .where(Food.id == food_id)
-        .where(visibility)
-    )
+    statement = select(Food).options(*FOOD_LOAD_OPTIONS).where(Food.id == food_id).where(visibility)
     return db.exec(statement).one_or_none()
 
 
@@ -49,8 +44,10 @@ def _get_accessible_ingredient(
 ) -> Optional[Ingredient]:
     if ingredient_id is None:
         return None
-    statement = select(Ingredient).where(Ingredient.id == ingredient_id).where(
-        visible_ingredient_clause(current_user.id)
+    statement = (
+        select(Ingredient)
+        .where(Ingredient.id == ingredient_id)
+        .where(visible_ingredient_clause(current_user.id))
     )
     return db.exec(statement).one_or_none()
 
@@ -61,7 +58,7 @@ def _validate_food_ingredients(
     for item in food_ingredients:
         ingredient = _get_accessible_ingredient(db, item.ingredient_id, current_user)
         if ingredient is None:
-            raise HTTPException(status_code=400, detail="Ingredient is not available.")
+            raise HTTPException(status_code=404, detail="Ingredient not found")
         if item.unit_id not in (None, 0):
             unit = db.get(IngredientUnit, item.unit_id)
             if unit is None or unit.ingredient_id != item.ingredient_id:
@@ -74,9 +71,7 @@ def _validate_food_ingredients(
 def _lookup_base_unit_id(db: Session, ingredient_id: int) -> Optional[int]:
     """Resolve the canonical unit id for synthetic "1g" selections."""
 
-    statement = select(IngredientUnit).where(
-        IngredientUnit.ingredient_id == ingredient_id
-    )
+    statement = select(IngredientUnit).where(IngredientUnit.ingredient_id == ingredient_id)
     units = [u for u in db.exec(statement).all() if getattr(u, "id", None) is not None]
     if not units:
         return None
@@ -93,11 +88,7 @@ def _lookup_base_unit_id(db: Session, ingredient_id: int) -> Optional[int]:
     def _is_exact_gram(unit: IngredientUnit) -> bool:
         grams_value = _grams_value(unit)
         name = (getattr(unit, "name", "") or "").strip().lower()
-        return (
-            name == "g"
-            and grams_value is not None
-            and abs(grams_value - 1.0) < 1e-9
-        )
+        return name == "g" and grams_value is not None and abs(grams_value - 1.0) < 1e-9
 
     for unit in units:
         if _is_exact_gram(unit):
@@ -169,7 +160,7 @@ class TagCreate(SQLModel):
 
 @router.post("/possible_tags", response_model=PossibleFoodTag, status_code=201)
 def add_possible_food_tag(
-    tag: TagCreate, db: Session = Depends(get_db)
+    tag: TagCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> PossibleFoodTag:
     """Create a new possible food tag, or return existing on duplicate name."""
     obj = PossibleFoodTag(name=tag.name.strip())
@@ -180,9 +171,7 @@ def add_possible_food_tag(
         return obj
     except IntegrityError:
         db.rollback()
-        statement = select(PossibleFoodTag).where(
-            PossibleFoodTag.name == tag.name.strip()
-        )
+        statement = select(PossibleFoodTag).where(PossibleFoodTag.name == tag.name.strip())
         existing = db.exec(statement).one()
         return existing
 
@@ -226,7 +215,7 @@ def add_food(
     )
     food_obj.user_id = current_user.id
     if food.tags:
-        food_obj.tags = [db.get(PossibleFoodTag, t.id) for t in food.tags if t.id]
+        food_obj.tags = _resolve_food_tags(db, food.tags)
     db.add(food_obj)
     db.commit()
 
@@ -266,13 +255,18 @@ def update_food(
 
     with db.no_autoflush:
         if food_data.tags:
-            food.tags = [
-                db.get(PossibleFoodTag, t.id) for t in food_data.tags if t.id
-            ]
+            food.tags = _resolve_food_tags(db, food_data.tags)
         else:
             food.tags = []
 
     db.add(food)
+    db.flush()
+    from Backend.models import Plan
+    from Backend.services.references import validate_plan, contains_id
+
+    for plan in db.exec(select(Plan).where(Plan.user_id == current_user.id)).all():
+        if contains_id(plan.payload, 'foodId', food.id):
+            validate_plan(db, current_user.id, plan.payload)
     db.commit()
 
     statement = select(Food).options(*FOOD_LOAD_OPTIONS).where(Food.id == food.id)
@@ -290,6 +284,9 @@ def delete_food(
     food = _get_owned_food(db, food_id, current_user)
     if not food:
         raise HTTPException(status_code=404, detail="Food not found")
+    from Backend.services.references import ensure_unreferenced
+
+    ensure_unreferenced(db, current_user.id, food_id=food.id)
     db.delete(food)
     db.commit()
     return {"message": "Food deleted successfully"}
@@ -297,3 +294,13 @@ def delete_food(
 
 __all__ = ["router"]
 
+
+def _resolve_food_tags(db, refs):
+    tags = []
+    for ref in refs:
+        tag = db.get(PossibleFoodTag, ref.id)
+        if tag is None:
+            raise HTTPException(404, "Tag not found")
+        if tag not in tags:
+            tags.append(tag)
+    return tags

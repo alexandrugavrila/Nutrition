@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 
 from ..auth.dependencies import get_current_user
 from ..db import get_db
+from ..services.references import validate_plan
 from ..models import Plan, PlanCreate, PlanRead, PlanUpdate, User
 
 router = APIRouter(prefix="/plans", tags=["plans"])
@@ -49,6 +50,7 @@ def create_plan(
     current_user: User = Depends(get_current_user),
 ) -> PlanRead:
     """Persist a new plan payload."""
+    validate_plan(db, current_user.id, payload.payload)
     plan = Plan(
         label=payload.label.strip(),
         payload=payload.payload,
@@ -79,6 +81,7 @@ def update_plan(
     if payload.label is not None:
         plan.label = payload.label.strip()
     if payload.payload is not None:
+        validate_plan(db, current_user.id, payload.payload)
         plan.payload = payload.payload
 
     db.add(plan)

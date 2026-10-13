@@ -42,6 +42,8 @@ def main():
     for key in ("SQLALCHEMY_DATABASE_URI", "PGOPTIONS", "COMPOSE_FILE", "COMPOSE_PROFILES"):
         env.pop(key, None)
     processes = []
+    from testsupport.usda_stub import start_provider
+    provider = start_provider()
     with tempfile.TemporaryDirectory(prefix="nutrition-e2e-") as logs:
         handles = []
         try:
@@ -52,7 +54,9 @@ def main():
             url = f"postgresql://nutrition_test:disposable-test-only@127.0.0.1:{db_port}/nutrition_test"
             env.update(DATABASE_URL=url, TEST_DATABASE_URL=url,
                        TEST_DATABASE_CONFIRM="nutrition_test", DB_AUTO_CREATE="false",
+                       CORS_ALLOW_ORIGINS=f"http://127.0.0.1:{ui_port},http://127.0.0.1:{api_port}",
                        ENVIRONMENT="test", SESSION_SECURE_COOKIE="false", USDA_API_KEY="e2e-placeholder",
+                       E2E_USDA_BASE_URL=f"http://127.0.0.1:{provider.server_port}",
                        E2E_REQUIRED="1", E2E_EMAIL="a@e2e.example", E2E_OTHER_EMAIL="b@e2e.example",
                        E2E_PASSWORD=uuid4().hex, DEV_BACKEND_PORT=str(api_port),
                        DEV_FRONTEND_PORT=str(ui_port), BACKEND_URL=f"http://127.0.0.1:{api_port}",
@@ -64,7 +68,7 @@ def main():
             run([sys.executable, "-m", "alembic", "-c", "Backend/alembic.ini", "upgrade", "head"])
             run([sys.executable, "-m", "testsupport.seed_accounts"])
             for name, command in [
-                ("backend", [sys.executable, "-m", "uvicorn", "Backend.backend:app", "--host", "127.0.0.1", "--port", str(api_port)]),
+                ("backend", [sys.executable, "-m", "uvicorn", "testsupport.e2e_app:app", "--host", "127.0.0.1", "--port", str(api_port)]),
                 ("frontend", [shutil.which("node"), "Frontend/node_modules/vite/bin/vite.js", "Frontend", "--host", "127.0.0.1", "--port", str(ui_port), "--strictPort"]),
             ]:
                 handle = open(Path(logs) / f"{name}.log", "w", encoding="utf-8")
@@ -83,6 +87,8 @@ def main():
                 print(f"\n{path.name}:\n{path.read_text(encoding='utf-8')[-12000:]}")
             raise
         finally:
+            provider.shutdown()
+            provider.server_close()
             for process in processes:
                 process.terminate()
             for process in processes:

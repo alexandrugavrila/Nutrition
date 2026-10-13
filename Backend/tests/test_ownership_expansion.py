@@ -23,6 +23,8 @@ def test_final_owner_constraint_and_catalog_visibility(engine, user_a_client, us
         shared = Ingredient(name="Verified shared", is_shared=True, sources=[verified_source("shared")])
         personal = Ingredient(name="Private", user_id="user-a")
         session.add_all([flagged, shared, personal]); session.commit()
+        from Backend.models import CatalogSelection
+        session.add_all([CatalogSelection(user_id=user, ingredient_id=shared.id) for user in ("user-a", "user-b", "test-user")]); session.commit()
         shared_id, private_id = shared.id, personal.id
     for client in (user_a_client, user_b_client, admin_client):
         rows = client.get("/api/ingredients/").json()
@@ -39,11 +41,8 @@ def test_final_owner_constraint_and_catalog_visibility(engine, user_a_client, us
 def test_client_source_does_not_publish_or_assert_verification(user_a_client, user_b_client):
     response = user_a_client.post("/api/ingredients/", json={"name":"Claimed", "source":"usda",
         "source_id":"untrusted", "is_shared":True, "verification_status":"verified"})
-    assert response.status_code == 201
-    body = response.json()
-    assert body["user_id"] == "user-a" and not body["is_shared"]
-    assert body["provenance_status"] == "unverified"
-    assert user_b_client.get(f"/api/ingredients/{body['id']}").status_code == 404
+    assert response.status_code == 422
+    assert user_a_client.get("/api/ingredients/").json() == []
 
 
 def test_preference_matching_constraint_and_account_keys(engine, user_a_client, user_b_client):

@@ -1,3 +1,4 @@
+from .catalog_selection import CatalogSelection, LoginBudget
 from .ingredient_provenance_history import IngredientProvenanceHistory
 from .ownership_adoption import OwnershipAdoption
 from .user_ingredient_preference import UserIngredientPreference
@@ -46,6 +47,8 @@ from .schemas import (
 )
 
 __all__ = [
+    "CatalogSelection",
+    "LoginBudget",
     "IngredientProvenanceHistory",
     "OwnershipAdoption",
     "UserIngredientPreference",

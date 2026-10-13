@@ -1,9 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { useData } from "@/contexts/DataContext";
 import { useSessionStorageReducer } from "@/hooks/useSessionStorageState";
 import { roundNutritionValue } from "@/utils/nutritionPrecision";
-import { generateUUID, handleFetchRequest } from "@/utils/utils";
+import { generateUUID } from "@/utils/utils";
 import type { components, operations } from "@/api-types";
 
 import type { UsdaNormalizationDataType } from "./usdaDataTypes";
@@ -172,17 +172,12 @@ const sanitizeUnits = (units: IngredientRead["units"]): (IngredientUnitCreate | 
 
 const buildRequestPayload = (ingredient: IngredientFormState["ingredient"]): IngredientRequest => {
   const payload: IngredientRequest = {
-    ...ingredient,
+    name: ingredient.name,
+    nutrition: ingredient.nutrition,
+    tags: ingredient.tags,
+
     units: sanitizeUnits(ingredient.units),
   } as IngredientRequest;
-
-  if (typeof payload.id !== "number") {
-    delete (payload as { id?: number }).id;
-  }
-
-  // Remove local-only helper property
-  delete (payload as { shoppingUnitId?: unknown }).shoppingUnitId;
-  delete (payload as { sourceName?: unknown }).sourceName;
 
   const normalizeShoppingUnitId = (value: unknown): number | null => {
     if (value === null || value === undefined) return null;
@@ -244,6 +239,7 @@ const buildRequestPayload = (ingredient: IngredientFormState["ingredient"]): Ing
 
 export const useIngredientForm = () => {
   const { setIngredientsNeedsRefetch, startRequest, endRequest } = useData();
+  const [error, setError] = useState<string | null>(null);
   const [state, dispatch] = useSessionStorageReducer(reducer, createInitialState, "ingredient-form-state-v1");
 
   const applyIngredientDefaults = useCallback((ingredient: IngredientRead): IngredientFormState["ingredient"] => {
@@ -286,19 +282,25 @@ export const useIngredientForm = () => {
       const payload = buildRequestPayload(state.ingredient);
       const targetId = state.ingredient.id;
       const isEdit = mode === "edit" && typeof targetId === "number";
-      const url = isEdit ? `/api/ingredients/${targetId}` : "/api/ingredients/";
+      const importing = !isEdit && state.ingredient.source === "usda";
+      const url = importing ? `/api/usda/import/${state.ingredient.source_id}` : isEdit ? `/api/ingredients/${targetId}` : "/api/ingredients/";
       const method = isEdit ? "PUT" : "POST";
 
       startRequest();
       try {
-        await handleFetchRequest(url, method, payload);
+        setError(null);
+        const response = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(importing ? {} : payload) });
+        if (!response.ok) {
+          const body = await response.json();
+          throw new Error(typeof body.detail === "string" ? body.detail : "Unable to save ingredient.");
+        }
         setIngredientsNeedsRefetch(true);
         if (mode === "add" && autoClearOnAdd) {
           clearForm();
         }
         onSaved?.();
       } catch (error) {
-        console.error("Error saving ingredient:", error);
+        setError(error instanceof Error ? error.message : "Unable to save ingredient.");
       } finally {
         endRequest();
       }
@@ -313,9 +315,12 @@ export const useIngredientForm = () => {
 
       startRequest();
       try {
-        const response = await fetch(`/api/ingredients/${ingredientId}`, { method: "DELETE" });
+        setError(null);
+        const suffix = state.ingredient.is_shared ? "/selection" : "";
+        const response = await fetch(`/api/ingredients/${ingredientId}${suffix}`, { method: "DELETE" });
         if (!response.ok) {
-          console.error("Failed to remove ingredient");
+          const body = await response.json();
+          setError(typeof body.detail === "string" ? body.detail : "Unable to remove ingredient.");
         } else {
           setIngredientsNeedsRefetch(true);
           onDeleted?.();
@@ -326,8 +331,22 @@ export const useIngredientForm = () => {
         endRequest();
       }
     },
-    [state.ingredient.id, startRequest, endRequest, setIngredientsNeedsRefetch],
+    [state.ingredient.id, state.ingredient.is_shared, startRequest, endRequest, setIngredientsNeedsRefetch],
   );
+
+  const copyForEditing = useCallback(async () => {
+    setError(null);
+    startRequest();
+    try {
+      const response = await fetch(`/api/ingredients/${state.ingredient.id}/copy`, { method: "POST" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(typeof body.detail === "string" ? body.detail : "Unable to copy ingredient.");
+      loadIngredient(body);
+      setIngredientsNeedsRefetch(true);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to copy ingredient.");
+    } finally { endRequest(); }
+  }, [state.ingredient.id, startRequest, endRequest, loadIngredient, setIngredientsNeedsRefetch]);
 
   const applyUsdaResult = useCallback(
     (result: UsdaIngredientResult) => {
@@ -387,6 +406,8 @@ export const useIngredientForm = () => {
 
   return {
     ingredient: state.ingredient,
+    error,
+    copyForEditing,
     needsClearForm: state.needsClearForm,
     needsFillForm: state.needsFillForm,
     dispatch,

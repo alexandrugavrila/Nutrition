@@ -782,3 +782,66 @@ preference conflicts, repeated apply, preserved values and authenticated owner/a
 visibility. The existing PowerShell/Bash schema-validation wrappers both call this module.
 `python -m testsupport.run_account_commands_smoke` also exercises packaged adoption in
 an isolated schema inside the production image, without a source mount or USDA key.
+
+
+### Account and catalog boundaries (Phase 6)
+
+USDA ingredients are canonical backend records. Importing one adds it to the signed-in
+user's ingredient list; other accounts do not acquire that selection. Repeated imports
+of the same provider ID reuse the canonical row. Ordinary CRUD always creates personal
+ingredients and rejects client ownership, publication and provenance assertions.
+Administrators have the same personal-content boundary as ordinary accounts.
+
+- `POST /api/usda/import/{fdc_id}` accepts only the identifier in the URL (no body or
+  `{}`). The backend fetches and verifies USDA data. Search/detail and both tag-creation
+  APIs require authentication. Shared tags remain a common vocabulary.
+- `POST /api/ingredients/{id}/copy` creates an independent personal ingredient and
+  units. Historical provenance is archived without a provider mapping. Existing recipes
+  continue to reference the original ingredient. The editor exposes this explicit action;
+  canonical fields cannot be edited, including by an administrator.
+- `DELETE /api/ingredients/{id}/selection` removes an unused canonical selection, not
+  the canonical row. References in that user's recipes, plans, stored food or logs block
+  removal. Personal ingredient/food deletion also returns HTTP 409 while referenced.
+- `PUT /api/ingredients/{id}/shopping-preference` takes `{"unit_id":123}` or
+  `{"unit_id":null}`. The unit must belong to the accessible ingredient. Null clears the
+  override; resolution uses the user override, catalog default, then canonical gram unit.
+- Plan writes validate food/ingredient IDs and recipe overrides. Another account's
+  personal IDs return 404. Persisted unit conversions cannot be changed in place; add a
+  new named unit so saved references retain their meaning.
+
+Migration `d64f0b2c537e` follows the Phase 5 finalization revision. It adds per-user catalog
+selections and shared login budgets, preserving selections implied by existing recipes,
+plans, preferences, stored food and logs. The pre-adoption checkpoint remains
+`b42d8f0a315c`; historical migration IDs and the all-personal adoption policy are unchanged.
+
+Cookie-authenticated mutations and login require a matching `Origin` (or a same-origin
+`Referer` fallback). API clients should send their configured application origin.
+`CORS_ALLOW_ORIGINS` must list exact trusted browser origins for cross-origin use;
+`*` grants neither credentialed CORS access nor mutation authorization. Same-origin
+requests through the application proxy are supported. Development Compose defaults to
+localhost and 127.0.0.1 at `DEV_FRONTEND_PORT` (3000 by default); set
+`CORS_ALLOW_ORIGINS` explicitly for another development hostname or direct local backend.
+Production requires secure session
+cookies and HTTPS; explicit `SESSION_SECURE_COOKIE=false` is rejected in production.
+Password changes and operator reset/deactivation revoke sessions transactionally.
+Authenticated mutations lock the account row to coordinate reference edits/deletion and
+account changes.
+
+Login budgets persist across workers: at most 10 attempts per normalized email and 100
+per client address in a fixed 15-minute window, including successful logins. Exceeding a
+budget returns 429 with `Retry-After`; expired budget rows are periodically removed.
+Configure the reverse proxy/server's trusted forwarding behavior deliberately: the limiter
+uses the server's resolved client address and does not parse arbitrary forwarded headers.
+A shared proxy address can therefore share the address budget. Actual production HTTPS
+and proxy behavior still require Phase 10 validation.
+
+Until Phase 8 supports nullable nutrition throughout, trusted import rejects incomplete
+nutrient records instead of storing fabricated zeroes. Existing proxy preview normalization
+and historical numeric data remain unchanged. Foundation synchronization remains disabled
+pending Phase 9; identifier imports do not refresh existing canonical records.
+
+`python -m testsupport.run_e2e` runs the PostgreSQL suite and authenticated API/browser
+workflows with a loopback USDA fixture through the real server import path. Its test-only
+ASGI wrapper validates the disposable database and is not included in production images.
+No live USDA key or existing application database is required. See
+[Phase 6 evidence](docs/integration-phase-6.md) for validation and remaining release gates.

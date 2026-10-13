@@ -27,6 +27,7 @@ from Backend.models import (
 from Backend.settings import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+_DUMMY_PASSWORD_HASH = hash_password("not-an-account-password")
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -68,11 +69,15 @@ def login(
     """Authenticate a user and issue a session cookie."""
 
     email = normalize_email(payload.email)
-    statement = select(User).where(User.email == email)
+    from Backend.auth.security import login_budget
+
+    login_budget(db, email, request.client.host if request.client else "unknown")
+    statement = select(User).where(User.email == email).with_for_update()
     user = db.exec(statement).one_or_none()
-    if user is None or not user.is_active or not verify_password(
-        payload.password, user.password_hash
-    ):
+    valid_password = verify_password(
+        payload.password, user.password_hash if user else _DUMMY_PASSWORD_HASH
+    )
+    if user is None or not user.is_active or not valid_password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",
@@ -141,8 +146,8 @@ def change_password(
         )
     current_user.password_hash = hash_password(payload.new_password)
     db.add(current_user)
+    revoke_all_user_sessions(db, current_user.id, commit=False)
     db.commit()
-    revoke_all_user_sessions(db, current_user.id)
     _clear_session_cookie(response)
 
 

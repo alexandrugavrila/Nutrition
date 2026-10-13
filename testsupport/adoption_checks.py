@@ -109,7 +109,7 @@ def verify_visibility(engine):
             yield session
     app.dependency_overrides[get_db] = database
     try:
-        with TestClient(app) as admin, TestClient(app) as owner:
+        with TestClient(app, headers={"Origin":"http://testserver"}) as admin, TestClient(app, headers={"Origin":"http://testserver"}) as owner:
             for client, identity in ((admin,'fixture-a'),(owner,'fixture-b')):
                 response = client.post('/api/auth/login', json={'email':identity+'@example.invalid','password':'adoption-test-password'})
                 assert response.status_code == 200, response.text

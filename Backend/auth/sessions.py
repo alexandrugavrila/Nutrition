@@ -104,11 +104,12 @@ def revoke_session(db: Session, token: str) -> None:
     db.commit()
 
 
-def revoke_all_user_sessions(db: Session, user_id: str) -> None:
+def revoke_all_user_sessions(db: Session, user_id: str, *, commit: bool = True) -> None:
     """Delete all sessions for a user."""
 
     db.exec(delete(AuthSession).where(AuthSession.user_id == user_id))
-    db.commit()
+    if commit:
+        db.commit()
 
 
 __all__ = [

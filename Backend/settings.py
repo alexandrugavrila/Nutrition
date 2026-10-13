@@ -153,6 +153,9 @@ class Settings:
             default=Settings._is_production(environment),
         )
 
+        if Settings._is_production(environment) and not session_secure_cookie:
+            raise RuntimeError("Production requires secure session cookies over HTTPS.")
+
         Settings._validate_required_production_secrets(
             db_url=db_url,
             usda_api_key=usda_api_key,

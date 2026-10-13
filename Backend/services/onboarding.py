@@ -145,6 +145,8 @@ def _seed_user_starter_data(
         source_id = definition.get("source_id")
         if source and source_id:
             ingredient = _resolve_sourced_ingredient(session, source, str(source_id))
+            from Backend.services.catalog import select_catalog
+            select_catalog(session, user.id, ingredient.id)
         else:
             before = _existing_private_ingredient(session, user, definition["name"])
             ingredient = _create_private_ingredient(session, user, definition)
@@ -169,6 +171,9 @@ def _seed_user_starter_data(
                 ingredient = _resolve_sourced_ingredient(
                     session, item["source"], str(item["source_id"])
                 )
+            if ingredient is not None and ingredient.is_shared:
+                from Backend.services.catalog import select_catalog
+                select_catalog(session, user.id, ingredient.id)
             if ingredient is None or ingredient.id is None:
                 raise HTTPException(
                     status_code=500,

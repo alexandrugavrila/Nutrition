@@ -24,6 +24,8 @@ def digest(value):
 def snapshot(session):
     result = {}
     for table in SQLModel.metadata.sorted_tables:
+        if table.name in {"catalog_selections", "login_budgets"}:
+            continue
         rows = session.connection().execute(select(table).order_by(*table.primary_key.columns)).mappings()
         result[table.name] = json.loads(canonical([dict(row) for row in rows]))
     return result
@@ -33,6 +35,8 @@ def reference_errors(data):
     """Validate real foreign keys plus the frontend's embedded plan references."""
     errors = []
     for table in SQLModel.metadata.sorted_tables:
+        if table.name in {"catalog_selections", "login_budgets"}:
+            continue
         for constraint in table.foreign_key_constraints:
             elements = list(constraint.elements)
             remote = elements[0].column.table.name
@@ -167,7 +171,7 @@ def build_report(session: Session, owner_id: str):
 def lock_writers(session):
     if session.bind.dialect.name == "postgresql":
         session.execute(text("SET LOCAL lock_timeout = '5s'"))
-        names = sorted(table.name for table in SQLModel.metadata.sorted_tables)
+        names = sorted(table.name for table in SQLModel.metadata.sorted_tables if table.name not in {"catalog_selections", "login_budgets"})
         session.execute(text("LOCK TABLE " + ", ".join('"'+name+'"' for name in names) + " IN SHARE ROW EXCLUSIVE MODE"))
 
 
