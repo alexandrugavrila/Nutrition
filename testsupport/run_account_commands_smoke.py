@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     project = "nutrition-accounts-" + uuid4().hex[:12]
-    image = project + ":phase3"
+    image = project + ":phase5"
     compose = ["docker", "compose", "-p", project, "-f", str(ROOT / "testsupport/docker-compose.e2e.yml")]
     def run(args, **kwargs):
         return subprocess.run(args, cwd=ROOT, check=True, text=True, **kwargs)
@@ -39,6 +39,19 @@ def main():
         run(base + ["-c", "from Backend.db import engine; from Backend.models import User; from Backend.auth.passwords import verify_password; from sqlmodel import Session,select; s=Session(engine); u=s.exec(select(User)).one(); assert u.is_active and verify_password('replacement-password',u.password_hash); u.is_admin=False; s.add(u); s.commit()"])
         result = subprocess.run(base + admin, cwd=ROOT, input="", text=True, capture_output=True)
         assert result.returncode == 1 and "non-admin" in result.stderr
+        # Independent schema rehearses the packaged adoption commands at the expansion checkpoint.
+        run(base + ["-c", "from Backend.db import engine; from sqlalchemy import text; c=engine.connect(); c.execute(text('CREATE SCHEMA adoption_smoke')); c.commit()"])
+        adoption_base = base[:-2] + ["-e", "PGOPTIONS=-c search_path=adoption_smoke"] + base[-2:]
+        run(adoption_base + ["-m", "alembic", "-c", "Backend/alembic.ini", "upgrade", "b42d8f0a315c"])
+        run(adoption_base + admin, input="initial-password\n")
+        run(adoption_base + ["-m", "Backend.commands.manage_account", "create-user", "--email", "owner@example.com", "--display-name", "Owner", "--password-stdin"], input="owner-password\n")
+        run(adoption_base + ["-c", "from Backend.db import engine; from sqlalchemy import text; c=engine.connect(); c.execute(text(\"INSERT INTO ingredients(name) VALUES ('Legacy'),('Legacy'); INSERT INTO ingredient_units(ingredient_id,name,grams) SELECT min(id),'1 g',1.2345 FROM ingredients\")); c.commit()"])
+        report = run(adoption_base + ["-m", "Backend.commands.adopt_legacy", "--email", "owner@example.com", "--dry-run"], capture_output=True).stdout
+        apply_code = "import sys,tempfile; from pathlib import Path; from Backend.commands.adopt_legacy import main; d=tempfile.TemporaryDirectory(); p=Path(d.name)/'reviewed.json'; p.write_text(sys.stdin.read()); raise SystemExit(main(['--email','owner@example.com','--apply','--report',str(p)]))"
+        run(adoption_base + ["-c", apply_code], input=report)
+        run(adoption_base + ["-m", "alembic", "-c", "Backend/alembic.ini", "upgrade", "head"])
+        run(adoption_base + ["-m", "alembic", "-c", "Backend/alembic.ini", "check"])
+        run(adoption_base + ["-c", apply_code], input=report)
         run(["docker", "image", "inspect", "--format", "{{.Id}}", image])
         print("Production account command smoke passed (no mounts, no USDA key).")
     finally:

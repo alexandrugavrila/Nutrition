@@ -44,3 +44,18 @@ def maintain_account(session: Session, user: User, action: str, *, password_prov
     session.add(user)
     session.exec(delete(AuthSession).where(AuthSession.user_id == user.id))
     session.flush()
+
+
+def create_personal_account(session: Session, *, email: str, display_name: str, password_provider):
+    email = normalize_email(email)
+    if not email or not display_name.strip():
+        raise ValueError("Email and display name must not be empty.")
+    if session.exec(select(User).where(User.email == email)).first():
+        raise ValueError("Account already exists; no account was changed.")
+    password = password_provider()
+    if not password or not password.strip():
+        raise ValueError("Password must not be empty.")
+    user = User(email=email, display_name=display_name.strip(), password_hash=hash_password(password), is_admin=False)
+    session.add(user)
+    session.flush()
+    return user

@@ -12,7 +12,7 @@ from testsupport.database import validated_test_url
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECKPOINT = "b42d8f0a315c"
-STARTS = ("base", "d3f0b1c2e7ad", "b6a1f2c3d4e5", "6b2f8f8d9c11", "8c9d0e1f2a3b", "91b4c6d8e2f0", "a31c7e9f204b")
+STARTS = ("base", "d3f0b1c2e7ad", "b6a1f2c3d4e5", "6b2f8f8d9c11", "8c9d0e1f2a3b", "91b4c6d8e2f0", "a31c7e9f204b", CHECKPOINT)
 
 
 def populate(connection):
@@ -26,12 +26,14 @@ def populate(connection):
             insert("users", id=user, email=user + "@example.invalid", password_hash="fixture-only", display_name=user)
     insert("ingredients", id=101, name="Legacy personal edits")
     insert("ingredients", id=102, name="Other legacy")
+    insert("nutrition", id=801, ingredient_id=101, calories=0, protein=1.2345, carbohydrates=2, fat=3, fiber=4)
     insert("ingredient_units", id=201, ingredient_id=101, name="1 g", grams=1)
     insert("ingredient_units", id=202, ingredient_id=101, name="g", grams=1)
     insert("foods", id=301, name="Legacy recipe")
     insert("food_ingredients", food_id=301, ingredient_id=101, unit_id=201, unit_quantity=75)
     if "user_id" in tables["ingredients"].c:
         insert("ingredients", id=103, name="Legacy personal edits")
+        insert("foods", id=302, name="Legacy recipe", user_id="fixture-a")
         for number, user in enumerate(("fixture-a", "fixture-b"), 104):
             insert("ingredients", id=number, name="Duplicate private name", user_id=user)
     if "ingredient_sources" in tables:
@@ -60,7 +62,7 @@ def populate(connection):
 
 def main():
     graph = ScriptDirectory.from_config(Config(str(ROOT / "Backend/alembic.ini")))
-    assert graph.get_heads() == [CHECKPOINT]
+    assert graph.get_heads() == ["c53e9a1b426d"]
     # Traverse the complete graph, including the users revision's merge parents.
     assert {revision.revision for revision in graph.walk_revisions()} >= set(STARTS) - {"base"}
     project = "nutrition-expansion-" + uuid4().hex[:12]
@@ -93,7 +95,7 @@ def main():
                         with engine.begin() as connection:
                             snapshot = populate(connection)
                     run(alembic + ["upgrade", CHECKPOINT])
-                    run(alembic + ["check"])
+
                     metadata = MetaData()
                     with engine.connect() as connection:
                         metadata.reflect(connection)
@@ -111,7 +113,23 @@ def main():
                             assert connection.execute(text(f"SELECT count(*) FROM {table} WHERE owner_user_id IS NOT NULL")).scalar_one() == 0
                         for table in ("ownership_adoptions", "ingredient_provenance_history", "user_ingredient_preferences"):
                             assert connection.execute(text(f"SELECT count(*) FROM {table}")).scalar_one() == 0
-                    print(f"PASS {start} -> {CHECKPOINT}: rows, IDs, references and legacy values preserved", flush=True)
+                    if snapshot:
+                        rejected = subprocess.run(alembic + ["upgrade", "head"], cwd=ROOT, env=env, capture_output=True, text=True)
+                        assert rejected.returncode != 0 and "complete reviewed legacy adoption" in rejected.stderr
+                    from testsupport.adoption_checks import rehearse
+                    rehearse(engine)
+                    if snapshot:
+                        with engine.begin() as connection:
+                            connection.execute(text("UPDATE users SET display_name = 'Unexpected writer' WHERE id = 'fixture-b'"))
+                        rejected = subprocess.run(alembic + ["upgrade", "head"], cwd=ROOT, env=env, capture_output=True, text=True)
+                        assert rejected.returncode != 0 and "changed after adoption" in rejected.stderr
+                        with engine.begin() as connection:
+                            connection.execute(text("UPDATE users SET display_name = :name WHERE id = 'fixture-b'"), {'name':'fixture-b' if 'users' in snapshot else 'Owner'})
+                    run(alembic + ["upgrade", "head"])
+                    run(alembic + ["check"])
+                    from testsupport.adoption_checks import verify_visibility
+                    verify_visibility(engine)
+                    print(f"PASS {start} -> {CHECKPOINT} -> adoption -> head: preservation, dry-run, stale report, rollback, rerun and drift", flush=True)
                 finally:
                     engine.dispose()
                     with control.begin() as connection:

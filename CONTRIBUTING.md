@@ -432,7 +432,9 @@ Activate the intended Python environment before using the script wrappers.
 - `scripts/auth/manage-account.ps1` / `.sh` wrap `Backend.commands.manage_account`.
   Subcommands: `reset-password`, `activate`, `deactivate`. Select exactly one of
   `--email <email>` or `--user-id <id>`. Password reset accepts `--password-stdin`.
-  Every operation revokes all sessions in the same transaction as the account change.
+  These maintenance operations revoke all sessions in the same transaction.
+  `create-user --email <email> --display-name <name> [--password-stdin]` creates an empty,
+  active non-admin account; an existing email fails without changing the account.
 - `scripts/auth/seed-starter-data.ps1` / `.sh` wrap `Backend.commands.seed_starter_data`.
   Select exactly one of `--email <email>` or `--user-id <id>`; optional `--manifest <path>`.
   Seeding is explicit and transactional. Missing referenced catalog data rolls back the
@@ -717,3 +719,66 @@ The backend job audits `Backend/requirements.txt` with `pip-audit` in a separate
 ---
 
 Thanks for contributing!
+
+
+### Legacy ownership adoption (Phase 5 integration checkpoint)
+
+This is a maintenance-only operation, not a deployment script. Do not run against an
+application database until writers are stopped, a verified backup exists, and the report
+has been reviewed. Use the candidate image with an explicitly selected `DATABASE_URL`.
+Keep the old application and Foundation maintenance jobs stopped through finalization.
+
+1. Upgrade only to `b42d8f0a315c`, the expansion checkpoint.
+2. Use the packaged `create_admin` and `manage_account create-user` commands to establish
+   exactly one active administrator and one active ordinary account. Existing accounts
+   are never silently deleted or promoted. The ordinary account will own all legacy data.
+3. Generate the report (read-only, repeatable-read transaction):
+   `python -m Backend.commands.adopt_legacy --email owner@example.com --dry-run --report adoption.json`.
+   The output file must not already exist. Treat it as private operational data.
+4. Review blockers, counts, IDs, previous identities, deterministic name suffixes,
+   source archives, and shopping preferences. Duplicate names retain the lowest ID's
+   name; remaining records receive collision-safe ` [legacy #ID]` suffixes, truncated
+   to the column limit. Conflicting per-user shopping preferences require resolution.
+5. Apply exactly that report:
+   `python -m Backend.commands.adopt_legacy --email owner@example.com --apply --report adoption.json`.
+   Changed data invalidates the report. Apply holds table locks (five-second lock timeout)
+   and updates ownership, names, provenance, preferences and the ledger transactionally.
+6. Immediately run `python -m alembic -c Backend/alembic.ini upgrade head`.
+   Revision `c53e9a1b426d` checks the recorded post-adoption fingerprint before enforcing
+   ownership. Any intervening data write blocks finalization. Investigate changes; do not
+   edit the ledger, stamp the revision, or use downgrade as recovery. Restore the matched
+   backup/image pair when the cutover cannot safely continue.
+
+`--user-id` can replace `--email`. Both report and input paths are container-visible:
+mount a dedicated host report directory for dry-run output, then mount the reviewed
+file read-only for apply, for example `--mount type=bind,src=/host/adoption.json,dst=/reports/adoption.json,readonly`
+with `docker run` and `--report /reports/adoption.json`. The host path is not passed as the
+container's input path. No source-code mount is needed.
+
+Every legacy ingredient becomes personal, including externally sourced or previously
+shared ingredients. Canonical provider mappings are archived in
+`ingredient_provenance_history` and detached; IDs, recipe references, persisted units,
+plan payloads, historical nutrition and legacy device identities remain unchanged.
+Existing per-user shopping choices transfer to the designated owner, with legacy defaults
+used only when no override exists. Catalog defaults remain unchanged.
+`all-personal-v1` records the owner and original report. Reapplying the original report
+for the same owner is a no-op, including after later personal edits; another owner or
+report is rejected. The command never imports or publishes catalog records.
+
+Empty fresh databases may upgrade directly to head because no legacy content requires
+adoption; the checkpoint/bootstrap/empty-adoption path is also rehearsed. Populated
+upgrades must use the checkpoint. Accounts and seeding remain separate operations.
+Foundation synchronization is temporarily disabled before input loading or database
+writes until the reference-safe Phase 9 implementation. Missing input still fails with
+its dedicated validation message. External catalog records in the final application will
+be immutable; editing requires an explicit personal copy, without repointing recipes.
+
+The script catalog entry for adoption is the cross-platform Python module
+`Backend.commands.adopt_legacy` (flags above; intentionally no additional shell wrapper).
+`python -m testsupport.run_schema_expansion` now rehearses expansion, adoption, final
+constraints and drift across the supported starting revisions in disposable PostgreSQL
+schemas, including stale reports, injected failure rollback, reference blockers,
+preference conflicts, repeated apply, preserved values and authenticated owner/admin
+visibility. The existing PowerShell/Bash schema-validation wrappers both call this module.
+`python -m testsupport.run_account_commands_smoke` also exercises packaged adoption in
+an isolated schema inside the production image, without a source mount or USDA key.

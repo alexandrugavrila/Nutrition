@@ -20,7 +20,7 @@ class Plan(SQLModel, table=True):
         sa_column=Column(
             String(36),
             ForeignKey("users.id", ondelete="CASCADE"),
-            nullable=True,
+            nullable=False,
             index=True,
         ),
     )

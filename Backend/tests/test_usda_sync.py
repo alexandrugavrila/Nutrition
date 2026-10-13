@@ -29,75 +29,34 @@ def _food_payload(fdc_id: int, description: str, protein: float = 1.0) -> dict:
     }
 
 
-def test_usda_sync_upserts_global_ingredients(engine) -> None:
+def test_usda_sync_disabled_before_database_or_input_access(monkeypatch):
+    import pytest
+    import Backend.commands.sync_usda_foundation as command
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Disabled synchronization must perform no I/O")
+    monkeypatch.setattr(command, "_load_payload", forbidden)
+    monkeypatch.setattr(command, "Session", forbidden)
+    monkeypatch.setattr("sys.argv", ["sync", "--input", "https://example.invalid/input.json", "--mark-stale"])
+    with pytest.raises(SystemExit, match="disabled"):
+        command.main()
+    with pytest.raises(ValueError, match="disabled"):
+        command.sync_usda_foundation(object(), object(), mark_stale=True)
+
+
+def test_unit_helper_retains_referenced_legacy_alias(engine, user_a_client):
+    from Backend.commands.sync_usda_foundation import _sync_units
+    from Backend.models import IngredientUnit
     with Session(engine) as session:
-        first = sync_usda_foundation(session, _food_payload(100, "Sample Banana"))
+        ingredient = Ingredient(name="Personal", user_id="user-a", units=[IngredientUnit(name="1 g", grams=1), IngredientUnit(name="g", grams=1)])
+        session.add(ingredient); session.flush()
+        alias = ingredient.units[0].id
+        food = Food(name="Recipe", user_id="user-a", ingredients=[FoodIngredient(ingredient_id=ingredient.id, unit_id=alias, unit_quantity=50)])
+        session.add(food); session.commit()
+        _sync_units(ingredient, [{"name":"g", "grams":1}])
         session.commit()
-        assert first["created"] == 1
-
-        ingredient = session.exec(select(Ingredient)).one()
-        assert ingredient.user_id is None
-        assert ingredient.name == "Sample Banana"
-        assert ingredient.nutrition is not None
-        assert ingredient.nutrition.protein == 0.01
-
-        second = sync_usda_foundation(session, _food_payload(100, "Sample Banana Updated", 2.0))
-        session.commit()
-        assert second["updated"] == 1
-
-        source = session.exec(select(IngredientSource)).one()
-        session.refresh(ingredient)
-        assert ingredient.name == "Sample Banana Updated"
-        assert ingredient.nutrition.protein == 0.02
-        assert source.source == "usda"
-        assert source.source_id == "100"
-        assert source.payload_hash
-
-
-def test_usda_sync_marks_missing_sources_stale(engine) -> None:
-    with Session(engine) as session:
-        sync_usda_foundation(session, _food_payload(200, "Keep Me"))
-        session.commit()
-
-        summary = sync_usda_foundation(session, {"FoundationFoods": []}, mark_stale=True)
-        session.commit()
-
-        source = session.exec(select(IngredientSource)).one()
-        assert summary["stale"] == 1
-        assert source.is_stale is True
-
-
-def test_usda_sync_preserves_referenced_units(engine) -> None:
-    with Session(engine) as session:
-        sync_usda_foundation(session, _food_payload(300, "Referenced Food"))
-        session.commit()
-
-        ingredient = session.exec(select(Ingredient)).one()
-        unit = next(unit for unit in ingredient.units if unit.name == "g")
-        food = Food(
-            user_id=None,
-            name="Food Using USDA Unit",
-            ingredients=[
-                FoodIngredient(
-                    ingredient_id=ingredient.id,
-                    unit_id=unit.id,
-                    unit_quantity=50,
-                )
-            ],
-        )
-        session.add(food)
-        session.commit()
-
-        summary = sync_usda_foundation(
-            session, _food_payload(300, "Referenced Food Updated", 3.0)
-        )
-        session.commit()
-
-        session.refresh(food)
-        session.refresh(ingredient)
-        assert summary["updated"] == 1
-        assert food.ingredients[0].unit_id == unit.id
-        assert any(existing_unit.id == unit.id for existing_unit in ingredient.units)
+        assert food.ingredients[0].unit_id == alias
+        assert session.get(IngredientUnit, alias).name == "1 g"
+        assert len(ingredient.units) == 2
 
 
 def test_usda_sync_loads_zipped_json(tmp_path) -> None:

@@ -8,23 +8,19 @@ import io
 import json
 import os
 import zipfile
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import urlparse
 
 import httpx
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from Backend.db import engine
 from Backend.models import (
-    CatalogSyncRun,
     Ingredient,
-    IngredientSource,
     IngredientUnit,
     Nutrition,
 )
-from Backend.routes.usda import _trim_food_payload
 
 
 SOURCE = "usda"
@@ -139,75 +135,7 @@ def sync_usda_foundation(
     *,
     mark_stale: bool = False,
 ) -> dict[str, int]:
-    now = datetime.now(timezone.utc)
-    seen_source_ids: set[str] = set()
-    summary = {"seen": 0, "created": 0, "updated": 0, "unchanged": 0, "stale": 0}
-
-    for raw_food in _iter_foods(payload):
-        trimmed = _trim_food_payload(raw_food)
-        source_id = trimmed.get("id")
-        name = trimmed.get("name")
-        if source_id is None or not name:
-            continue
-        source_id = str(source_id)
-        seen_source_ids.add(source_id)
-        summary["seen"] += 1
-        payload_hash = _hash_payload(trimmed)
-
-        source_row = session.exec(
-            select(IngredientSource).where(
-                IngredientSource.source == SOURCE,
-                IngredientSource.source_id == source_id,
-            )
-        ).one_or_none()
-
-        if source_row is None:
-            ingredient = Ingredient(name=name, user_id=None)
-            _upsert_nutrition(ingredient, trimmed.get("nutrition"))
-            _sync_units(ingredient, trimmed.get("units") or [])
-            ingredient.sources.append(
-                IngredientSource(
-                    source=SOURCE,
-                    source_id=source_id,
-                    payload_hash=payload_hash,
-                    last_synced_at=now,
-                    is_stale=False,
-                )
-            )
-            session.add(ingredient)
-            summary["created"] += 1
-            continue
-
-        ingredient = source_row.ingredient
-        if ingredient is None:
-            continue
-        changed = source_row.payload_hash != payload_hash or ingredient.name != name
-        if changed:
-            ingredient.name = name
-            ingredient.user_id = None
-            _upsert_nutrition(ingredient, trimmed.get("nutrition"))
-            _sync_units(ingredient, trimmed.get("units") or [])
-            source_row.payload_hash = payload_hash
-            summary["updated"] += 1
-        else:
-            summary["unchanged"] += 1
-        source_row.last_synced_at = now
-        source_row.is_stale = False
-        session.add(ingredient)
-        session.add(source_row)
-
-    if mark_stale:
-        existing_sources = session.exec(
-            select(IngredientSource).where(IngredientSource.source == SOURCE)
-        ).all()
-        for source_row in existing_sources:
-            if source_row.source_id not in seen_source_ids and not source_row.is_stale:
-                source_row.is_stale = True
-                source_row.last_synced_at = now
-                session.add(source_row)
-                summary["stale"] += 1
-
-    return summary
+    raise ValueError("Foundation synchronization is disabled pending the reference-safe Phase 9 importer.")
 
 
 def parse_args() -> argparse.Namespace:
@@ -232,33 +160,8 @@ def main() -> int:
             "Provide --input or USDA_FOUNDATION_FOODS_JSON pointing to FDC Foundation Foods JSON."
         )
 
-    payload = _load_payload(args.input)
-    final_summary: dict[str, Any]
-    with Session(engine) as session:
-        run = CatalogSyncRun(source=SOURCE, status="running", summary={})
-        session.add(run)
-        session.commit()
-        session.refresh(run)
-        try:
-            summary = sync_usda_foundation(session, payload, mark_stale=args.mark_stale)
-            run.status = "completed"
-            run.summary = summary
-            run.completed_at = datetime.now(timezone.utc)
-            session.add(run)
-            session.commit()
-            final_summary = summary
-        except Exception as exc:
-            session.rollback()
-            final_summary = {"error": str(exc)}
-            run.status = "failed"
-            run.summary = final_summary
-            run.completed_at = datetime.now(timezone.utc)
-            session.add(run)
-            session.commit()
-            raise
+    raise SystemExit("Foundation synchronization is disabled pending the reference-safe Phase 9 importer.")
 
-    print(json.dumps(final_summary, sort_keys=True))
-    return 0
 
 
 if __name__ == "__main__":

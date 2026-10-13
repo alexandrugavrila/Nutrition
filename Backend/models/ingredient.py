@@ -20,6 +20,7 @@ class Ingredient(SQLModel, table=True):
 
     __tablename__ = "ingredients"
     __table_args__ = (
+        CheckConstraint("is_shared OR user_id IS NOT NULL", name="ck_ingredients_personal_has_owner"),
         CheckConstraint("NOT is_shared OR user_id IS NULL", name="ck_ingredients_shared_has_no_owner"),
         UniqueConstraint("user_id", "name", name="uq_ingredients_user_id_name"),
     )
