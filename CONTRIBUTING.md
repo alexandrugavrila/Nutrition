@@ -835,10 +835,10 @@ uses the server's resolved client address and does not parse arbitrary forwarded
 A shared proxy address can therefore share the address budget. Actual production HTTPS
 and proxy behavior still require Phase 10 validation.
 
-Until Phase 8 supports nullable nutrition throughout, trusted import rejects incomplete
-nutrient records instead of storing fabricated zeroes. Existing proxy preview normalization
-and historical numeric data remain unchanged. Foundation synchronization remains disabled
-pending Phase 9; identifier imports do not refresh existing canonical records.
+Phase 8 preserves missing nutrients as null through trusted import, previews, calculations,
+and new snapshots. Reimport refreshes verified canonical nutrition while retaining units,
+IDs, personal copies and historical snapshots. Foundation synchronization remains disabled
+pending Phase 9; see the nutrient contract below.
 
 `python -m testsupport.run_e2e` runs the PostgreSQL suite and authenticated API/browser
 workflows with a loopback USDA fixture through the real server import path. Its test-only
@@ -888,3 +888,32 @@ The shared `testsupport.run_e2e` runner seeds a separate ordinary-account pair f
 browser isolation cases, preserving real login limits across the expanded suite. Both
 shell E2E wrappers use this same runner. Failure diagnostics tolerate Windows console
 encoding without masking the original test failure.
+
+
+### Nutrient uncertainty (Phase 8)
+
+Migration `e75a1c3d648f`, after `d64f0b2c537e`, makes nutrition and stored-food/log snapshot
+nutrients nullable. It does not rewrite numeric history: an old zero stays zero. Apply the
+existing expansion/adoption checkpoints before reaching this revision. Downgrading this
+revision rejects any null nutrient instead of fabricating a replacement value.
+
+API clients may omit unknown nutrients or send null; actual zero is a known value. Blank
+personal ingredient fields mean unknown. Known values must be finite and nonnegative.
+The frontend displays unavailable nutrients and incomplete totals as **Unavailable**. Each
+nutrient propagates independently through addition, portions, recipe yields, planning,
+cooking and logs. Zero quantity contributes zero; a missing ingredient makes its recipe
+totals unknown. User-entered daily targets remain numeric.
+
+USDA per-100-gram data is converted to per-gram values without filling omissions. Supported
+explicit macro mass units are converted to grams; unsupported units remain unknown. Liquid
+and unsupported bases are not guessed. The authenticated identifier-only import refreshes
+nutrition on an existing verified canonical ingredient and records its artifact hash and
+normalization version (`usda-per-g-nullable-v2`). It preserves ingredient/unit IDs and unit
+conversions. Personal copies, stored batches and daily logs retain their own values.
+There is no automatic reinterpretation of old zeroes or publication of personal ingredients.
+
+`python -m testsupport.run_schema_expansion` also compares nutrition and snapshot rows
+before/after the new revision. `python -m testsupport.run_e2e` covers incomplete USDA import,
+recipe planning, nullable cooking snapshots, logging and reload using a deterministic
+provider fixture. These runners only use disposable PostgreSQL databases; no live USDA key
+or application database is needed. See [Phase 8 evidence](docs/integration-phase-8.md).

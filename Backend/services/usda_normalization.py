@@ -1,4 +1,5 @@
 from __future__ import annotations
+import math
 from typing import Any, Iterable, Literal
 from pydantic import BaseModel, Field
 
@@ -81,7 +82,8 @@ def _coerce_float(value: Any) -> float | None:
     if value is None:
         return None
     try:
-        return float(value)
+        result = float(value)
+        return result if math.isfinite(result) else None
     except (TypeError, ValueError):
         return None
 
@@ -158,7 +160,17 @@ def _trim_nutrients(food_nutrients: Iterable[dict[str, Any]]) -> dict[str, float
     for nutrient in food_nutrients:
         macro_name = _resolve_macro_name(nutrient)
         if macro_name is not None:
-            macros[macro_name] = _extract_nutrient_value(nutrient)
+            value = _extract_nutrient_value(nutrient)
+            unit = _normalize_name(_extract_nutrient_unit(nutrient))
+            if macro_name != "calories":
+                # USDA macro amounts use grams; accept explicit mass conversions,
+                # but never treat an unrecognized unit as grams.
+                factor = {"": 1, "g": 1, "gram": 1, "grams": 1, "mg": 0.001, "ug": 0.000001}.get(
+                    unit
+                )
+                value = value * factor if value is not None and factor is not None else None
+            if value is not None:
+                macros[macro_name] = value
     return macros
 
 
@@ -381,7 +393,9 @@ def _normalize_nutrients_per_gram(
     if not metadata.can_normalize or metadata.source_basis != "per_100g":
         return None
 
-    return UsdaNutrition(**{key: ((value or 0.0) / 100.0) for key, value in nutrients.items()})
+    return UsdaNutrition(
+        **{key: (None if value is None else value / 100.0) for key, value in nutrients.items()}
+    )
 
 
 def _trim_food_payload(food: dict[str, Any]) -> dict[str, Any]:

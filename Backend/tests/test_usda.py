@@ -221,9 +221,9 @@ def test_trim_food_payload_uses_usda_energy_variants_for_calories() -> None:
         {
             "calories": 0.52,
             "protein": 0.0026,
-            "fat": 0,
-            "carbohydrates": 0,
-            "fiber": 0,
+            "fat": None,
+            "carbohydrates": None,
+            "fiber": None,
         }
     )
 
@@ -245,11 +245,11 @@ def test_trim_food_payload_ignores_non_kilocalorie_energy_variants() -> None:
     )
 
     assert payload["nutrition"] == {
-        "calories": 0,
-        "protein": 0,
-        "fat": 0,
-        "carbohydrates": 0,
-        "fiber": 0,
+        "calories": None,
+        "protein": None,
+        "fat": None,
+        "carbohydrates": None,
+        "fiber": None,
     }
 
 
@@ -281,8 +281,8 @@ def test_trim_food_payload_uses_newer_foundation_macro_variants() -> None:
 
     assert payload["nutrition"] == pytest.approx(
         {
-            "calories": 0,
-            "protein": 0,
+            "calories": None,
+            "protein": None,
             "fat": 0.0589,
             "carbohydrates": 0.687,
             "fiber": 0.104,

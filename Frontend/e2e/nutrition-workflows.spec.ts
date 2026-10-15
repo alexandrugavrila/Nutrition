@@ -299,3 +299,53 @@ test("plans, shops, cooks, logs, and preserves daily totals after deleting the s
   await expect(dailyTotal.getByLabel("Total calories")).toHaveText("55");
   await expect(page.getByRole("row", { name: /Entry from .* 0\.5 55/ })).toBeVisible();
 });
+
+
+test("preserves unavailable nutrients from USDA through recipe, cooking and logging", async ({ page }) => {
+  const name = "E2E Incomplete USDA";
+  const recipeName = `Incomplete recipe ${runId}`;
+  await gotoDataTab(page, "Ingredients");
+  await page.getByRole("button", { name: /^Add Ingredient$/ }).click();
+  const dialog = getTitledDialog(page, "Add Ingredient");
+  await chooseOption(dialog.getByLabel("Source"), page, "USDA");
+  await dialog.getByLabel("Search USDA").fill("incomplete");
+  await dialog.getByRole("button", { name: "Search" }).click();
+  await expect(dialog.getByRole("button", { name: new RegExp(name) })).toContainText("Unavailable");
+  await dialog.getByRole("button", { name: new RegExp(name) }).click();
+  await expect(dialog.getByLabel("Fiber")).toHaveValue("");
+  await expect(dialog.getByLabel("Fat")).toHaveValue("0");
+  await dialog.getByRole("button", { name: "add ingredient", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  const ingredientRow = await searchIngredient(page, name);
+  await expect(ingredientRow).toContainText("Unavailable");
+  const ingredients = await (await page.request.get("/api/ingredients/")).json();
+  const ingredient = ingredients.find((item) => item.name === name);
+  const gram = ingredient.units.find((unit) => unit.grams === 1);
+  const response = await page.request.post("/api/foods/", {
+    headers: { Origin: new URL(process.env.PLAYWRIGHT_BASE_URL!).origin },
+    data: { name: recipeName, ingredients: [{ ingredient_id: ingredient.id, unit_id: gram.id, unit_quantity: 50 }] },
+  });
+  expect(response.status()).toBe(201);
+  await page.goto("/planning");
+  await page.getByRole("button", { name: "Add Food" }).click();
+  const foods = getTableDialog(page, "Foods");
+  await foods.getByLabel("Search by name").fill(recipeName);
+  await foods.getByRole("button", { name: `Select food ${recipeName}` }).click();
+  await expect(page.getByRole("row", { name: /Total Overall/ })).toContainText("Unavailable");
+  await navigateWithDrawer(page, "Cooking");
+  const cooked = page.getByRole("row", { name: new RegExp(recipeName) });
+  await expect(cooked).toContainText("Unavailable");
+  await cooked.getByRole("button", { name: "Mark complete", exact: true }).click();
+  const batches = await (await page.request.get("/api/stored_food/")).json();
+  const batch = batches.find((item) => item.label === recipeName);
+  expect(batch.per_portion_fiber).toBeNull();
+  expect(batch.per_portion_fat).toBe(0);
+  await navigateWithDrawer(page, "Logging");
+  const fridgeRow = page.getByRole("table").filter({ has: page.getByRole("columnheader", { name: "Remaining portions" }) })
+    .getByRole("row", { name: new RegExp(recipeName) });
+  await fridgeRow.getByRole("button", { name: "Add to log", exact: true }).click();
+  const dailyTotal = page.getByRole("group", { name: /Daily Total/i });
+  await expect(dailyTotal.getByLabel("Total fiber")).toHaveText("Unavailable");
+  await page.reload();
+  await expect(page.getByRole("group", { name: /Daily Total/i }).getByLabel("Total fiber")).toHaveText("Unavailable");
+});

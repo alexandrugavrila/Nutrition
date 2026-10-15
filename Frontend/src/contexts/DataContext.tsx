@@ -1,3 +1,4 @@
+import { parseNutrient } from "@/utils/nutrition";
 // DataContext.tsx
 import React, {
   createContext,
@@ -362,11 +363,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
           ingredient_id: toNullableNumber(record.ingredient_id),
           prepared_portions: toNumber(record.prepared_portions),
           remaining_portions: toNumber(record.remaining_portions),
-          per_portion_calories: toNumber(record.per_portion_calories),
-          per_portion_protein: toNumber(record.per_portion_protein),
-          per_portion_carbohydrates: toNumber(record.per_portion_carbohydrates),
-          per_portion_fat: toNumber(record.per_portion_fat),
-          per_portion_fiber: toNumber(record.per_portion_fiber),
+          per_portion_calories: parseNutrient(record.per_portion_calories),
+          per_portion_protein: parseNutrient(record.per_portion_protein),
+          per_portion_carbohydrates: parseNutrient(record.per_portion_carbohydrates),
+          per_portion_fat: parseNutrient(record.per_portion_fat),
+          per_portion_fiber: parseNutrient(record.per_portion_fiber),
           is_finished: toBoolean(record.is_finished),
           prepared_at: toStringWithFallback(record.prepared_at),
           updated_at: toStringWithFallback(record.updated_at),

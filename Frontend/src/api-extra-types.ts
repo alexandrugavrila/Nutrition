@@ -9,11 +9,11 @@ export interface StoredFoodBase {
   food_id?: number | null;
   ingredient_id?: number | null;
   prepared_portions: number;
-  per_portion_calories: number;
-  per_portion_protein: number;
-  per_portion_carbohydrates: number;
-  per_portion_fat: number;
-  per_portion_fiber: number;
+  per_portion_calories: number | null;
+  per_portion_protein: number | null;
+  per_portion_carbohydrates: number | null;
+  per_portion_fat: number | null;
+  per_portion_fiber: number | null;
 }
 
 export interface StoredFoodCreate extends StoredFoodBase {

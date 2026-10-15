@@ -30,15 +30,16 @@ def import_verified(db, user, fdc_id, raw):
     try:
         normalized = _trim_food_payload(raw)
         macros = _trim_nutrients(raw.get('foodNutrients', []))
-        if any(value is None or not math.isfinite(value) or value < 0 for value in macros.values()):
-            raise HTTPException(
-                422, 'USDA has not provided all required nutrient values for this ingredient.'
-            )
+        if any(
+            value is not None and (not math.isfinite(value) or value < 0)
+            for value in macros.values()
+        ):
+            raise HTTPException(422, 'USDA returned invalid nutrient values.')
         values = normalized['nutrition']
         if not values or not normalized['normalization']['can_normalize']:
             raise HTTPException(422, 'This ingredient cannot be safely converted to grams.')
         if any(
-            not math.isfinite(value) or not 0 <= round(value, 4) < 1000000
+            value is not None and (not math.isfinite(value) or not 0 <= round(value, 4) < 1000000)
             for value in values.values()
         ):
             raise HTTPException(422, 'USDA nutrient values exceed supported precision or range.')
@@ -73,7 +74,18 @@ def import_verified(db, user, fdc_id, raw):
             or source.verification_status != 'verified'
         ):
             raise HTTPException(409, 'Provider identifier requires operator reconciliation.')
-        # Import selects the existing canonical object; refresh belongs to catalog sync.
+        # Re-fetch corrects canonical nutrition only; personal copies and historical
+        # snapshots retain their recorded values. Units and references stay stable.
+        if ingredient.nutrition is None:
+            ingredient.nutrition = Nutrition(**values)
+        else:
+            for key, value in values.items():
+                setattr(ingredient.nutrition, key, value)
+        source.artifact_sha256 = source.payload_hash = artifact
+        source.verified_at = datetime.now(timezone.utc)
+        source.normalization_version = 'usda-per-g-nullable-v2'
+        db.add(source)
+        db.add(ingredient)
     else:
         ingredient = Ingredient(name=name.strip(), is_shared=True, nutrition=Nutrition(**values))
         ingredient.units = [
@@ -89,7 +101,7 @@ def import_verified(db, user, fdc_id, raw):
                 verified_at=datetime.now(timezone.utc),
                 artifact_sha256=artifact,
                 payload_hash=artifact,
-                normalization_version='usda-per-g-v1',
+                normalization_version='usda-per-g-nullable-v2',
             )
         ]
         db.add(ingredient)

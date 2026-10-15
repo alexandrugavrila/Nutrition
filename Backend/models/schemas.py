@@ -1,3 +1,4 @@
+import math
 from datetime import date, datetime
 from typing import Any, Dict, List, Literal, Optional
 
@@ -14,11 +15,13 @@ from .possible_food_tag import PossibleFoodTag
 class NutritionCreate(SQLModel):
     """Schema for creating nutrition data."""
 
-    calories: float
-    fat: float
-    carbohydrates: float
-    protein: float
-    fiber: float
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    calories: float | None = Field(default=None, ge=0)
+    fat: float | None = Field(default=None, ge=0)
+    carbohydrates: float | None = Field(default=None, ge=0)
+    protein: float | None = Field(default=None, ge=0)
+    fiber: float | None = Field(default=None, ge=0)
 
 
 class IngredientUnitCreate(SQLModel):
@@ -65,9 +68,29 @@ class IngredientCreate(SQLModel):
     @classmethod
     def reject_catalog_claims(cls, value):
         if isinstance(value, dict):
-            protected = {"is_shared", "verification_status", "provenance_status", "artifact_sha256", "import_run_id", "user_id", "sources", "verified_at", "normalization_version", "payload_hash", "last_synced_at", "is_stale", "owner_user_id"}
-            if protected.intersection(value) or value.get("source") not in (None, "", "manual") or value.get("source_id") not in (None, ""):
-                raise ValueError("Provider provenance and ownership are server-managed; use USDA import or a personal copy.")
+            protected = {
+                "is_shared",
+                "verification_status",
+                "provenance_status",
+                "artifact_sha256",
+                "import_run_id",
+                "user_id",
+                "sources",
+                "verified_at",
+                "normalization_version",
+                "payload_hash",
+                "last_synced_at",
+                "is_stale",
+                "owner_user_id",
+            }
+            if (
+                protected.intersection(value)
+                or value.get("source") not in (None, "", "manual")
+                or value.get("source_id") not in (None, "")
+            ):
+                raise ValueError(
+                    "Provider provenance and ownership are server-managed; use USDA import or a personal copy."
+                )
         return value
 
     name: str
@@ -87,9 +110,29 @@ class IngredientUpdate(SQLModel):
     @classmethod
     def reject_catalog_claims(cls, value):
         if isinstance(value, dict):
-            protected = {"is_shared", "verification_status", "provenance_status", "artifact_sha256", "import_run_id", "user_id", "sources", "verified_at", "normalization_version", "payload_hash", "last_synced_at", "is_stale", "owner_user_id"}
-            if protected.intersection(value) or value.get("source") not in (None, "", "manual") or value.get("source_id") not in (None, ""):
-                raise ValueError("Provider provenance and ownership are server-managed; use USDA import or a personal copy.")
+            protected = {
+                "is_shared",
+                "verification_status",
+                "provenance_status",
+                "artifact_sha256",
+                "import_run_id",
+                "user_id",
+                "sources",
+                "verified_at",
+                "normalization_version",
+                "payload_hash",
+                "last_synced_at",
+                "is_stale",
+                "owner_user_id",
+            }
+            if (
+                protected.intersection(value)
+                or value.get("source") not in (None, "", "manual")
+                or value.get("source_id") not in (None, "")
+            ):
+                raise ValueError(
+                    "Provider provenance and ownership are server-managed; use USDA import or a personal copy."
+                )
         return value
 
     name: str
@@ -227,11 +270,11 @@ class StoredFoodBase(SQLModel):
     food_id: Optional[int] = None
     ingredient_id: Optional[int] = None
     prepared_portions: float
-    per_portion_calories: float
-    per_portion_protein: float
-    per_portion_carbohydrates: float
-    per_portion_fat: float
-    per_portion_fiber: float
+    per_portion_calories: float | None = Field(default=None, ge=0)
+    per_portion_protein: float | None = Field(default=None, ge=0)
+    per_portion_carbohydrates: float | None = Field(default=None, ge=0)
+    per_portion_fat: float | None = Field(default=None, ge=0)
+    per_portion_fiber: float | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def _validate_source(self) -> "StoredFoodBase":
@@ -249,7 +292,7 @@ class StoredFoodBase(SQLModel):
             "per_portion_fiber": self.per_portion_fiber,
         }
         for field, value in numeric_fields.items():
-            if value < 0:
+            if value is not None and (not math.isfinite(value) or value < 0):
                 raise ValueError(f"{field} cannot be negative")
         return self
 
@@ -290,11 +333,11 @@ class DailyLogEntryBase(SQLModel):
     ingredient_id: Optional[int] = None
     food_id: Optional[int] = None
     portions_consumed: float
-    calories: float
-    protein: float
-    carbohydrates: float
-    fat: float
-    fiber: float
+    calories: float | None = Field(default=None, ge=0)
+    protein: float | None = Field(default=None, ge=0)
+    carbohydrates: float | None = Field(default=None, ge=0)
+    fat: float | None = Field(default=None, ge=0)
+    fiber: float | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def _validate_source(self) -> "DailyLogEntryBase":
@@ -320,7 +363,7 @@ class DailyLogEntryBase(SQLModel):
             "fiber": self.fiber,
         }
         for field, value in macro_fields.items():
-            if value < 0:
+            if value is not None and (not math.isfinite(value) or value < 0):
                 raise ValueError(f"{field} cannot be negative")
         return self
 

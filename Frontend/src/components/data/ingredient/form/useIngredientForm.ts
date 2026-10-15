@@ -28,11 +28,11 @@ export type UsdaIngredientResult = {
   id: string;
   name: string;
   nutrition: {
-    calories: number;
-    protein: number;
-    carbohydrates: number;
-    fat: number;
-    fiber: number;
+    calories: number | null;
+    protein: number | null;
+    carbohydrates: number | null;
+    fat: number | null;
+    fiber: number | null;
   } | null;
   normalization: {
     source_basis: string;
@@ -88,11 +88,11 @@ const initializeEmptyIngredient = (): IngredientFormState["ingredient"] => ({
     } as IngredientUnitCreate & { id: string },
   ],
   nutrition: {
-    calories: 0,
-    protein: 0,
-    carbohydrates: 0,
-    fat: 0,
-    fiber: 0,
+    calories: null,
+    protein: null,
+    carbohydrates: null,
+    fat: null,
+    fiber: null,
   },
   tags: [],
   shoppingUnitId: "0",
@@ -357,11 +357,11 @@ export const useIngredientForm = () => {
       }
 
       const updatedNutrition = {
-        calories: roundNutritionValue(result.nutrition.calories ?? 0),
-        protein: roundNutritionValue(result.nutrition.protein ?? 0),
-        carbohydrates: roundNutritionValue(result.nutrition.carbohydrates ?? 0),
-        fat: roundNutritionValue(result.nutrition.fat ?? 0),
-        fiber: roundNutritionValue(result.nutrition.fiber ?? 0),
+        calories: roundNutritionValue(result.nutrition.calories),
+        protein: roundNutritionValue(result.nutrition.protein),
+        carbohydrates: roundNutritionValue(result.nutrition.carbohydrates),
+        fat: roundNutritionValue(result.nutrition.fat),
+        fiber: roundNutritionValue(result.nutrition.fiber),
       };
 
       const normalizedUsdaUnits = normalizeUsdaUnits(result.units);

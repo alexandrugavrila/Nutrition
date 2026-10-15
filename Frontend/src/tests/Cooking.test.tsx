@@ -67,7 +67,7 @@ describe("Cooking component", () => {
     global.fetch = originalFetch;
   });
 
-  it("marks a food item complete and posts cooking results", async () => {
+  it.each([5, 0, null])("posts cooking results preserving fiber %s", async (fiber: number | null) => {
     const foodPlan = [
       {
         type: "food",
@@ -111,7 +111,7 @@ describe("Cooking component", () => {
             protein: 2,
             fat: 3,
             carbohydrates: 4,
-            fiber: 5,
+            fiber,
           },
         },
       ],
@@ -162,7 +162,7 @@ describe("Cooking component", () => {
       per_portion_protein: 120,
       per_portion_carbohydrates: 240,
       per_portion_fat: 180,
-      per_portion_fiber: 300,
+      per_portion_fiber: fiber === null ? null : fiber * 60,
     });
 
     await waitFor(() => {

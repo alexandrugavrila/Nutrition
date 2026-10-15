@@ -62,7 +62,7 @@ def populate(connection):
 
 def main():
     graph = ScriptDirectory.from_config(Config(str(ROOT / "Backend/alembic.ini")))
-    assert graph.get_heads() == ["d64f0b2c537e"]
+    assert graph.get_heads() == ["e75a1c3d648f"]
     # Traverse the complete graph, including the users revision's merge parents.
     assert {revision.revision for revision in graph.walk_revisions()} >= set(STARTS) - {"base"}
     project = "nutrition-expansion-" + uuid4().hex[:12]
@@ -125,7 +125,14 @@ def main():
                         assert rejected.returncode != 0 and "changed after adoption" in rejected.stderr
                         with engine.begin() as connection:
                             connection.execute(text("UPDATE users SET display_name = :name WHERE id = 'fixture-b'"), {'name':'fixture-b' if 'users' in snapshot else 'Owner'})
+                    run(alembic + ["upgrade", "d64f0b2c537e"])
+                    def nutrient_snapshots():
+                        with engine.connect() as connection:
+                            return {table: list(connection.execute(text(f"SELECT * FROM {table} ORDER BY id")).mappings())
+                                    for table in ("nutrition", "stored_food", "daily_log_entries")}
+                    numeric_history = nutrient_snapshots()
                     run(alembic + ["upgrade", "head"])
+                    assert nutrient_snapshots() == numeric_history, "Nutrient migration rewrote historical values"
                     run(alembic + ["check"])
                     from testsupport.adoption_checks import verify_visibility
                     verify_visibility(engine)

@@ -160,13 +160,13 @@ def test_import_selection_preferences_and_explicit_copy(
         assert session.get(Ingredient, a['id']).nutrition.fat == 0
 
 
-def test_import_rejects_tampering_incomplete_records_and_secret_errors(user_a_client, provider):
+def test_import_rejects_tampering_invalid_records_and_secret_errors(user_a_client, provider):
     assert (
         user_a_client.post('/api/usda/import/123', json={'nutrition': {'fat': 0}}).status_code
         == 422
     )
     assert provider['requests'] == 0
-    provider['payload']['foodNutrients'].pop()
+    provider['payload']['foodNutrients'][0]['value'] = -1
     assert user_a_client.post('/api/usda/import/123').status_code == 422
     provider['payload'] = food(456)
     assert user_a_client.post('/api/usda/import/123').status_code == 502

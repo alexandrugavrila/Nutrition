@@ -28,6 +28,13 @@ class Provider(BaseHTTPRequestHandler):
                 )
             ],
         }
+        if '424243' in self.path or 'incomplete' in self.path:
+            record['fdcId'] = 424243
+            record['description'] = 'E2E Incomplete USDA'
+            record['foodNutrients'] = [
+                {'nutrientId': 1008, 'value': 100, 'unitName': 'kcal'},
+                {'nutrientId': 1004, 'value': 0, 'unitName': 'g'},
+            ]
         payload = {'foods': [record]} if '/foods/search' in self.path else record
         encoded = json.dumps(payload).encode()
         self.send_response(200)

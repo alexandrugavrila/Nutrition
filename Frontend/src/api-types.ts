@@ -629,15 +629,15 @@ export interface components {
             /** Portions Consumed */
             portions_consumed: number;
             /** Calories */
-            calories: number;
+            calories?: number | null;
             /** Protein */
-            protein: number;
+            protein?: number | null;
             /** Carbohydrates */
-            carbohydrates: number;
+            carbohydrates?: number | null;
             /** Fat */
-            fat: number;
+            fat?: number | null;
             /** Fiber */
-            fiber: number;
+            fiber?: number | null;
         };
         /**
          * DailyLogEntryRead
@@ -658,15 +658,15 @@ export interface components {
             /** Portions Consumed */
             portions_consumed: number;
             /** Calories */
-            calories: number;
+            calories?: number | null;
             /** Protein */
-            protein: number;
+            protein?: number | null;
             /** Carbohydrates */
-            carbohydrates: number;
+            carbohydrates?: number | null;
             /** Fat */
-            fat: number;
+            fat?: number | null;
             /** Fiber */
-            fiber: number;
+            fiber?: number | null;
             /** Id */
             id: number;
             /** Owner User Id */
@@ -893,15 +893,15 @@ export interface components {
             /** Ingredient Id */
             ingredient_id?: number | null;
             /** Calories */
-            calories: number;
+            calories?: number | null;
             /** Fat */
-            fat: number;
+            fat?: number | null;
             /** Carbohydrates */
-            carbohydrates: number;
+            carbohydrates?: number | null;
             /** Protein */
-            protein: number;
+            protein?: number | null;
             /** Fiber */
-            fiber: number;
+            fiber?: number | null;
         };
         /**
          * NutritionCreate
@@ -909,15 +909,15 @@ export interface components {
          */
         NutritionCreate: {
             /** Calories */
-            calories: number;
+            calories?: number | null;
             /** Fat */
-            fat: number;
+            fat?: number | null;
             /** Carbohydrates */
-            carbohydrates: number;
+            carbohydrates?: number | null;
             /** Protein */
-            protein: number;
+            protein?: number | null;
             /** Fiber */
-            fiber: number;
+            fiber?: number | null;
         };
         /**
          * PlanCreate
@@ -1016,15 +1016,15 @@ export interface components {
             /** Prepared Portions */
             prepared_portions: number;
             /** Per Portion Calories */
-            per_portion_calories: number;
+            per_portion_calories?: number | null;
             /** Per Portion Protein */
-            per_portion_protein: number;
+            per_portion_protein?: number | null;
             /** Per Portion Carbohydrates */
-            per_portion_carbohydrates: number;
+            per_portion_carbohydrates?: number | null;
             /** Per Portion Fat */
-            per_portion_fat: number;
+            per_portion_fat?: number | null;
             /** Per Portion Fiber */
-            per_portion_fiber: number;
+            per_portion_fiber?: number | null;
             /** Remaining Portions */
             remaining_portions?: number | null;
             /** Prepared At */
@@ -1044,15 +1044,15 @@ export interface components {
             /** Prepared Portions */
             prepared_portions: number;
             /** Per Portion Calories */
-            per_portion_calories: number;
+            per_portion_calories?: number | null;
             /** Per Portion Protein */
-            per_portion_protein: number;
+            per_portion_protein?: number | null;
             /** Per Portion Carbohydrates */
-            per_portion_carbohydrates: number;
+            per_portion_carbohydrates?: number | null;
             /** Per Portion Fat */
-            per_portion_fat: number;
+            per_portion_fat?: number | null;
             /** Per Portion Fiber */
-            per_portion_fiber: number;
+            per_portion_fiber?: number | null;
             /** Id */
             id: number;
             /** Owner User Id */
