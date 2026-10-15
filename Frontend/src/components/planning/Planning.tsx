@@ -50,7 +50,7 @@ import DecimalInput from "@/components/common/DecimalInput";
 import useHoverable from "@/hooks/useHoverable";
 import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type { PlanRead } from "@/utils/planApi";
-import { createPlan, updatePlan } from "@/utils/planApi";
+import { usePlanApi } from "@/utils/planApi";
 import type {
   FoodOverride,
   FoodPlanItem,
@@ -143,6 +143,7 @@ const NameWithEdit: React.FC<NameWithEditProps> = ({ name, onEdit }) => {
 };
 
 function Planning() {
+  const { createPlan, updatePlan } = usePlanApi();
   const { foods, ingredients, fridgeInventory } = useData();
   const navigate = useNavigate();
   const location = useLocation();

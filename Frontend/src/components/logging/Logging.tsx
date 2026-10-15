@@ -29,7 +29,7 @@ import {
 import { alpha } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 
-import apiClient from "@/apiClient";
+import { useAccountClient } from "@/contexts/AccountScope";
 import { useData } from "@/contexts/DataContext";
 import type { CookedBatch } from "@/api-extra-types";
 import type { components } from "@/api-types";
@@ -118,6 +118,7 @@ type FoodLogFormState = {
 };
 
 function Logging() {
+  const apiClient = useAccountClient();
   const {
     fridgeInventory,
     foods,

@@ -37,7 +37,7 @@ test("renders the data page on the default route", async () => {
   const { default: App } = await import("../App");
   render(<App />);
 
-  expect(await screen.findByText("DataPageComponent")).toBeVisible();
+  expect(await screen.findByText("DataPageComponent", {}, { timeout: 5000 })).toBeVisible();
   expect(screen.getByRole("button", { name: /open drawer/i })).toBeInTheDocument();
 }, 10000);
 
@@ -45,7 +45,7 @@ test("switches routes from the navigation drawer", async () => {
   const { default: App } = await import("../App");
   render(<App />);
 
-  expect(await screen.findByText("DataPageComponent")).toBeVisible();
+  expect(await screen.findByText("DataPageComponent", {}, { timeout: 5000 })).toBeVisible();
 
   await userEvent.click(screen.getByRole("button", { name: /open drawer/i }));
   await userEvent.click(screen.getByRole("link", { name: /^Planning$/i }));

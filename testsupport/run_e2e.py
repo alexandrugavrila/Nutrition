@@ -35,6 +35,9 @@ def wait_ready(url, process):
 
 
 def main():
+    # Preserve failure diagnostics on Windows consoles with a legacy encoding.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="backslashreplace")
     project = "nutrition-e2e-" + uuid4().hex[:12]
     compose = ["docker", "compose", "-p", project, "-f",
                str(ROOT / "testsupport/docker-compose.e2e.yml")]

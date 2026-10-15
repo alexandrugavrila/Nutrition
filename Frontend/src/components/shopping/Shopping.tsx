@@ -27,7 +27,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 
 import { useData } from "@/contexts/DataContext";
-import apiClient from "@/apiClient";
+import { useAccountClient } from "@/contexts/AccountScope";
 import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type { PlanItem } from "@/utils/planningTypes";
 import { aggregateShoppingList } from "@/utils/shopping";
@@ -145,6 +145,7 @@ const deriveSelectionValue = (
 };
 
 function Shopping() {
+  const apiClient = useAccountClient();
   const {
     foods,
     ingredients,

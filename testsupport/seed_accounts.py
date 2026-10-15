@@ -15,7 +15,9 @@ def main():
     engine = create_engine(url)
     try:
         with Session(engine) as session:
-            for email in (os.environ["E2E_EMAIL"], os.environ["E2E_OTHER_EMAIL"]):
+            primary = (os.environ["E2E_EMAIL"], os.environ["E2E_OTHER_EMAIL"])
+            # Separate browser isolation cases from CRUD login budgets.
+            for email in (*primary, *("isolation-" + email for email in primary)):
                 if session.exec(select(User).where(User.email == email)).first():
                     raise RuntimeError("E2E seeding requires fresh accounts; refusing to overwrite")
                 session.add(User(email=email, display_name=email,

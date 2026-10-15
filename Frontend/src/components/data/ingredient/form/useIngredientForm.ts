@@ -1,3 +1,4 @@
+import { useAccountFetch } from "@/contexts/AccountScope";
 import { useCallback, useState } from "react";
 
 import { useData } from "@/contexts/DataContext";
@@ -238,6 +239,7 @@ const buildRequestPayload = (ingredient: IngredientFormState["ingredient"]): Ing
 };
 
 export const useIngredientForm = () => {
+  const fetch = useAccountFetch();
   const { setIngredientsNeedsRefetch, startRequest, endRequest } = useData();
   const [error, setError] = useState<string | null>(null);
   const [state, dispatch] = useSessionStorageReducer(reducer, createInitialState, "ingredient-form-state-v1");

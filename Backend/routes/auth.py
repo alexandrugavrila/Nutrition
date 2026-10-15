@@ -6,7 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
-from Backend.auth.dependencies import get_current_user, require_admin_user
+from Backend.auth.dependencies import (
+    get_current_user,
+    require_admin_user,
+    get_optional_current_user,
+    verify_expected_account,
+)
 from Backend.auth.passwords import hash_password, verify_password
 from Backend.auth.sessions import (
     create_auth_session,
@@ -112,6 +117,9 @@ def logout(
 ) -> None:
     """Revoke the current session and clear the cookie."""
 
+    current = get_optional_current_user(request, db)
+    if current is not None:
+        verify_expected_account(request, current)
     token = request.cookies.get(settings.session_cookie_name)
     if token:
         revoke_session(db, token)

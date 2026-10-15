@@ -845,3 +845,46 @@ workflows with a loopback USDA fixture through the real server import path. Its 
 ASGI wrapper validates the disposable database and is not included in production images.
 No live USDA key or existing application database is required. See
 [Phase 6 evidence](docs/integration-phase-6.md) for validation and remaining release gates.
+
+
+### Browser account isolation (Phase 7)
+
+Protected React providers mount only after `/api/auth/me` resolves. Each confirmed account
+scope has an immutable user ID and a generation key. Identity checks suspend the old scope,
+abort its requests, and unmount account-dependent caches and UI before protected content
+can render again. Logout, focus/visibility changes, browser history restoration and
+cross-tab session-change events trigger this boundary. Failed identity checks fail closed.
+
+All application session-storage keys use `nutrition:v2:<encoded-user-id>:<workflow-key>`.
+The hook covers planning, shopping, cooking, ingredient drafts and food drafts. Returning
+to an account can restore its own persisted workflow state; another account cannot load
+it. Transient component state and fetched caches are discarded. Legacy unscoped application
+keys are removed from session/local storage because their ownership cannot be established;
+they are not adopted into whichever account signs in first. Unrelated storage is retained.
+Malformed or incompatible persisted values fall back to defaults; denied storage falls
+back to memory. No anonymous workflow state is persisted.
+
+Protected API calls must use `useAccountClient()` or `useAccountFetch()` under
+`AccountScopeContext`, never the unscoped authentication client or raw fetch. Async
+callbacks retain the original scope, including multi-request operations; old scopes cannot
+issue follow-up writes or consume delayed bodies. Storage callbacks also stop writing when
+their scope is invalidated. Keep the provider keyed by `scope.key` so hook initialization
+cannot reuse another account's state.
+
+Every protected browser request sends `X-Account-ID` as an expected identity. The backend
+still authenticates exclusively with the session cookie. If another tab changes that cookie,
+a mismatched expectation returns 409 with `X-Account-Mismatch: 1` before route operations,
+including logout. This closes the cookie-change race between checking identity and saving
+a draft. Requests from existing API clients may omit the header; it grants no permission.
+A 401 or mismatch invalidates the browser scope and rechecks identity. Trusted CORS origins
+can read the mismatch header. No database schema change is required.
+
+Cross-tab messages contain only a session-change notification, never account data or tokens.
+BroadcastChannel is used when available, with a local-storage event fallback. Storage or
+channel availability does not replace the request identity guard. Real HTTPS deployment
+and the remaining coordinated release gates are still Phase 10 work.
+
+The shared `testsupport.run_e2e` runner seeds a separate ordinary-account pair for
+browser isolation cases, preserving real login limits across the expanded suite. Both
+shell E2E wrappers use this same runner. Failure diagnostics tolerate Windows console
+encoding without masking the original test failure.

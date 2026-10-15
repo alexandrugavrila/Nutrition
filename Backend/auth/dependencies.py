@@ -33,6 +33,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required.",
         )
+    verify_expected_account(request, user)
     if request.method not in {"GET", "HEAD", "OPTIONS"}:
         # Serialize each account's mutations, including JSON references and deletes.
         # Re-read identity after locking to coordinate with password reset/deactivation.
@@ -59,3 +60,11 @@ def require_admin_user(current_user: User = Depends(get_current_user)) -> User:
 
 
 __all__ = ["get_optional_current_user", "get_current_user", "require_admin_user"]
+
+
+def verify_expected_account(request: Request, user: User) -> None:
+    expected = request.headers.get("X-Account-ID")
+    if expected is not None and expected != user.id:
+        raise HTTPException(
+            409, "Account changed. Reload before continuing.", headers={"X-Account-Mismatch": "1"}
+        )

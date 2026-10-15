@@ -22,7 +22,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 
-import apiClient from "@/apiClient";
+import { useAccountClient } from "@/contexts/AccountScope";
 import type { StoredFoodCreate } from "@/api-extra-types";
 import FeedbackSnackbar, {
   SnackbarMessage,
@@ -353,6 +353,7 @@ const pluralize = (value: number, noun: string): string => {
 };
 
 function Cooking() {
+  const apiClient = useAccountClient();
   const { foods, ingredients, setFridgeNeedsRefetch } = useData();
   const foodLookup = useMemo(() => {
     const map = new Map<string, FoodRead>();

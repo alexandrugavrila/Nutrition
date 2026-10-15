@@ -528,3 +528,24 @@ def test_catalog_selection_migration_preserves_dependencies(engine):
             assert selected == {('a', 1), ('a', 2), ('a', 3), ('b', 4), ('b', 5)}
         finally:
             transaction.rollback()
+
+
+def test_stale_browser_account_cannot_read_write_or_logout(user_a_client, user_b_client):
+    headers = {"X-Account-ID": "user-a"}
+    for method, path, body in [
+        ("get", "/api/ingredients/", None),
+        ("post", "/api/ingredients/", {"name": "A draft with B cookie"}),
+        ("post", "/api/auth/logout", None),
+    ]:
+        response = user_b_client.request(method, path, headers=headers, json=body)
+        assert response.status_code == 409
+        assert response.headers["X-Account-Mismatch"] == "1"
+    assert user_b_client.get("/api/auth/me").status_code == 200
+    assert user_b_client.get("/api/ingredients/").json() == []
+    own_id = user_b_client.get("/api/auth/me").json()["user"]["id"]
+    assert (
+        user_b_client.post(
+            "/api/ingredients/", headers={"X-Account-ID": own_id}, json={"name": "B's draft"}
+        ).status_code
+        == 201
+    )

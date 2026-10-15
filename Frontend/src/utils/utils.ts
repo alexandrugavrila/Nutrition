@@ -44,9 +44,10 @@ export const handleFetchRequest = async (
   url: string,
   method: string,
   data: unknown,
+  request: typeof fetch,
 ): Promise<void> => {
   const endpoint = url;
-  const response = await fetch(endpoint, {
+  const response = await request(endpoint, {
     method,
     headers: {
       'Content-Type': 'application/json',

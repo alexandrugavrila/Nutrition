@@ -7,7 +7,7 @@ import React, {
   useCallback,
   ReactNode,
 } from "react";
-import apiClient from "../apiClient";
+import { useAccountClient } from "@/contexts/AccountScope";
 import type { components } from "../api-types";
 import type { CookedBatch } from "../api-extra-types";
 
@@ -50,6 +50,7 @@ const DataContext = createContext<DataContextValue | undefined>(undefined);
 export const useData = () => useContext(DataContext!);
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
+  const apiClient = useAccountClient();
   const [ingredients, setIngredients] = useState<IngredientWithSelection[]>([]);
   const [ingredientsNeedsRefetch, setIngredientsNeedsRefetch] =
     useState(false);

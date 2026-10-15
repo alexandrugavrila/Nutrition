@@ -1,3 +1,4 @@
+import { useAccountFetch } from "@/contexts/AccountScope";
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
@@ -237,6 +238,7 @@ const formatNutritionSummary = (result: UsdaIngredientResult): string => {
 };
 
 function SourceEdit({ ingredient, dispatch, applyUsdaResult }) {
+  const fetch = useAccountFetch();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<UsdaIngredientResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
