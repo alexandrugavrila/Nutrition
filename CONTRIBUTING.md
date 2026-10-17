@@ -1010,3 +1010,22 @@ Docker, OpenSSL, installed frontend dependencies and Playwright Chromium; missin
 tooling fails the run. The temporary certificate is for localhost only. CI runs
 this as the required `release-cutover` job; remote success must be verified for
 the actual candidate commit before integration.
+
+### Rehearsing published release images
+
+Pass both `--backend-image <repository@sha256:digest>` and
+`--frontend-image <repository@sha256:digest>` to
+`python -m testsupport.run_release_cutover` to pull and rehearse existing images.
+This mode never builds replacement images and never deletes the supplied images.
+Without those flags, the runner builds and removes temporary local images as before.
+Evidence records the input references, resolved image IDs and image mode. Tags,
+incomplete pairs and malformed digests fail before starting Docker work.
+The existing snapshot and explicitly reviewed legacy-repair flags remain available.
+
+Both publish script variants now point to the digest-based rehearsal and staged
+`deploy prepare` flow. The production environment example describes only the
+internal HTTP bind; certificates belong to the selected external HTTPS ingress.
+The branch-protection contract requires `release-cutover` as well as the other
+five checks. Documentation changes do not themselves change GitHub enforcement.
+
+LAN-only home-server topology and pending inventory are recorded in [home-server preparation](docs/home-server-preparation.md). The Caddy example is a proposed guest-host configuration, not a deployed service.

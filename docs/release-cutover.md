@@ -172,3 +172,10 @@ reviewed recovery evidence under the merge-commit release policy. Production
 needs a rehearsed current state, designated owner, window, verified final backup,
 smoke tests and operator approval. Missing evidence is a blocked gate, never a
 pass. Do not infer remote CI success from local tests or empty query results.
+
+To verify published images instead of rebuilding, append
+`--backend-image <backend-repository@sha256:digest> --frontend-image <frontend-repository@sha256:digest>`
+to the rehearsal command. Both are required; mutable tags are rejected. This mode
+pulls the exact references, reports their local image IDs and retains those images
+after removing only the disposable test stack. Repeat on the home server's CPU
+architecture before approving deployment. Registry access must already be configured.

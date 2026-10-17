@@ -2,6 +2,7 @@
 
 import importlib.util
 import argparse
+import re
 import hashlib
 import json
 import os
@@ -21,6 +22,25 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
 
+def prepare_images(run, backend, frontend, *, existing):
+    if existing:
+        for image in (backend, frontend):
+            run(['docker', 'pull', image])
+    else:
+        run(['docker', 'build', '-f', 'Backend/Dockerfile', '--target', 'prod', '-t', backend, '.'])
+        run(['docker', 'build', '-f', 'Frontend/Dockerfile', '-t', frontend, '.'])
+
+
+def validate_images(parser, backend, frontend):
+    if bool(backend) != bool(frontend):
+        parser.error('Supply both --backend-image and --frontend-image, or neither.')
+    for image in (backend, frontend):
+        if image and not re.fullmatch(r'[^\s@]+@sha256:[0-9a-f]{64}', image):
+            parser.error(
+                'Existing images must use repository@sha256:<digest>; tags are not accepted.'
+            )
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -33,7 +53,10 @@ def main():
         action='store_true',
         help='Apply the user-reviewed Plan 4/item 0/ingredient 117 repair ONLY in the disposable copy of the exact known dump',
     )
+    parser.add_argument('--backend-image', help='Existing published backend digest; skips builds')
+    parser.add_argument('--frontend-image', help='Existing published frontend digest; skips builds')
     args = parser.parse_args()
+    validate_images(parser, args.backend_image, args.frontend_image)
     if args.repair_known_legacy_override and (
         not args.snapshot
         or hashlib.sha256(args.snapshot.read_bytes()).hexdigest()
@@ -41,8 +64,8 @@ def main():
     ):
         parser.error('Reviewed repair applies only to the exact November 2025 dump.')
     project = 'nutrition-release-' + uuid4().hex[:12]
-    image = project + ':candidate'
-    frontend = project + ':frontend'
+    image = args.backend_image or project + ':candidate'
+    frontend = args.frontend_image or project + ':frontend'
     with socket.socket() as reservation:
         reservation.bind(('127.0.0.1', 0))
         port = reservation.getsockname()[1]
@@ -130,20 +153,7 @@ def main():
         compose_file.write_text(json.dumps(config))
         compose = ['docker', 'compose', '-p', project, '-f', str(compose_file)]
         try:
-            run(
-                [
-                    'docker',
-                    'build',
-                    '-f',
-                    'Backend/Dockerfile',
-                    '--target',
-                    'prod',
-                    '-t',
-                    image,
-                    '.',
-                ]
-            )
-            run(['docker', 'build', '-f', 'Frontend/Dockerfile', '-t', frontend, '.'])
+            prepare_images(run, image, frontend, existing=bool(args.backend_image))
             run(compose + ['up', '-d', '--wait', 'db'])
             c = module.Cutover.__new__(module.Cutover)
             c.directory = folder / 'evidence'
@@ -277,6 +287,9 @@ def main():
                             ['docker', 'image', 'inspect', '--format', '{{.Id}}', image],
                             capture_output=True,
                         ).stdout.strip(),
+                        'backend_reference': image,
+                        'frontend_reference': frontend,
+                        'image_mode': 'published-digests' if args.backend_image else 'local-build',
                         'restore_verified': True,
                         'reviewed_repair': (
                             'Plan 4/item 0: removed stale ingredient 117 override'
@@ -305,7 +318,8 @@ def main():
             )
         finally:
             run(compose + ['--profile', 'maintenance', 'down', '--volumes', '--remove-orphans'])
-            subprocess.run(['docker', 'image', 'rm', image, frontend], cwd=ROOT, check=False)
+            if not args.backend_image:
+                subprocess.run(['docker', 'image', 'rm', image, frontend], cwd=ROOT, check=False)
 
 
 if __name__ == '__main__':
