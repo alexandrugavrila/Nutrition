@@ -38,7 +38,6 @@ import type { components } from "@/api-types";
 import useHoverable from "@/hooks/useHoverable";
 
 type IngredientRead = components["schemas"]["IngredientRead"];
-type IngredientUpdate = components["schemas"]["IngredientUpdate"];
 type IngredientWithSelection = IngredientRead & {
   shoppingUnitId?: number | string | null;
 };

@@ -34,11 +34,11 @@ export function compatible(value: unknown, base: unknown): boolean {
 }
 
 export function validWorkflow(key: string, value: unknown): boolean {
-  const record = (v: unknown): v is Record<string, any> =>
+  const record = (v: unknown): v is Record<string, unknown> =>
     !!v && typeof v === 'object' && !Array.isArray(v);
   const number = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
   const id = (v: unknown) => typeof v === 'string' || number(v);
-  const entries = (v: unknown, check: (entry: any) => boolean) =>
+  const entries = (v: unknown, check: (entry: unknown) => boolean) =>
     record(v) && Object.values(v).every(check);
   const strings = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === 'string');
   if (key.endsWith(':planning-plan'))

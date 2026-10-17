@@ -54,6 +54,7 @@ def compose_config(tmp_path, source=None, maintenance=False):
 
 def test_default_services_do_not_require_foundation_input(tmp_path):
     config = compose_config(tmp_path)
+    assert config["services"]["edge"]["ports"][0]["host_ip"] == "127.0.0.1"
     assert set(config["services"]) == {"db", "backend", "frontend", "edge"}
     assert config["services"]["backend"]["environment"]["USDA_API_KEY"] == ""
 

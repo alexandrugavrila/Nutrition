@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return ++revision.current;
   }, []);
 
-  const refresh = useCallback(async (): Promise<void> => {
+  const refresh = useCallback(async function refreshSession(): Promise<void> {
     if (mutating.current) return;
     const ticket = suspend();
     try {
@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(next);
       if (next) {
         const active = createAccountScope(next.id, () => {
-          void refresh();
+          void refreshSession();
         });
         scopeRef.current = active;
         setScope(active);

@@ -38,9 +38,9 @@ const writeToSessionStorage = <T>(key: string | null, value: T) => {
   }
 };
 
-export function useSessionStorageState<T>(key: string, initialState: T | (() => T)) {
+export function useSessionStorageState<T>(storageName: string, initialState: T | (() => T)) {
   const scope = useAccountScope();
-  key = scope ? storageKey(scope.userId, key) : '';
+  const key = scope ? storageKey(scope.userId, storageName) : '';
   const resolveInitialState = useCallback((): T => {
     const persisted = readFromSessionStorage<T>(key);
     const base = typeof initialState === 'function' ? (initialState as () => T)() : initialState;
@@ -71,10 +71,10 @@ export function useSessionStorageState<T>(key: string, initialState: T | (() => 
 export function useSessionStorageReducer<S, A>(
   reducer: Reducer<S, A>,
   createInitialState: () => S,
-  key: string,
+  storageName: string,
 ) {
   const scope = useAccountScope();
-  key = scope ? storageKey(scope.userId, key) : '';
+  const key = scope ? storageKey(scope.userId, storageName) : '';
   const initializerRef = useRef(createInitialState);
 
   const initializer = useCallback((): S => {

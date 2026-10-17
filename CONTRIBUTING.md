@@ -983,3 +983,30 @@ alongside authenticated browser/API workflows. `python -m testsupport.run_accoun
 also runs repeated checksum-verified Foundation CLI imports inside the production image,
 without source mounts or live provider access. Both shell test paths use these same Python
 runners. See [Phase 9 evidence](docs/integration-phase-9.md) for the validation record.
+
+### Production cutover scripts (script catalog update)
+
+`prod/deploy.ps1` and `prod/deploy.sh` now take the same staged arguments:
+`prepare|maintenance|expand|report|finalize --evidence <directory>`, with
+stage-specific digest, revision, owner and report-checksum flags. They call
+`scripts/prod/cutover.py` (Python 3.11+), require an exact reviewed adoption report,
+and leave traffic closed. The previous single-tag deploy interface is removed. Set `PYTHON` to an explicit
+interpreter path if needed (including Git Bash on Windows).
+`prod/rollback.ps1` and `.sh` fail closed during the ownership cutover; use the
+clean-database recovery procedure rather than an unverified image-only rollback.
+The manual backup entry points remain available, but the cutover uses its own
+verified stopped-writer backup and separate-database restore checkpoint.
+
+Follow [the account/USDA release runbook](docs/release-cutover.md) for the exact
+sequence, HTTPS requirements, failure recovery and independent release gates.
+The packaged `Backend.commands.release_snapshot` emits only table/ID/content
+hashes, sequence state and database version for backup verification. It does not
+modify the database. Evidence and backups are sensitive and must stay outside Git.
+
+Local release validation: `python -m testsupport.run_release_cutover` builds
+production images, runs a populated cutover and actual restore, injects checkpoint
+failures, and performs an HTTPS Chromium account-isolation smoke. It requires
+Docker, OpenSSL, installed frontend dependencies and Playwright Chromium; missing
+tooling fails the run. The temporary certificate is for localhost only. CI runs
+this as the required `release-cutover` job; remote success must be verified for
+the actual candidate commit before integration.

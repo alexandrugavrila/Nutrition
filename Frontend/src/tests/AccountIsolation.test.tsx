@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { AccountScopeContext, createAccountScope } from '@/contexts/AccountScope';
 import { useSessionStorageState, useSessionStorageReducer } from '@/hooks/useSessionStorageState';
 import { storageKey, clearLegacyStorage } from '@/utils/accountStorage';
@@ -124,7 +124,7 @@ it('never persists anonymous state and tolerates denied storage', () => {
 it('rejects late responses and follow-up writes using an invalidated account', async () => {
   let release!: (response: Response) => void;
   const request = vi.fn<typeof fetch>(
-    (_input, _options) =>
+    () =>
       new Promise<Response>((resolve) => {
         release = resolve;
       }),

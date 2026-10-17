@@ -7,7 +7,6 @@ const usdaIngredientName = "E2E USDA Ingredient";
 const foodName = `E2E Food ${runId}`;
 const planName = `E2E Plan ${runId}`;
 
-const USDA_FDC_ID = 424242;
 const USDA_DEFAULT_UNIT_NAME = "medium";
 
 const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
