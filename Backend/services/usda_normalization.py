@@ -288,7 +288,7 @@ def _extract_food_units(food: dict[str, Any]) -> list[dict[str, Any]]:
     units: list[dict[str, Any]] = []
     seen: set[tuple[str, float]] = set()
 
-    _add_usda_unit(units, seen, name="1 g", grams=1.0, is_default=True)
+    _add_usda_unit(units, seen, name="g", grams=1.0, is_default=True)
 
     default_unit = _build_default_unit(food)
     if default_unit is not None:

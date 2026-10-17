@@ -70,7 +70,7 @@ def test_trim_food_payload_includes_only_base_gram_unit_when_no_usda_measures_ex
         }
     )
 
-    assert payload["units"] == [{"name": "1 g", "grams": 1.0, "is_default": True}]
+    assert payload["units"] == [{"name": "g", "grams": 1.0, "is_default": True}]
 
 
 def test_trim_food_payload_marks_branded_gram_serving_as_default_unit() -> None:
@@ -87,7 +87,7 @@ def test_trim_food_payload_marks_branded_gram_serving_as_default_unit() -> None:
     )
 
     assert payload["units"] == [
-        {"name": "1 g", "grams": 1.0, "is_default": False},
+        {"name": "g", "grams": 1.0, "is_default": False},
         {"name": "1 bar", "grams": 55.0, "is_default": True},
     ]
 
@@ -128,7 +128,7 @@ def test_trim_food_payload_includes_multiple_gram_backed_usda_units() -> None:
     )
 
     assert payload["units"] == [
-        {"name": "1 g", "grams": 1.0, "is_default": True},
+        {"name": "g", "grams": 1.0, "is_default": True},
         {"name": "1 cup sliced", "grams": 109.0, "is_default": False},
         {"name": "1 tbsp", "grams": 8.5, "is_default": False},
         {"name": "2 piece rings", "grams": 35.0, "is_default": False},
@@ -160,7 +160,7 @@ def test_trim_food_payload_deduplicates_units_and_omits_entries_without_grams() 
     )
 
     assert payload["units"] == [
-        {"name": "1 g", "grams": 1.0, "is_default": False},
+        {"name": "g", "grams": 1.0, "is_default": False},
         {"name": "1/4 cup", "grams": 28.0, "is_default": True},
         {"name": "1 packet", "grams": 30.0, "is_default": False},
     ]
@@ -183,7 +183,7 @@ def test_trim_food_payload_marks_branded_liquids_as_not_normalizable() -> None:
     )
 
     assert payload["nutrition"] is None
-    assert payload["units"] == [{"name": "1 g", "grams": 1.0, "is_default": True}]
+    assert payload["units"] == [{"name": "g", "grams": 1.0, "is_default": True}]
     assert payload["normalization"] == {
         "data_type": "Branded",
         "source_basis": "per_100ml",

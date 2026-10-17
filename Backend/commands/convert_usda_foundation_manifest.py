@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from Backend.commands.sync_usda_foundation import _iter_foods, _load_payload
-from Backend.routes.usda import _trim_food_payload
+from Backend.services.usda_normalization import _trim_food_payload
 from Backend.services.onboarding import STARTER_MANIFEST_PATH
 
 

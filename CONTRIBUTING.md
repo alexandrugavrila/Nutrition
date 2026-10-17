@@ -254,6 +254,7 @@ Runtime controls in production compose:
   `USDA_FOUNDATION_FOODS_JSON` is optional when configuring or starting the normal
   production stack. The sync command requires it (or `--input`) only when invoked;
   missing input exits with an error before loading data or opening a database session.
+  The default invocation imports/updates records without marking absent entries stale.
   A URL is fetched by the container. A file path must exist **inside the container**;
   setting this variable to a host path does not mount that file. For a local dataset,
   mount its directory read-only and pass the container path (replace the host path):
@@ -768,10 +769,9 @@ report is rejected. The command never imports or publishes catalog records.
 Empty fresh databases may upgrade directly to head because no legacy content requires
 adoption; the checkpoint/bootstrap/empty-adoption path is also rehearsed. Populated
 upgrades must use the checkpoint. Accounts and seeding remain separate operations.
-Foundation synchronization is temporarily disabled before input loading or database
-writes until the reference-safe Phase 9 implementation. Missing input still fails with
-its dedicated validation message. External catalog records in the final application will
-be immutable; editing requires an explicit personal copy, without repointing recipes.
+Foundation synchronization is available through the Phase 9 operator command after adoption.
+Missing input fails before I/O. External catalog records are immutable through ordinary CRUD;
+editing requires an explicit personal copy, without repointing recipes.
 
 The script catalog entry for adoption is the cross-platform Python module
 `Backend.commands.adopt_legacy` (flags above; intentionally no additional shell wrapper).
@@ -837,8 +837,7 @@ and proxy behavior still require Phase 10 validation.
 
 Phase 8 preserves missing nutrients as null through trusted import, previews, calculations,
 and new snapshots. Reimport refreshes verified canonical nutrition while retaining units,
-IDs, personal copies and historical snapshots. Foundation synchronization remains disabled
-pending Phase 9; see the nutrient contract below.
+IDs, personal copies and historical snapshots. Foundation synchronization follows the Phase 9 contract below.
 
 `python -m testsupport.run_e2e` runs the PostgreSQL suite and authenticated API/browser
 workflows with a loopback USDA fixture through the real server import path. Its test-only
@@ -917,3 +916,70 @@ before/after the new revision. `python -m testsupport.run_e2e` covers incomplete
 recipe planning, nullable cooking snapshots, logging and reload using a deterministic
 provider fixture. These runners only use disposable PostgreSQL databases; no live USDA key
 or application database is needed. See [Phase 8 evidence](docs/integration-phase-8.md).
+
+
+### Foundation catalog maintenance (Phase 9)
+
+Run maintenance after completing adoption/final constraints. The packaged cross-platform
+entry point is `python -m Backend.commands.sync_usda_foundation`; no additional shell
+wrapper is needed. `--input` (or `USDA_FOUNDATION_FOODS_JSON`) accepts a container-visible
+JSON/ZIP file or download URL. The production Compose service stays in the `maintenance`
+profile; its default command never marks absent records stale. Mount host files read-only
+as shown above. No USDA API key is needed for a downloaded artifact.
+
+The script catalog's synchronization options are:
+
+- `--input PATH_OR_URL`: source artifact. ZIPs must contain exactly one JSON document.
+- `--expected-sha256 HEX`: SHA256 of the exact input bytes, including the ZIP bytes for a
+  ZIP artifact. A mismatch rejects the run before catalog mutation.
+- `--expected-count N`: reviewed number of records, before any deduplication (duplicates
+  are rejected, even when identical).
+- `--mark-stale --complete-snapshot`: explicitly request absent-entry stale marking and
+  attest that the artifact is the complete official Foundation release. Both expected
+  checksum and count are mandatory in this mode, as is the `FoundationFoods` envelope.
+
+For example, after independently reviewing the official download and recording its count
+and checksum (replace both placeholders):
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml --profile maintenance run --rm --volume "/absolute/host/usda:/input:ro" usda-sync python -m Backend.commands.sync_usda_foundation --input /input/foundation.zip --mark-stale --complete-snapshot --expected-count REVIEWED_COUNT --expected-sha256 REVIEWED_SHA256
+```
+
+A parseable file cannot prove completeness or authenticity. The operator must verify the
+release's provenance and completeness before making that attestation; do not derive the
+expected count from an arbitrary partial file merely to bypass the guard. Subset updates
+are supported without stale marking. Malformed/empty/truncated JSON, duplicate JSON keys,
+ambiguous archives, non-Foundation records, conflicting/duplicate IDs, invalid nutrients
+and invalid conversions reject the entire run.
+
+The whole catalog update is transactional. A PostgreSQL provider lock serializes bulk
+runs and excludes individual imports while a bulk run writes; different identifier imports
+can otherwise proceed concurrently. CLI synchronization requires PostgreSQL. A clean,
+dedicated SQLModel session is required when calling the service directly.
+
+Only verified shared USDA objects can be updated. A mapping to personal/unverified data
+blocks the run for operator reconciliation; it never publishes or repoints that record.
+Persisted units are never renamed, reweighted or deleted. New conversions get new unit IDs,
+comparison uses database precision, and new base units use `g`. A referenced `1 g` alias
+remains intact even when `g` also exists. Recipes and per-user shopping overrides retain
+their IDs. The catalog default may follow the current provider default; personal overrides
+and historical snapshots are never rewritten. Seeding remains a separate explicit command.
+
+Only absent records previously managed by a successful Foundation bulk run can become
+stale. API-only imports, other USDA datasets, unverified mappings and personal objects are
+excluded. Returning entries clear their stale marker. A fresh Foundation identifier import
+also clears staleness while retaining bulk membership; an import of a different data type
+removes that membership. Stale records are retained, including all references.
+
+`catalog_sync_runs` records success/failure, completion time, artifact SHA256, a sanitized
+artifact URI, normalization version and counts (or failure stage). Each synchronized source
+records its raw-record hash and bulk run ID. Failures roll back catalog changes before a
+separate failure audit is committed; an unavailable database cannot guarantee an audit row.
+CLI failures never echo upstream URLs or exception details. Missing input/guard errors
+exit before I/O. Bulk imports do not select ingredients into anyone's account automatically.
+
+`python -m testsupport.run_e2e` covers PostgreSQL locking, reference preservation and rollback
+alongside authenticated browser/API workflows. `python -m testsupport.run_account_commands_smoke`
+also runs repeated checksum-verified Foundation CLI imports inside the production image,
+without source mounts or live provider access. Both shell test paths use these same Python
+runners. See [Phase 9 evidence](docs/integration-phase-9.md) for the validation record.

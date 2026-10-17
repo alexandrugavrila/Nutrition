@@ -52,8 +52,32 @@ def main():
         run(adoption_base + ["-m", "alembic", "-c", "Backend/alembic.ini", "upgrade", "head"])
         run(adoption_base + ["-m", "alembic", "-c", "Backend/alembic.ini", "check"])
         run(adoption_base + ["-c", apply_code], input=report)
+        # Exercise the packaged Foundation CLI on a container-local artifact, without a key or mount.
+        sync_smoke = """
+import hashlib, json, sys, tempfile
+from pathlib import Path
+from Backend.commands.sync_usda_foundation import main
+from Backend.db import engine
+from Backend.models import CatalogSyncRun, IngredientSource
+from sqlmodel import Session, select
+payload = {'FoundationFoods': [{'fdcId': 1234567, 'description': 'Smoke Foundation', 'dataType': 'Foundation', 'foodNutrients': [{'nutrientId': 1004, 'value': 0, 'unitName': 'g'}]}]}
+with tempfile.TemporaryDirectory() as directory:
+    path = Path(directory) / 'foundation.json'
+    path.write_text(json.dumps(payload))
+    checksum = hashlib.sha256(path.read_bytes()).hexdigest()
+    sys.argv = ['sync', '--input', str(path), '--mark-stale', '--complete-snapshot', '--expected-count', '1', '--expected-sha256', checksum]
+    assert main() == 0
+    assert main() == 0
+with Session(engine) as session:
+    source = session.exec(select(IngredientSource).where(IngredientSource.source_id == '1234567')).one()
+    assert source.ingredient.nutrition.fat == 0 and source.ingredient.nutrition.fiber is None
+    runs = session.exec(select(CatalogSyncRun).order_by(CatalogSyncRun.id)).all()
+    assert len(runs) == 2 and all(r.status == 'succeeded' and r.artifact_sha256 == checksum for r in runs)
+    assert runs[-1].summary['unchanged'] == 1
+"""
+        run(base + ["-c", sync_smoke])
         run(["docker", "image", "inspect", "--format", "{{.Id}}", image])
-        print("Production account command smoke passed (no mounts, no USDA key).")
+        print("Production account and Foundation command smoke passed (no mounts, no USDA key).")
     finally:
         if started:
             run(compose + ["down", "--volumes", "--remove-orphans"])

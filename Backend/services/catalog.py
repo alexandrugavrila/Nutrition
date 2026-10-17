@@ -24,7 +24,10 @@ def select_catalog(db, user_id, ingredient_id):
         db.flush()
 
 
-def import_verified(db, user, fdc_id, raw):
+NORMALIZATION_VERSION = "usda-per-g-nullable-v2"
+
+
+def normalize_verified(fdc_id, raw):
     if not isinstance(raw, dict) or type(raw.get('fdcId')) is not int or raw['fdcId'] != fdc_id:
         raise HTTPException(502, 'USDA returned an unexpected record.')
     try:
@@ -58,8 +61,22 @@ def import_verified(db, user, fdc_id, raw):
         ).hexdigest()
     except (ValueError, TypeError, KeyError, AttributeError, OverflowError) as exc:
         raise HTTPException(502, 'USDA returned invalid data.') from exc
+    return normalized, artifact
+
+
+def lock_provider(db, *, exclusive=False):
+    """Bulk runs exclude all individual imports; imports retain per-ID concurrency."""
     if db.bind.dialect.name == 'postgresql':
-        # Same provider ID serializes across processes, without holding a lock during HTTP.
+        function = 'pg_advisory_xact_lock' if exclusive else 'pg_advisory_xact_lock_shared'
+        db.execute(text(f'SELECT {function}(643220, 1)'))
+
+
+def import_verified(db, user, fdc_id, raw):
+    normalized, artifact = normalize_verified(fdc_id, raw)
+    values = normalized['nutrition']
+    name = normalized['name']
+    lock_provider(db)
+    if db.bind.dialect.name == 'postgresql':
         db.execute(text('SELECT pg_advisory_xact_lock(643221, :id)'), {'id': fdc_id})
     source = db.exec(
         select(IngredientSource).where(
@@ -82,8 +99,11 @@ def import_verified(db, user, fdc_id, raw):
             for key, value in values.items():
                 setattr(ingredient.nutrition, key, value)
         source.artifact_sha256 = source.payload_hash = artifact
+        source.is_stale = False
+        if raw.get("dataType") != "Foundation":
+            source.import_run_id = None
         source.verified_at = datetime.now(timezone.utc)
-        source.normalization_version = 'usda-per-g-nullable-v2'
+        source.normalization_version = NORMALIZATION_VERSION
         db.add(source)
         db.add(ingredient)
     else:
@@ -101,7 +121,7 @@ def import_verified(db, user, fdc_id, raw):
                 verified_at=datetime.now(timezone.utc),
                 artifact_sha256=artifact,
                 payload_hash=artifact,
-                normalization_version='usda-per-g-nullable-v2',
+                normalization_version=NORMALIZATION_VERSION,
             )
         ]
         db.add(ingredient)

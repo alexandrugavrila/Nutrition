@@ -66,7 +66,7 @@ def test_maintenance_profile_preserves_optional_input(tmp_path, source):
     assert service["profiles"] == ["maintenance"]
     assert service["environment"]["USDA_FOUNDATION_FOODS_JSON"] == (source or "")
     assert service["command"] == ["python", "-m",
-                                  "Backend.commands.sync_usda_foundation", "--mark-stale"]
+                                  "Backend.commands.sync_usda_foundation"]
 
 
 @pytest.mark.parametrize("source", [None, ""])

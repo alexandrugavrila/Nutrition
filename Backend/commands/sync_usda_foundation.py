@@ -1,168 +1,152 @@
-"""Sync global USDA Foundation Foods into the shared ingredient catalog."""
+"""Import a reviewed USDA Foundation JSON/ZIP artifact without changing personal records."""
 
 from __future__ import annotations
-
 import argparse
 import hashlib
 import io
 import json
 import os
-import zipfile
 from pathlib import Path
-from typing import Any, Iterable
-from urllib.parse import urlparse
-
+from urllib.parse import urlparse, urlunsplit
+import zipfile
 import httpx
 from sqlmodel import Session
-
 from Backend.db import engine
-from Backend.models import (
-    Ingredient,
-    IngredientUnit,
-    Nutrition,
+from Backend.services.foundation_sync import (
+    _iter_foods,
+    _hash_payload,
+    _sync_units,
+    sync_usda_foundation,
+    record_failure,
 )
 
 
-SOURCE = "usda"
+def _strict_json(raw):
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise ValueError('Duplicate JSON key in Foundation artifact.')
+            result[key] = value
+        return result
+
+    def constant(value):
+        raise ValueError('Non-finite JSON number in Foundation artifact.')
+
+    return json.loads(raw, object_pairs_hook=pairs, parse_constant=constant)
 
 
-def _load_json_from_zip_bytes(raw: bytes, location: str) -> Any:
+def _load_json_from_zip_bytes(raw, location=None):
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-        json_names = [
-            name
-            for name in archive.namelist()
-            if name.lower().endswith(".json") and not name.endswith("/")
-        ]
-        if not json_names:
-            raise ValueError(f"No JSON file found inside {location}.")
-        if len(json_names) > 1:
-            foundation_names = [
-                name for name in json_names if "foundation" in name.lower()
-            ]
-            if len(foundation_names) == 1:
-                json_names = foundation_names
-            else:
-                raise ValueError(
-                    f"Multiple JSON files found inside {location}; provide an unzipped JSON file."
-                )
-        with archive.open(json_names[0]) as payload_file:
-            return json.load(payload_file)
+        names = [n for n in archive.namelist() if n.lower().endswith('.json')]
+        if len(names) != 1:
+            raise ValueError('Foundation ZIP must contain exactly one JSON document.')
+        return _strict_json(archive.read(names[0]))
 
 
-def _load_payload(location: str) -> Any:
-    parsed = urlparse(location)
-    if parsed.scheme in {"http", "https"}:
-        response = httpx.get(location, timeout=120.0)
+def _read_artifact(location):
+    if urlparse(location).scheme in {'http', 'https'}:
+        response = httpx.get(location, timeout=120.0, follow_redirects=True)
         response.raise_for_status()
-        content_type = response.headers.get("content-type", "")
-        if location.lower().endswith(".zip") or "zip" in content_type.lower():
-            return _load_json_from_zip_bytes(response.content, location)
-        return response.json()
-    path = Path(location)
-    if path.suffix.lower() == ".zip":
-        return _load_json_from_zip_bytes(path.read_bytes(), location)
-    with path.open("r", encoding="utf-8") as payload_file:
-        return json.load(payload_file)
+        return response.content
+    return Path(location).read_bytes()
 
 
-def _iter_foods(payload: Any) -> Iterable[dict[str, Any]]:
-    if isinstance(payload, list):
-        yield from (item for item in payload if isinstance(item, dict))
-        return
-    if not isinstance(payload, dict):
-        return
-    for key in ("FoundationFoods", "Foundation Foods", "foods", "Foods"):
-        value = payload.get(key)
-        if isinstance(value, list):
-            yield from (item for item in value if isinstance(item, dict))
-            return
+def _decode_artifact(raw):
+    return (
+        _load_json_from_zip_bytes(raw) if zipfile.is_zipfile(io.BytesIO(raw)) else _strict_json(raw)
+    )
 
 
-def _hash_payload(payload: dict[str, Any]) -> str:
-    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return hashlib.sha256(raw).hexdigest()
+def _load_payload(location):
+    return _decode_artifact(_read_artifact(location))
 
 
-def _upsert_nutrition(ingredient: Ingredient, nutrition: dict[str, Any] | None) -> None:
-    if not nutrition:
-        ingredient.nutrition = None
-        return
-    if ingredient.nutrition is None:
-        ingredient.nutrition = Nutrition(**nutrition)
-        return
-    for field, value in nutrition.items():
-        setattr(ingredient.nutrition, field, value)
+def _artifact_uri(location):
+    parsed = urlparse(location)
+    if parsed.scheme in {'http', 'https'}:
+        return urlunsplit((parsed.scheme, parsed.hostname or '', parsed.path, '', ''))[:2048]
+    return Path(location).name[:2048]
 
 
-def _unit_key(name: Any, grams: Any) -> tuple[str, float] | None:
-    if not name or grams is None:
-        return None
-    try:
-        grams_value = round(float(grams), 6)
-    except (TypeError, ValueError):
-        return None
-    return (str(name).strip().lower(), grams_value)
-
-
-def _sync_units(ingredient: Ingredient, units: list[dict[str, Any]]) -> None:
-    existing_units = list(ingredient.units or [])
-    existing_by_key = {
-        key: unit
-        for unit in existing_units
-        if (key := _unit_key(unit.name, unit.grams)) is not None
-    }
-
-    for unit in units:
-        key = _unit_key(unit.get("name"), unit.get("grams"))
-        if key is None:
-            continue
-        existing = existing_by_key.get(key)
-        if existing is not None:
-            existing.name = unit["name"]
-            existing.grams = unit["grams"]
-            continue
-        new_unit = IngredientUnit(name=unit["name"], grams=unit["grams"])
-        ingredient.units.append(new_unit)
-        existing_by_key[key] = new_unit
-
-    if not any((unit.name or "").strip().lower() == "g" for unit in ingredient.units):
-        ingredient.units.append(IngredientUnit(name="g", grams=1))
-
-
-def sync_usda_foundation(
-    session: Session,
-    payload: Any,
-    *,
-    mark_stale: bool = False,
-) -> dict[str, int]:
-    raise ValueError("Foundation synchronization is disabled pending the reference-safe Phase 9 importer.")
-
-
-def parse_args() -> argparse.Namespace:
+def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--input",
-        default=os.environ.get("USDA_FOUNDATION_FOODS_JSON"),
-        help="Path or URL for a USDA Foundation Foods JSON or ZIP download.",
+        '--input',
+        default=os.environ.get('USDA_FOUNDATION_FOODS_JSON'),
+        help='Container-visible JSON/ZIP path or download URL.',
     )
     parser.add_argument(
-        "--mark-stale",
-        action="store_true",
-        help="Mark existing USDA source rows stale when absent from the input.",
+        '--mark-stale',
+        action='store_true',
+        help='Mark absent previously synchronized Foundation entries stale; requires completeness evidence.',
+    )
+    parser.add_argument(
+        '--complete-snapshot',
+        action='store_true',
+        help='Operator attests this is the full official Foundation snapshot, not a selection.',
+    )
+    parser.add_argument(
+        '--expected-count', type=int, help='Reviewed record count of the complete snapshot.'
+    )
+    parser.add_argument(
+        '--expected-sha256',
+        help='Reviewed SHA256 of the input file bytes (ZIP bytes for ZIP input).',
     )
     return parser.parse_args()
 
 
-def main() -> int:
+def main():
     args = parse_args()
     if not args.input:
         raise SystemExit(
-            "Provide --input or USDA_FOUNDATION_FOODS_JSON pointing to FDC Foundation Foods JSON."
+            'Provide --input or USDA_FOUNDATION_FOODS_JSON pointing to FDC Foundation Foods JSON.'
         )
+    if args.mark_stale and (
+        not args.complete_snapshot or args.expected_count is None or args.expected_sha256 is None
+    ):
+        raise SystemExit(
+            'Stale marking requires --complete-snapshot, --expected-count and --expected-sha256.'
+        )
+    artifact = None
+    uri = _artifact_uri(args.input)
+    try:
+        raw = _read_artifact(args.input)
+        artifact = hashlib.sha256(raw).hexdigest()
+        payload = _decode_artifact(raw)
+    except Exception as exc:
+        # Never persist URLs with credentials or upstream exception messages.
+        try:
+            with Session(engine) as session:
+                record_failure(
+                    session, artifact_sha256=artifact, artifact_uri=uri, reason='artifact_read'
+                )
+        except Exception:
+            raise SystemExit(
+                'Foundation artifact could not be loaded; failure audit is unavailable.'
+            ) from None
+        raise SystemExit('Foundation artifact could not be loaded; catalog unchanged.') from None
+    if engine.dialect.name != 'postgresql':
+        raise SystemExit('Foundation maintenance requires PostgreSQL provider locking.')
+    try:
+        with Session(engine) as session:
+            summary = sync_usda_foundation(
+                session,
+                payload,
+                mark_stale=args.mark_stale,
+                complete_snapshot=args.complete_snapshot,
+                expected_count=args.expected_count,
+                expected_sha256=args.expected_sha256,
+                artifact_sha256=artifact,
+                artifact_uri=uri,
+            )
+    except Exception:
+        raise SystemExit(
+            'Foundation synchronization failed; catalog transaction rolled back. Review the failure audit and input.'
+        ) from None
+    print(json.dumps({'artifact_sha256': artifact, **summary}, sort_keys=True))
+    return 0
 
-    raise SystemExit("Foundation synchronization is disabled pending the reference-safe Phase 9 importer.")
 
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     raise SystemExit(main())

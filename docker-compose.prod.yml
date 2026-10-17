@@ -151,8 +151,7 @@ services:
       [
         "python",
         "-m",
-        "Backend.commands.sync_usda_foundation",
-        "--mark-stale"
+        "Backend.commands.sync_usda_foundation"
       ]
     depends_on:
       db:
