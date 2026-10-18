@@ -34,10 +34,11 @@ def isolated_env():
             **SYNTHETIC_ENV}
 
 
-def compose_config(tmp_path, source=None, maintenance=False):
+def compose_config(tmp_path, source=None, maintenance=False, overrides=None):
     shutil.copyfile(ROOT / "docker-compose.prod.yml", tmp_path / "compose.yml")
     (tmp_path / ".env.production").write_text("", encoding="utf-8")
     env = isolated_env()
+    env.update(overrides or {})
     if source is not None:
         env["USDA_FOUNDATION_FOODS_JSON"] = source
     command = ["docker", "compose", "--project-name", "nutrition-config-test",
@@ -97,3 +98,17 @@ with patch.object(Engine, "connect", side_effect=AssertionError("Database access
     assert "Provide --input or USDA_FOUNDATION_FOODS_JSON" in result.stderr
     assert "Traceback" not in result.stderr
     assert not (tmp_path / "nutrition.db").exists()
+
+
+def test_private_http_settings_reach_production_backend(tmp_path):
+    config = compose_config(tmp_path, overrides={
+        "ENVIRONMENT": "production", "SESSION_SECURE_COOKIE": "false",
+        "ALLOW_INSECURE_HTTP": "true", "CORS_ALLOW_ORIGINS": "http://nutrition.internal",
+        "PROD_HTTP_BIND_ADDRESS": "192.168.1.24", "PROD_HTTP_PORT": "80",
+    })
+    backend = config["services"]["backend"]["environment"]
+    assert backend["ENVIRONMENT"] == "production"
+    assert backend["SESSION_SECURE_COOKIE"] == "false"
+    assert backend["ALLOW_INSECURE_HTTP"] == "true"
+    assert backend["CORS_ALLOW_ORIGINS"] == "http://nutrition.internal"
+    assert config["services"]["edge"]["ports"][0]["host_ip"] == "192.168.1.24"

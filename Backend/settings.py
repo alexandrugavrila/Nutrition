@@ -154,7 +154,13 @@ class Settings:
         )
 
         if Settings._is_production(environment) and not session_secure_cookie:
-            raise RuntimeError("Production requires secure session cookies over HTTPS.")
+            if not _to_bool(os.getenv("ALLOW_INSECURE_HTTP"), default=False):
+                raise RuntimeError("Production requires secure session cookies over HTTPS. "
+                                   "Private HTTP deployments must explicitly set ALLOW_INSECURE_HTTP=true.")
+            if not origins or any(not origin.startswith("http://") or "*" in origin
+                                  or not urlparse(origin).hostname for origin in origins):
+                raise RuntimeError("Insecure HTTP requires explicit http:// browser origins.")
+            warnings.warn("Private HTTP deployment: session traffic is unencrypted.", RuntimeWarning)
 
         Settings._validate_required_production_secrets(
             db_url=db_url,

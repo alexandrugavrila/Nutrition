@@ -90,6 +90,8 @@ services:
       CORS_ALLOW_ORIGINS: "${CORS_ALLOW_ORIGINS:?CORS_ALLOW_ORIGINS is required}"
       DB_AUTO_CREATE: "${DB_AUTO_CREATE:-false}"
       ENVIRONMENT: "${ENVIRONMENT:-production}"
+      SESSION_SECURE_COOKIE: "${SESSION_SECURE_COOKIE:-true}"
+      ALLOW_INSECURE_HTTP: "${ALLOW_INSECURE_HTTP:-false}"
       ALEMBIC_CONFIG: /app/Backend/alembic.ini
       HOST: "${HOST:-0.0.0.0}"
       PORT: "${PORT:-8000}"
@@ -146,6 +148,8 @@ services:
       USDA_API_KEY: "${USDA_API_KEY:-}"
       USDA_FOUNDATION_FOODS_JSON: "${USDA_FOUNDATION_FOODS_JSON:-}"
       ENVIRONMENT: "${ENVIRONMENT:-production}"
+      SESSION_SECURE_COOKIE: "${SESSION_SECURE_COOKIE:-true}"
+      ALLOW_INSECURE_HTTP: "${ALLOW_INSECURE_HTTP:-false}"
       ALEMBIC_CONFIG: /app/Backend/alembic.ini
     command:
       [

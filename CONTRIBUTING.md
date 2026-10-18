@@ -1029,3 +1029,16 @@ The branch-protection contract requires `release-cutover` as well as the other
 five checks. Documentation changes do not themselves change GitHub enforcement.
 
 LAN-only home-server topology and pending inventory are recorded in [home-server preparation](docs/home-server-preparation.md). The Caddy example is a proposed guest-host configuration, not a deployed service.
+
+
+### Private homelab HTTP deployment
+
+The home deployment explicitly defers HTTPS to a separate infrastructure project.
+Follow [home-server preparation](docs/home-server-preparation.md) and the
+[VM provisioning guide](docs/home-vm-provisioning.md). Production defaults still
+require secure cookies. Private HTTP requires both `SESSION_SECURE_COOKIE=false`
+and `ALLOW_INSECURE_HTTP=true`, plus explicit HTTP `CORS_ALLOW_ORIGINS`.
+Keep `ENVIRONMENT=production` and `DB_AUTO_CREATE=false`; restrict edge access to
+the intended network. HTTP traffic is unencrypted. Record HTTPS release checks
+as deferred for this owner-selected deployment, not passed. Existing HTTPS
+rehearsals remain useful regression coverage and are not removed.

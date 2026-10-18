@@ -82,10 +82,21 @@ A failed checkpoint is not permission to edit `cutover.json` or skip a stage.
 Investigate, then start a new reviewed attempt or restore first. Independent
 operators must not run concurrent cutovers against the same database.
 
-## HTTPS boundary
+## Owner-selected private HTTP deployment
+
+For this homelab installation, the owner explicitly deferred HTTPS. Follow
+[home-server preparation](home-server-preparation.md): use production mode,
+`SESSION_SECURE_COOKIE=false`, `ALLOW_INSECURE_HTTP=true`, and the exact
+`http://nutrition.internal` origin. Restrict ingress to the intended clients and
+validate actual network policy. In the staged instructions above, close/reopen
+HTTP ingress at that boundary and test HttpOnly/SameSite cookies without Secure.
+HTTPS-specific checks are deferred, never recorded as passing. All image,
+backup/restore, ownership and authenticated smoke gates still apply.
+
+## HTTPS boundary (future homelab project)
 
 The production edge is HTTP internally and now defaults to loopback through
-`PROD_HTTP_BIND_ADDRESS=127.0.0.1`. A real HTTPS terminator is still required.
+`PROD_HTTP_BIND_ADDRESS=127.0.0.1`. A real HTTPS terminator is required for the HTTPS deployment mode.
 Use a private bind address only when the chosen topology requires it; restrict
 direct access. Set `CORS_ALLOW_ORIGINS` to the real HTTPS origin and keep secure
 production session cookies enabled. Never disable them to pass HTTP-only tests.
