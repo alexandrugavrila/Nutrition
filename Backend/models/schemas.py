@@ -229,7 +229,7 @@ class UserCreate(SQLModel):
     """Payload for an admin-created user account."""
 
     email: str
-    password: str
+    password: str = Field(min_length=1, max_length=1024)
     display_name: str
     is_admin: bool = False
 
@@ -253,7 +253,7 @@ class ChangePasswordRequest(SQLModel):
     """Payload for changing the current user's password."""
 
     current_password: str
-    new_password: str
+    new_password: str = Field(min_length=1, max_length=1024)
 
 
 class AuthStatus(SQLModel):

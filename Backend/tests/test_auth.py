@@ -1,3 +1,4 @@
+import pytest
 from datetime import timedelta
 
 from fastapi.testclient import TestClient
@@ -206,3 +207,26 @@ def test_non_admin_cannot_create_user(anonymous_client: TestClient, engine) -> N
         },
     )
     assert response.status_code == 403
+
+
+@pytest.mark.parametrize("password", ["", "x" * 1025])
+def test_create_user_rejects_unusable_password(admin_client, engine, password):
+    response = admin_client.post("/api/auth/users", json={
+        "email": "invalid-password@example.com", "password": password,
+        "display_name": "Invalid password",
+    })
+    assert response.status_code == 422
+    with Session(engine) as session:
+        assert session.exec(select(User).where(User.email == "invalid-password@example.com")).first() is None
+
+
+@pytest.mark.parametrize("password", ["", "x" * 1025])
+def test_invalid_password_change_preserves_credentials_and_session(user_a_client, password):
+    response = user_a_client.post("/api/auth/change-password", json={
+        "current_password": "Password123!", "new_password": password,
+    })
+    assert response.status_code == 422
+    assert user_a_client.get("/api/auth/me").status_code == 200
+    assert user_a_client.post("/api/auth/login", json={
+        "email": "user-a@example.com", "password": "Password123!",
+    }).status_code == 200
